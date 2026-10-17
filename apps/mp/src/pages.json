@@ -1,0 +1,54 @@
+{
+  "pages": [
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "活动首页"
+      }
+    },
+    {
+      "path": "pages/activity/detail",
+      "style": {
+        "navigationBarTitleText": "活动详情"
+      }
+    },
+    {
+      "path": "pages/register/index",
+      "style": {
+        "navigationBarTitleText": "报名表单"
+      }
+    },
+    {
+      "path": "pages/mine/registrations",
+      "style": {
+        "navigationBarTitleText": "我的报名"
+      }
+    }
+  ],
+  "tabBar": {
+    "color": "#9CA3AF",
+    "selectedColor": "#0F766E",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页",
+        "iconPath": "static/tab-home.png",
+        "selectedIconPath": "static/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/mine/registrations",
+        "text": "我的报名",
+        "iconPath": "static/tab-mine.png",
+        "selectedIconPath": "static/tab-mine-active.png"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "活动",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F4F5F7"
+  }
+}

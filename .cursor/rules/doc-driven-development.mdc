@@ -1,0 +1,30 @@
+---
+description: 文档与 ADR 驱动的全栈开发约束（monorepo）
+alwaysApply: true
+---
+
+# 文档驱动开发
+
+本仓库是 pnpm monorepo：`apps/mp`（uni-app）、`apps/api`（Nest）、`apps/admin`（Vue3）、`packages/shared`。
+
+## 开工前必读
+
+1. `docs/技术栈.md`
+2. `docs/roadmap.md`（当前阶段）
+3. `docs/product/prd-summary.md`
+4. 相关 `docs/adr/*.md`（至少 0001、0002）
+
+## 硬规则
+
+- 跨模块选型、状态机、权限、报名一致性、支付：先写/更新 ADR 为 `Accepted`，再改代码。
+- 禁止引入：uni-app x、Vue2、webpack 旧脚手架、微信云开发作为主后端。
+- 首期禁止实现在线支付/退款；可预留字段，不开放收款。
+- 共享枚举与 DTO 优先放 `packages/shared`，避免三端各写一套。
+- 登录/支付/分享等平台差异走适配层，避免业务页大量 `#ifdef`。
+- 改动应对应当前 roadmap 阶段；做完更新 checklist。
+
+## 实现偏好
+
+- 垂直切片：同一阶段同时推进 api 契约 + mp/admin 联调。
+- 名额、权限、报名状态以服务端为准。
+- 提交信息说明「为什么」，并引用 ADR 编号（若有）。

@@ -1,0 +1,14 @@
+---
+description: monorepo 应用边界：mp / api / admin / shared
+globs: apps/**/*.{ts,vue,js},packages/**/*.ts
+alwaysApply: false
+---
+
+# 应用边界
+
+- `apps/mp`：只放小程序 UI 与客户端适配；不直连数据库。
+- `apps/api`：业务规则、鉴权、事务、审计的权威实现。
+- `apps/admin`：运营后台 UI；调用同一套 API。
+- `packages/shared`：跨端共享的枚举与类型；不要放密钥或 Node-only 代码。
+
+改状态枚举时同步改 shared，并检查 api / mp / admin 引用。
