@@ -1,5 +1,7 @@
 /** Shared enums and constants for mp / api / admin. Expand via ADR-0005+. */
 
+export * from "./identity";
+
 export const ActivityReviewStatus = {
   NotRequired: "not_required",
   Pending: "pending",
