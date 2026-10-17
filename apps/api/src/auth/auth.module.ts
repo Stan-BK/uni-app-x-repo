@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule, type JwtSignOptions } from "@nestjs/jwt";
+import { UserJwtGuard } from "../common/guards/user-jwt.guard";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { WeixinClient } from "./weixin.client";
@@ -20,7 +21,7 @@ import { WeixinClient } from "./weixin.client";
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, WeixinClient],
-  exports: [AuthService, JwtModule],
+  providers: [AuthService, WeixinClient, UserJwtGuard],
+  exports: [AuthService, JwtModule, UserJwtGuard],
 })
 export class AuthModule {}
