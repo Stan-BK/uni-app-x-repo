@@ -15,8 +15,8 @@
 | --- | --- | --- |
 | [0001](./0001-monorepo-and-tech-stack.md) | Monorepo 与全栈技术基线 | Accepted |
 | [0002](./0002-doc-driven-ai-workflow.md) | 文档与 ADR 驱动的 AI 开发流程 | Accepted |
-| 0003 | 多端身份与 Organizer 模型 | Proposed（待写） |
-| 0004 | 管理后台 RBAC | Proposed（待写） |
+| [0003](./0003-identity-and-organizer.md) | 多端身份与 Organizer 模型 | Accepted |
+| [0004](./0004-admin-rbac.md) | 管理后台 RBAC | Accepted |
 | 0005 | 活动状态机与数据模型 | Proposed（待写） |
 | 0006 | 活动发现与公开展示规则 | Proposed（待写） |
 | 0007 | 报名幂等与名额并发 | Proposed（待写） |
