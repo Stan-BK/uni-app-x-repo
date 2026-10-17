@@ -26,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { listRegistrations, type Registration } from '@/mocks/activities'
 
@@ -49,6 +49,7 @@ function goDetail(activityId: string) {
   uni.navigateTo({ url: `/pages/activity/detail?id=${activityId}` })
 }
 
+onMounted(load)
 onShow(load)
 </script>
 

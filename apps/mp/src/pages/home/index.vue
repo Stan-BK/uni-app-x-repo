@@ -31,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { listActivities, type Activity } from '@/mocks/activities'
 
@@ -51,6 +51,8 @@ function goDetail(id: string) {
   uni.navigateTo({ url: `/pages/activity/detail?id=${id}` })
 }
 
+// H5 first paint sometimes misses onShow; mount covers that path.
+onMounted(load)
 onShow(load)
 </script>
 
