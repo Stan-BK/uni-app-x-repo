@@ -450,7 +450,7 @@ git commit -am "feat(api): weixin login with dev bypass and /me"
 - Create: `apps/api/src/organizers/dto/apply-organizer.dto.ts`
 - Create: `apps/api/src/common/guards/publisher.guard.ts`
 
-- [ ] **Step 1: API**
+- [x] **Step 1: API**
 
 - `POST /api/organizers/apply` `{ name, reason? }`  
   - 无 Organizer → 创建 `publishStatus=pending`  
@@ -458,16 +458,16 @@ git commit -am "feat(api): weixin login with dev bypass and /me"
   - 已是 `approved`/`pending`/`frozen` → 409  
 - `GET /api/organizers/me` 当前用户的组织者资料  
 
-- [ ] **Step 2: PublisherGuard**
+- [x] **Step 2: PublisherGuard**
 
 仅当关联 Organizer.`publishStatus === approved` 时通过。  
 预留挂到未来 `POST /api/activities`（本阶段可挂一个 `GET /api/organizers/can-publish` 返回布尔，并加单测）。
 
-- [ ] **Step 3: 验收 curl**
+- [ ] **Step 3: 验收 curl**（Docker Desktop 未就绪时跳过；单测覆盖 apply / canPublish 规则）
 
 登录 → apply → `/organizers/me` 为 pending → `can-publish` 为 false。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git commit -am "feat(api): organizer apply and publisher guard"
