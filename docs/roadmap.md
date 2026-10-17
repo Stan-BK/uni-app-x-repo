@@ -33,7 +33,7 @@
 - [ ] User / Organizer / AdminUser 模型  
 - [ ] 微信登录适配（抖音/小红书接口预留）  
 - [x] 申请组织者 / 发布权限开关（用户侧 apply + PublisherGuard；Admin 审核见 Task 6）  
-- [ ] Admin 登录与基础角色  
+- [x] Admin 登录与基础角色（登录 + 组织者审核 API；Admin 前端见 Task 7）  
 
 **验收：** 无权限不可创建活动；后台未授权不可访问。
 

@@ -484,13 +484,13 @@ git commit -am "feat(api): organizer apply and publisher guard"
 - Create: `apps/api/src/common/guards/roles.guard.ts`
 - Create: `apps/api/src/common/decorators/roles.decorator.ts`
 
-- [ ] **Step 1: Admin 登录**
+- [x] **Step 1: Admin 登录**
 
 - `POST /api/admin/auth/login` `{ email, password }`  
 - 校验 bcrypt；签发 JWT `{ sub: adminId, typ: "admin", role }`，secret=`JWT_ADMIN_SECRET`  
 - 小程序 user token 访问 admin 路由必须 401
 
-- [ ] **Step 2: 组织者审核 API**（AdminJwt + Roles）
+- [x] **Step 2: 组织者审核 API**（AdminJwt + Roles）
 
 - `GET /api/admin/organizers?status=pending`  
 - `POST /api/admin/organizers/:id/approve` `{ note? }` → `approved` + AuditLog  
@@ -505,7 +505,7 @@ git commit -am "feat(api): organizer apply and publisher guard"
 # user apply → admin login → approve → user can-publish true
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git commit -am "feat(api): admin auth and organizer review APIs"
