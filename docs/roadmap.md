@@ -26,7 +26,8 @@
 
 ## P0-1 身份与权限
 
-**ADR：** 0003（身份）、0004（Admin RBAC）
+**ADR：** [0003](./adr/0003-identity-and-organizer.md)、[0004](./adr/0004-admin-rbac.md)（Accepted）  
+**计划：** [docs/superpowers/plans/2026-10-17-p0-1-identity-and-rbac.md](./superpowers/plans/2026-10-17-p0-1-identity-and-rbac.md)
 
 - [ ] NestJS + Prisma 正式脚手架与 DB 连接  
 - [ ] User / Organizer / AdminUser 模型  
