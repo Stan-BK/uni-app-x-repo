@@ -1,5 +1,13 @@
-/**
- * API skeleton. NestJS + Prisma will be introduced in ADR-0003 / implementation plan.
- * This placeholder keeps the monorepo installable before the Nest scaffold lands.
- */
-console.log("@activity/api skeleton — NestJS bootstrap pending (see docs/roadmap.md P0-1)");
+import "reflect-metadata";
+import { ValidationPipe } from "@nestjs/common";
+import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app.module";
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  app.setGlobalPrefix("api");
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.enableCors({ origin: true, credentials: true });
+  await app.listen(process.env.PORT ?? 3000);
+}
+bootstrap();
