@@ -6,3 +6,92 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum IdentityProvider {
+  weixin
+  toutiao
+  xhs
+}
+
+enum PublishStatus {
+  none
+  pending
+  approved
+  rejected
+  frozen
+}
+
+enum AdminRole {
+  operator
+  admin
+}
+
+enum UserStatus {
+  active
+  banned
+}
+
+model User {
+  id        String     @id @default(cuid())
+  nickname  String?
+  avatarUrl String?
+  phone     String?
+  status    UserStatus @default(active)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  identities UserIdentity[]
+  organizer  Organizer?
+}
+
+model UserIdentity {
+  id        String           @id @default(cuid())
+  userId    String
+  provider  IdentityProvider
+  openId    String
+  unionId   String?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@unique([provider, openId])
+  @@index([userId])
+}
+
+model Organizer {
+  id             String        @id @default(cuid())
+  ownerUserId    String        @unique
+  name           String
+  type           String        @default("personal")
+  description    String?
+  publishStatus  PublishStatus @default(none)
+  applyReason    String?
+  reviewNote     String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  owner          User          @relation(fields: [ownerUserId], references: [id])
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  displayName  String?
+  role         AdminRole @default(operator)
+  status       String    @default("active")
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorType  String
+  actorId    String
+  action     String
+  targetType String
+  targetId   String
+  reason     String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId])
+}
