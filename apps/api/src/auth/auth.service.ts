@@ -1,0 +1,122 @@
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { JwtService, type JwtSignOptions } from "@nestjs/jwt";
+import { IdentityProvider, type User } from "@prisma/client";
+import { PrismaService } from "../prisma/prisma.service";
+import { WeixinClient } from "./weixin.client";
+
+const DEV_OPEN_ID = "dev-openid";
+
+export type AuthUserView = {
+  id: string;
+  nickname: string | null;
+  avatarUrl: string | null;
+};
+
+export type LoginResult = {
+  accessToken: string;
+  user: AuthUserView;
+};
+
+export type MeResult = AuthUserView & {
+  organizer: { publishStatus: string } | null;
+};
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwt: JwtService,
+    private readonly config: ConfigService,
+    private readonly weixin: WeixinClient,
+  ) {}
+
+  async login(input: { code: string }): Promise<LoginResult> {
+    const bypass = this.config.get<string>("AUTH_DEV_BYPASS") === "true";
+    if (bypass && input.code === "dev") {
+      return this.loginWithDev();
+    }
+
+    const session = await this.weixin.code2Session(input.code);
+    const user = await this.upsertWeixinUser(session.openid, session.unionid);
+    return this.issueToken(user);
+  }
+
+  async loginWithDev(): Promise<LoginResult> {
+    if (this.config.get<string>("AUTH_DEV_BYPASS") !== "true") {
+      throw new HttpException("Dev bypass is disabled", HttpStatus.FORBIDDEN);
+    }
+    const user = await this.upsertWeixinUser(DEV_OPEN_ID);
+    return this.issueToken(user);
+  }
+
+  async getMe(userId: string): Promise<MeResult> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { organizer: true },
+    });
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+    return {
+      id: user.id,
+      nickname: user.nickname,
+      avatarUrl: user.avatarUrl,
+      organizer: user.organizer
+        ? { publishStatus: user.organizer.publishStatus }
+        : null,
+    };
+  }
+
+  private async upsertWeixinUser(
+    openId: string,
+    unionId?: string,
+  ): Promise<User> {
+    const existing = await this.prisma.userIdentity.findUnique({
+      where: {
+        provider_openId: { provider: IdentityProvider.weixin, openId },
+      },
+      include: { user: true },
+    });
+    if (existing) {
+      if (unionId && !existing.unionId) {
+        await this.prisma.userIdentity.update({
+          where: { id: existing.id },
+          data: { unionId },
+        });
+      }
+      return existing.user;
+    }
+
+    return this.prisma.user.create({
+      data: {
+        nickname: openId === DEV_OPEN_ID ? "Dev User" : null,
+        identities: {
+          create: {
+            provider: IdentityProvider.weixin,
+            openId,
+            unionId: unionId ?? null,
+          },
+        },
+      },
+    });
+  }
+
+  private issueToken(user: User): LoginResult {
+    const secret = this.config.getOrThrow<string>("JWT_USER_SECRET");
+    const expiresIn = (this.config.get<string>("JWT_EXPIRES_IN") ??
+      "7d") as JwtSignOptions["expiresIn"];
+    const accessToken = this.jwt.sign(
+      { sub: user.id, typ: "user" },
+      { secret, expiresIn },
+    );
+    return {
+      accessToken,
+      user: {
+        id: user.id,
+        nickname: user.nickname,
+        avatarUrl: user.avatarUrl,
+      },
+    };
+  }
+}
