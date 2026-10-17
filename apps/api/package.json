@@ -1,0 +1,17 @@
+{
+  "name": "@activity/api",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start:dev": "node --watch dist/main.js",
+    "build": "tsc -p tsconfig.json",
+    "type-check": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@activity/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.6.3"
+  }
+}
