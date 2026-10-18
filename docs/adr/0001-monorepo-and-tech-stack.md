@@ -15,7 +15,7 @@
 3. API：**NestJS + Prisma + PostgreSQL**。  
 4. Admin：**Vue3 + Vite + TypeScript**。  
 5. 共享枚举/契约放 `packages/shared`；OpenAPI 由 API 导出（后续 ADR 细化）。  
-6. 首期 **不做在线支付**，预留费用相关字段。
+6. 首期 **不做在线支付**，预留费用相关字段；收费报名归产品 P2 / 运维阶段 C（见 ADR-0010）。
 
 ## 备选方案
 

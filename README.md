@@ -9,7 +9,8 @@
 | 文档 | 用途 |
 | --- | --- |
 | [docs/技术栈.md](./docs/技术栈.md) | 全栈技术基线 |
-| [docs/roadmap.md](./docs/roadmap.md) | 按优先级的开发进程 |
+| [docs/roadmap.md](./docs/roadmap.md) | 按优先级的功能开发进程 |
+| [docs/backend-ops-roadmap.md](./docs/backend-ops-roadmap.md) | 后端/云资源选型与阶段升级（已确认） |
 | [docs/product/prd-summary.md](./docs/product/prd-summary.md) | PRD 摘要与 MVP 默认 |
 | [docs/adr/](./docs/adr/) | 架构决策留底 |
 | [docs/superpowers/specs/2026-10-17-monorepo-doc-driven-design.md](./docs/superpowers/specs/2026-10-17-monorepo-doc-driven-design.md) | Monorepo 设计规格 |

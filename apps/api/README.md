@@ -2,6 +2,8 @@
 
 NestJS + Prisma + PostgreSQL。身份与组织者审核见 ADR-0003 / ADR-0004。
 
+基础设施与阶段升级（Docker → 容器、OSS、支付前置条件）见仓库根文档 [docs/backend-ops-roadmap.md](../../docs/backend-ops-roadmap.md)（ADR-0010）。
+
 ## 本地启动
 
 1. 启动 PostgreSQL（示例 Colima + Docker）：
