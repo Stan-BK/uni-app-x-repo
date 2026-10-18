@@ -22,5 +22,6 @@
 | 0007 | 报名幂等与名额并发 | Proposed（待写） |
 | 0008 | 审核、下架与审计 | Proposed（待写） |
 | 0009 | 联调、验收与观测基线 | Proposed（待写） |
+| [0010](./0010-backend-ops-stack.md) | 后端基础设施与阶段升级选型 | Accepted |
 
 状态说明：`Proposed` → `Accepted` → `Implemented`；废弃用 `Superseded` / `Rejected`。
