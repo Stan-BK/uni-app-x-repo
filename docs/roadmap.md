@@ -29,11 +29,11 @@
 **ADR：** [0003](./adr/0003-identity-and-organizer.md)、[0004](./adr/0004-admin-rbac.md)（Accepted）  
 **计划：** [docs/superpowers/plans/2026-10-17-p0-1-identity-and-rbac.md](./superpowers/plans/2026-10-17-p0-1-identity-and-rbac.md)
 
-- [ ] NestJS + Prisma 正式脚手架与 DB 连接  
-- [ ] User / Organizer / AdminUser 模型  
-- [ ] 微信登录适配（抖音/小红书接口预留）  
-- [x] 申请组织者 / 发布权限开关（用户侧 apply + PublisherGuard；Admin 审核见 Task 6）  
-- [x] Admin 登录与基础角色（登录 + 组织者审核 API；Admin 前端见 Task 7）  
+- [x] NestJS + Prisma 正式脚手架与 DB 连接  
+- [x] User / Organizer / AdminUser 模型  
+- [x] 微信登录适配（抖音/小红书接口预留）  
+- [x] 申请组织者 / 发布权限开关（用户侧 apply + PublisherGuard；Admin 审核）  
+- [x] Admin 登录与基础角色（API + Admin 最小页）  
 
 **验收：** 无权限不可创建活动；后台未授权不可访问。
 

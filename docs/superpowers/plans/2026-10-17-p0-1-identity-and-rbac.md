@@ -520,19 +520,19 @@ git commit -am "feat(api): admin auth and organizer review APIs"
 - Create: `apps/admin/src/router.ts`, `apps/admin/src/api/http.ts`
 - Create: `apps/admin/src/views/Login.vue`, `OrganizerApplications.vue`
 
-- [ ] **Step 1: http 封装**
+- [x] **Step 1: http 封装**
 
 `VITE_API_BASE=http://localhost:3000/api`，自动带 Admin Bearer。
 
-- [ ] **Step 2: 登录页 + 申请列表**
+- [x] **Step 2: 登录页 + 申请列表**
 
 列表展示 pending；操作通过/驳回；成功后刷新。
 
-- [ ] **Step 3: 手动验收**
+- [x] **Step 3: 手动验收**
 
 `pnpm dev:admin` + `pnpm dev:api`，用 bootstrap 账号登录并审批一条申请。
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Commit**（待用户确认再提交）
 
 ```bash
 git commit -am "feat(admin): login and organizer application review UI"
@@ -549,11 +549,11 @@ git commit -am "feat(admin): login and organizer application review UI"
 - Modify: `apps/mp/src/pages/index/index.vue`（临时：显示登录态与申请入口）
 - Modify: `apps/mp/.env.development` → `VITE_API_BASE`
 
-- [ ] **Step 1: request**
+- [x] **Step 1: request**
 
 封装 `uni.request`，附带 `Authorization`；401 清 token。
 
-- [ ] **Step 2: auth adapter**
+- [x] **Step 2: auth adapter**
 
 ```ts
 // 伪代码
@@ -566,15 +566,15 @@ export async function loginWithWeixin() {
 }
 ```
 
-- [ ] **Step 3: Pinia user store**
+- [x] **Step 3: Pinia user store**
 
 `token` 存 `uni.setStorageSync`；`fetchMe`；`applyOrganizer`。
 
-- [ ] **Step 4: 首页临时联调 UI**
+- [x] **Step 4: 首页临时联调 UI**
 
 按钮：登录 / 申请组织者 / 显示 publishStatus。
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit**（待用户确认再提交）
 
 ```bash
 git commit -am "feat(mp): auth adapter, request helper, organizer apply entry"
@@ -589,8 +589,8 @@ git commit -am "feat(mp): auth adapter, request helper, organizer apply entry"
 - Modify: `docs/adr/0003-identity-and-organizer.md`、`0004-admin-rbac.md` 状态 → `Implemented`
 - Modify: `apps/api/README.md`（启动步骤）
 
-- [ ] **Step 1: 更新状态与 README**
-- [ ] **Step 2: Commit**
+- [x] **Step 1: 更新状态与 README**
+- [ ] **Step 2: Commit**（待用户确认再提交）
 
 ```bash
 git commit -am "docs: mark P0-1 ADRs implemented and update roadmap"

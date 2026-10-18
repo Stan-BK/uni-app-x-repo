@@ -1,6 +1,6 @@
 # ADR-0003: 多端身份与 Organizer 模型
 
-- **状态：** Accepted
+- **状态：** Implemented
 - **日期：** 2026-10-17
 - **关联：** roadmap P0-1、PRD D-01、ADR-0001
 

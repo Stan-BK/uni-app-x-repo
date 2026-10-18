@@ -1,6 +1,6 @@
 # ADR-0004: 管理后台 RBAC
 
-- **状态：** Accepted
+- **状态：** Implemented
 - **日期：** 2026-10-17
 - **关联：** roadmap P0-1、PRD ADM-001/006、ADR-0003
 

@@ -33,7 +33,12 @@ export class AuthService {
 
   async login(input: { code: string }): Promise<LoginResult> {
     const bypass = this.config.get<string>("AUTH_DEV_BYPASS") === "true";
-    if (bypass && input.code === "dev") {
+    const appid = this.config.get<string>("WEIXIN_APPID");
+    const secret = this.config.get<string>("WEIXIN_SECRET");
+    const weixinConfigured = Boolean(appid && secret);
+
+    // 开发旁路：显式 code=dev，或未配置微信密钥时（真机/预览拿到真实 code 也能联调）
+    if (bypass && (input.code === "dev" || !weixinConfigured)) {
       return this.loginWithDev();
     }
 

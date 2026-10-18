@@ -83,4 +83,20 @@ describe("AuthService", () => {
       expect.objectContaining({ secret: "dev-user-secret" }),
     );
   });
+
+  it("dev bypass accepts real code when Weixin credentials are missing", async () => {
+    prisma.userIdentity.findUnique.mockResolvedValue(null);
+    prisma.user.create.mockResolvedValue({
+      id: "user-dev-2",
+      nickname: "Dev User",
+      avatarUrl: null,
+    });
+
+    const result = await service.login({ code: "08123-real-weixin-code" });
+
+    expect(result.accessToken).toBe("test-access-token");
+    expect(result.user.id).toBe("user-dev-2");
+    expect(weixin.code2Session).not.toHaveBeenCalled();
+  });
 });
+
