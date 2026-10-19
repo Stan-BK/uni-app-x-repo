@@ -1,6 +1,6 @@
 # ADR-0007: 报名幂等与名额并发
 
-- **状态：** Accepted
+- **状态：** Implemented
 - **日期：** 2026-10-19
 - **关联：** roadmap P0-4、PRD AT-REG / D-03～D-06 / D-08、ADR-0005、ADR-0006；支付另见未来支付 ADR / backend-ops 阶段 C
 - **设计规格：** [docs/superpowers/specs/2026-10-19-p0-4-free-registration-design.md](../superpowers/specs/2026-10-19-p0-4-free-registration-design.md)

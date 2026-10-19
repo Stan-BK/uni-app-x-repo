@@ -19,7 +19,7 @@
 | [0004](./0004-admin-rbac.md) | 管理后台 RBAC | Accepted |
 | [0005](./0005-activity-lifecycle-and-model.md) | 活动生命周期与数据模型 | Implemented |
 | [0006](./0006-activity-discovery-and-public-visibility.md) | 活动发现与公开展示规则 | Implemented |
-| [0007](./0007-registration-idempotency-and-capacity.md) | 报名幂等与名额并发 | Accepted |
+| [0007](./0007-registration-idempotency-and-capacity.md) | 报名幂等与名额并发 | Implemented |
 | 0008 | 审核、下架与审计 | Proposed（待写） |
 | 0009 | 联调、验收与观测基线 | Proposed（待写） |
 | [0010](./0010-backend-ops-stack.md) | 后端基础设施与阶段升级选型 | Accepted |

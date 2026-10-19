@@ -75,16 +75,16 @@
 
 ## P0-4 免费报名闭环
 
-**ADR：** [0007](./adr/0007-registration-idempotency-and-capacity.md)（Accepted）  
+**ADR：** [0007](./adr/0007-registration-idempotency-and-capacity.md)（Implemented）  
 **设计：** [docs/superpowers/specs/2026-10-19-p0-4-free-registration-design.md](./superpowers/specs/2026-10-19-p0-4-free-registration-design.md)  
 **计划：** [docs/superpowers/plans/2026-10-19-p0-4-free-registration.md](./superpowers/plans/2026-10-19-p0-4-free-registration.md)
 
-- [ ] 报名表单（姓名、手机号）  
-- [ ] 服务端二次校验 + 幂等  
-- [ ] 名额并发占用  
-- [ ] 用户主动取消报名（释放名额；未结束前）  
-- [ ] 我的报名 / 组织者报名名单  
-- [ ] 公开 `displayStatus=full` + 生命周期取消报名钩子  
+- [x] 报名表单（姓名、手机号）  
+- [x] 服务端二次校验 + 幂等  
+- [x] 名额并发占用  
+- [x] 用户主动取消报名（释放名额；未结束前）  
+- [x] 我的报名 / 组织者报名名单  
+- [x] 公开 `displayStatus=full` + 生命周期取消报名钩子  
 
 **验收：** AT-REG-01～06（含并发与越权）；用户可取消；仅 `feeType=free` 可报；`paid` 后置 P2。
 

@@ -854,7 +854,7 @@ EOF
 - Modify: `docs/superpowers/specs/2026-10-19-p0-4-free-registration-design.md` → Implemented；勾选实现计划
 - Modify: `docs/roadmap.md` P0-4 checklist 全部 `[x]`
 
-- [ ] **Step 1: 更新文档并 Commit**
+- [x] **Step 1: 更新文档并 Commit**
 
 ```bash
 git commit -m "$(cat <<'EOF'

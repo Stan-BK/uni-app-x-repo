@@ -1,8 +1,8 @@
 # P0-4 免费报名闭环设计规格
 
 - **日期：** 2026-10-19  
-- **状态：** Draft（待实现；ADR Accepted）  
-- **关联 ADR：** [0007](../../adr/0007-registration-idempotency-and-capacity.md)（Accepted）  
+- **状态：** Implemented  
+- **关联 ADR：** [0007](../../adr/0007-registration-idempotency-and-capacity.md)（Implemented）  
 - **关联：** ADR-0005（生命周期钩子）、ADR-0006（公开详情 / `displayStatus`）；支付 → P2
 
 ## 1. 目标
@@ -203,4 +203,4 @@ else → open
 - [x] ADR-0007 Accepted  
 - [x] roadmap P0-4 挂上 ADR / 本规格链接  
 - [x] 实现计划 [docs/superpowers/plans/2026-10-19-p0-4-free-registration.md](../plans/2026-10-19-p0-4-free-registration.md)  
-- [ ] 实现后 ADR → Implemented；本规格 → Implemented
+- [x] 实现后 ADR → Implemented；本规格 → Implemented
