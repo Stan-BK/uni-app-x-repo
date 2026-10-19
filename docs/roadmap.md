@@ -59,14 +59,14 @@
 
 ## P0-3 发现与详情
 
-**ADR：** [0006](./adr/0006-activity-discovery-and-public-visibility.md)（Accepted）  
+**ADR：** [0006](./adr/0006-activity-discovery-and-public-visibility.md)（Implemented）  
 **设计：** [docs/superpowers/specs/2026-10-19-p0-3-discovery-and-detail-design.md](./superpowers/specs/2026-10-19-p0-3-discovery-and-detail-design.md)  
 **计划：** [docs/superpowers/plans/2026-10-19-p0-3-discovery-and-detail.md](./superpowers/plans/2026-10-19-p0-3-discovery-and-detail.md)
 
-- [ ] 公开活动列表分页（仅未结束的 `published`）  
-- [ ] 标题关键词搜索 + 排序（开始时间 / 发布时间，默认开始）  
-- [ ] 活动详情与展示态（`upcoming` / `open` / `ended`）  
-- [ ] 下架/取消/草稿对分享链的处理（无正文错误态；已结束可回顾）  
+- [x] 公开活动列表分页（仅未结束的 `published`）  
+- [x] 标题关键词搜索 + 排序（开始时间 / 发布时间，默认开始）  
+- [x] 活动详情与展示态（`upcoming` / `open` / `ended`）  
+- [x] 下架/取消/草稿对分享链的处理（无正文错误态；已结束可回顾）  
 
 **验收：** 仅展示可发现活动；搜索/排序正确；详情与分享链状态正确。
 

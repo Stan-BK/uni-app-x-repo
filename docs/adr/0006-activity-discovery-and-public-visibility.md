@@ -1,6 +1,6 @@
 # ADR-0006: 活动发现与公开展示规则
 
-- **状态：** Accepted
+- **状态：** Implemented
 - **日期：** 2026-10-19
 - **关联：** roadmap P0-3、PRD AT-ACT-06（修订）、ADR-0005；报名 → ADR-0007
 - **设计规格：** [docs/superpowers/specs/2026-10-19-p0-3-discovery-and-detail-design.md](../superpowers/specs/2026-10-19-p0-3-discovery-and-detail-design.md)

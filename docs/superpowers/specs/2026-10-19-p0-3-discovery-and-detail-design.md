@@ -1,8 +1,8 @@
 # P0-3 发现与详情设计规格
 
 - **日期：** 2026-10-19  
-- **状态：** Accepted（待实现）  
-- **关联 ADR：** [0006](../../adr/0006-activity-discovery-and-public-visibility.md)（Accepted）  
+- **状态：** Implemented  
+- **关联 ADR：** [0006](../../adr/0006-activity-discovery-and-public-visibility.md)（Implemented）  
 - **关联：** ADR-0005；报名 → ADR-0007；分类高级筛选 → P1
 
 ## 1. 目标
@@ -98,4 +98,4 @@ else → open
 - [x] ADR-0006 Accepted  
 - [x] roadmap P0-3 增补搜索/排序；P1 表述修订  
 - [x] 实现计划 [docs/superpowers/plans/2026-10-19-p0-3-discovery-and-detail.md](../plans/2026-10-19-p0-3-discovery-and-detail.md)  
-- [ ] 实现后 ADR → Implemented，roadmap 勾选
+- [x] 实现后 ADR → Implemented，roadmap 勾选
