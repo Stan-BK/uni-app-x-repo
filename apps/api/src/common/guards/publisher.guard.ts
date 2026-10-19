@@ -12,7 +12,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 /**
  * Requires UserJwtGuard first (request.user.userId).
  * Passes only when the user's Organizer.publishStatus === approved.
- * Intended for future activity publish routes.
+ * Used by organizer activity publish routes.
  */
 @Injectable()
 export class PublisherGuard implements CanActivate {

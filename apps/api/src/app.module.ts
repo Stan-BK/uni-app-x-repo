@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { ActivitiesModule } from "./activities/activities.module";
 import { AdminAuthModule } from "./admin-auth/admin-auth.module";
 import { AdminOrganizersModule } from "./admin-organizers/admin-organizers.module";
 import { AuthModule } from "./auth/auth.module";
@@ -12,6 +13,7 @@ import { PrismaModule } from "./prisma/prisma.module";
     PrismaModule,
     AuthModule,
     OrganizersModule,
+    ActivitiesModule,
     AdminAuthModule,
     AdminOrganizersModule,
   ],
