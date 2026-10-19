@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start:dev": "nest start --watch",
+    "start:dev": "pnpm --filter @activity/shared build && nest start --watch",
     "build": "nest build",
     "start": "node dist/main.js",
     "prisma:generate": "prisma generate",
