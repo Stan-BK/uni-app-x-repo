@@ -29,19 +29,31 @@ export type ListPublicParams = {
   pageSize?: number;
 };
 
+/** 小程序运行时无 URLSearchParams，手动拼查询串 */
+function toQuery(params: Record<string, string | number | undefined>): string {
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === "") continue;
+    parts.push(
+      `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`,
+    );
+  }
+  return parts.length ? `?${parts.join("&")}` : "";
+}
+
 export function listPublicActivities(params: ListPublicParams = {}) {
-  const qs = new URLSearchParams();
-  if (params.q) qs.set("q", params.q);
-  if (params.sort) qs.set("sort", params.sort);
-  if (params.page) qs.set("page", String(params.page));
-  if (params.pageSize) qs.set("pageSize", String(params.pageSize));
-  const q = qs.toString();
+  const q = toQuery({
+    q: params.q,
+    sort: params.sort,
+    page: params.page,
+    pageSize: params.pageSize,
+  });
   return request<{
     items: PublicActivity[];
     total: number;
     page: number;
     pageSize: number;
-  }>(`/public/activities${q ? `?${q}` : ""}`, { auth: false });
+  }>(`/public/activities${q}`, { auth: false });
 }
 
 export function getPublicActivity(id: string) {
