@@ -1284,14 +1284,14 @@ EOF
 - Modify: `docs/adr/README.md`
 - Modify: `docs/superpowers/specs/2026-10-19-p0-2-activity-domain-design.md`（状态 → Implemented）
 
-- [ ] **Step 1: 勾选 roadmap 并更新 ADR 状态**
+- [x] **Step 1: 勾选 roadmap 并更新 ADR 状态**
 
-- [ ] **Step 2: 全量 API 测试**
+- [x] **Step 2: 全量 API 测试**
 
 Run: `pnpm --filter @activity/api test`  
 Expected: PASS
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs

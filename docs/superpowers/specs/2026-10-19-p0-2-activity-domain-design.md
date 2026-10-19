@@ -1,8 +1,8 @@
 # P0-2 活动域设计规格
 
 - **日期：** 2026-10-19  
-- **状态：** Approved（实现计划已出）  
-- **关联 ADR：** [0005](../../adr/0005-activity-lifecycle-and-model.md)（Accepted）  
+- **状态：** Implemented  
+- **关联 ADR：** [0005](../../adr/0005-activity-lifecycle-and-model.md)（Implemented）  
 - **关联：** ADR-0003、ADR-0004；公开规则 → ADR-0006；报名 → ADR-0007；支付另 ADR
 
 ## 1. 目标

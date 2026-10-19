@@ -1,6 +1,6 @@
 # ADR-0005: 活动生命周期与数据模型
 
-- **状态：** Accepted
+- **状态：** Implemented
 - **日期：** 2026-10-19
 - **关联：** roadmap P0-2、PRD AT-ACT（修订）、ADR-0003、ADR-0004；支付另见未来支付 ADR / backend-ops 阶段 C
 - **设计规格：** [docs/superpowers/specs/2026-10-19-p0-2-activity-domain-design.md](../superpowers/specs/2026-10-19-p0-2-activity-domain-design.md)
