@@ -97,5 +97,5 @@ else → open
 
 - [x] ADR-0006 Accepted  
 - [x] roadmap P0-3 增补搜索/排序；P1 表述修订  
-- [ ] 实现计划（审阅本规格后编写）  
+- [x] 实现计划 [docs/superpowers/plans/2026-10-19-p0-3-discovery-and-detail.md](../plans/2026-10-19-p0-3-discovery-and-detail.md)  
 - [ ] 实现后 ADR → Implemented，roadmap 勾选

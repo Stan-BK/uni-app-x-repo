@@ -60,7 +60,8 @@
 ## P0-3 发现与详情
 
 **ADR：** [0006](./adr/0006-activity-discovery-and-public-visibility.md)（Accepted）  
-**设计：** [docs/superpowers/specs/2026-10-19-p0-3-discovery-and-detail-design.md](./superpowers/specs/2026-10-19-p0-3-discovery-and-detail-design.md)
+**设计：** [docs/superpowers/specs/2026-10-19-p0-3-discovery-and-detail-design.md](./superpowers/specs/2026-10-19-p0-3-discovery-and-detail-design.md)  
+**计划：** [docs/superpowers/plans/2026-10-19-p0-3-discovery-and-detail.md](./superpowers/plans/2026-10-19-p0-3-discovery-and-detail.md)
 
 - [ ] 公开活动列表分页（仅未结束的 `published`）  
 - [ ] 标题关键词搜索 + 排序（开始时间 / 发布时间，默认开始）  
