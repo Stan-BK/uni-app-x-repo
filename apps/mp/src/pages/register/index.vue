@@ -1,11 +1,12 @@
 <template>
   <view class="page">
-    <view v-if="!activity" class="state">活动不存在</view>
+    <view v-if="loading" class="state">加载中…</view>
+    <view v-else-if="!activity" class="state">{{ errorMessage || "活动不存在" }}</view>
     <template v-else>
       <view class="banner">
         <text class="banner-title">{{ activity.title }}</text>
         <text class="banner-meta"
-          >{{ activity.startAt }} · {{ activity.place }}</text
+          >{{ formatTime(activity.startAt) }} · {{ activity.place || "—" }}</text
         >
       </view>
 
@@ -32,9 +33,7 @@
             placeholder-class="placeholder"
           />
         </view>
-        <text class="hint"
-          >提交后仅写入本地 Mock，不会真实报名或扣费。</text
-        >
+        <text class="hint">免费活动报名成功后可在「我的」查看</text>
       </view>
 
       <button class="submit" :loading="submitting" @click="onSubmit">
@@ -45,56 +44,114 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { ref } from "vue";
+import { onLoad } from "@dcloudio/uni-app";
 import {
-  getActivityById,
-  submitRegistration,
-  type Activity,
-} from '@/mocks/activities'
+  getPublicActivity,
+  type PublicActivity,
+} from "@/api/public-activities";
+import { createRegistration } from "@/api/registrations";
+import { useUserStore } from "@/stores/user";
+import { ApiError } from "@/utils/request";
 
-const activity = ref<Activity | null>(null)
-const name = ref('')
-const phone = ref('')
-const submitting = ref(false)
+const user = useUserStore();
+const activity = ref<PublicActivity | null>(null);
+const activityId = ref("");
+const name = ref("");
+const phone = ref("");
+const loading = ref(true);
+const submitting = ref(false);
+const errorMessage = ref("");
 
-onLoad((query) => {
-  const id = String(query?.id ?? '')
-  activity.value = getActivityById(id) ?? null
-})
-
-function validate(): string | null {
-  const n = name.value.trim()
-  const p = phone.value.trim()
-  if (!n) return '请填写姓名'
-  if (!/^1\d{10}$/.test(p)) return '请填写 11 位手机号'
-  return null
+function formatTime(iso?: string | null) {
+  if (!iso) return "时间待定";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString();
 }
 
-function onSubmit() {
-  if (!activity.value || submitting.value) return
-  const err = validate()
+function validate(): string | null {
+  const n = name.value.trim();
+  const p = phone.value.trim();
+  if (!n) return "请填写姓名";
+  if (!/^1\d{10}$/.test(p)) return "请填写 11 位手机号";
+  return null;
+}
+
+function toastForError(err: unknown): string {
+  if (err instanceof ApiError) {
+    switch (err.code) {
+      case "ACTIVITY_FULL":
+        return "名额已满";
+      case "PAID_NOT_SUPPORTED":
+        return "暂不支持线上报名";
+      case "ACTIVITY_ENDED":
+        return "活动已结束";
+      case "ACTIVITY_NOT_OPENABLE":
+        return "活动暂不可报名";
+      default:
+        return err.message || "报名失败";
+    }
+  }
+  return err instanceof Error ? err.message : "报名失败";
+}
+
+async function load(id: string) {
+  loading.value = true;
+  errorMessage.value = "";
+  activity.value = null;
+  try {
+    activity.value = await getPublicActivity(id);
+    uni.setNavigationBarTitle({ title: "报名" });
+  } catch (err) {
+    if (err instanceof ApiError) {
+      if (err.status === 404) errorMessage.value = "活动不存在或已下架";
+      else errorMessage.value = err.message || "加载失败";
+    } else {
+      errorMessage.value = "加载失败";
+    }
+  } finally {
+    loading.value = false;
+  }
+}
+
+onLoad((query) => {
+  const id = String(query?.activityId ?? query?.id ?? "").trim();
+  if (!id) {
+    loading.value = false;
+    errorMessage.value = "活动不存在";
+    return;
+  }
+  activityId.value = id;
+  void load(id);
+});
+
+async function onSubmit() {
+  if (!activity.value || !activityId.value || submitting.value) return;
+  const err = validate();
   if (err) {
-    uni.showToast({ title: err, icon: 'none' })
-    return
+    uni.showToast({ title: err, icon: "none" });
+    return;
   }
 
-  submitting.value = true
+  submitting.value = true;
   try {
-    const record = submitRegistration({
-      activityId: activity.value.id,
-      name: name.value,
-      phone: phone.value,
-    })
-    uni.showToast({
-      title: record.status === 'waitlist' ? '已加入候补' : '报名已提交',
-      icon: 'success',
-    })
+    if (!user.isLoggedIn) {
+      await user.login();
+    }
+    await createRegistration({
+      activityId: activityId.value,
+      name: name.value.trim(),
+      phone: phone.value.trim(),
+    });
+    uni.showToast({ title: "报名已提交", icon: "success" });
     setTimeout(() => {
-      uni.switchTab({ url: '/pages/mine/registrations' })
-    }, 600)
+      uni.switchTab({ url: "/pages/mine/registrations" });
+    }, 600);
+  } catch (e) {
+    uni.showToast({ title: toastForError(e), icon: "none" });
   } finally {
-    submitting.value = false
+    submitting.value = false;
   }
 }
 </script>

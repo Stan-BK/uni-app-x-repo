@@ -110,6 +110,7 @@ const DISPLAY_LABEL: Record<string, string> = {
   upcoming: "未开始",
   open: "报名中",
   ended: "已结束",
+  full: "已满员",
 };
 
 const activity = ref<PublicActivity | null>(null);
@@ -134,15 +135,20 @@ const displayLabel = computed(() => {
 });
 
 const canRegister = computed(() => {
-  const status = activity.value?.displayStatus;
-  return status === "open" || status === "upcoming";
+  const a = activity.value;
+  if (!a) return false;
+  if (a.feeType === "paid") return false;
+  return a.displayStatus === "open" || a.displayStatus === "upcoming";
 });
 
 const canShare = computed(() => canShareActivity(activity.value));
 
 const ctaText = computed(() => {
-  const status = activity.value?.displayStatus;
-  if (status === "ended") return "活动已结束";
+  const a = activity.value;
+  if (!a) return "立即报名";
+  if (a.feeType === "paid") return "暂不支持线上报名";
+  if (a.displayStatus === "ended") return "活动已结束";
+  if (a.displayStatus === "full") return "名额已满";
   return "立即报名";
 });
 
@@ -222,7 +228,9 @@ async function onShare() {
 
 function onCta() {
   if (!activity.value || !canRegister.value) return;
-  uni.showToast({ title: "报名即将开放", icon: "none" });
+  uni.navigateTo({
+    url: `/pages/register/index?activityId=${encodeURIComponent(activity.value.id)}`,
+  });
 }
 </script>
 
@@ -317,6 +325,11 @@ function onCta() {
 .status.upcoming {
   color: #1e3a5f;
   background: #eff6ff;
+}
+
+.status.full {
+  color: #b45309;
+  background: #fffbeb;
 }
 
 .info-row {
