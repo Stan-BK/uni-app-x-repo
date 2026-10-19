@@ -42,12 +42,12 @@ export const RegistrationStatus = {
 export type RegistrationStatus =
   (typeof RegistrationStatus)[keyof typeof RegistrationStatus];
 
-/** 公开展示态（由 startAt/endAt 计算；满员 full 留 P0-4） */
+/** 公开展示态（由 startAt/endAt 与时间、名额等计算） */
 export const ActivityDisplayStatus = {
   Upcoming: "upcoming",
   Open: "open",
   Ended: "ended",
-  // Full: "full", // P0-4
+  Full: "full",
 } as const;
 export type ActivityDisplayStatus =
   (typeof ActivityDisplayStatus)[keyof typeof ActivityDisplayStatus];
@@ -73,3 +73,14 @@ export const PublicActivityErrorCode = {
 } as const;
 export type PublicActivityErrorCode =
   (typeof PublicActivityErrorCode)[keyof typeof PublicActivityErrorCode];
+
+export const RegistrationErrorCode = {
+  PaidNotSupported: "PAID_NOT_SUPPORTED",
+  ActivityFull: "ACTIVITY_FULL",
+  ActivityEnded: "ACTIVITY_ENDED",
+  ActivityNotOpenable: "ACTIVITY_NOT_OPENABLE",
+  AlreadyRegistered: "ALREADY_REGISTERED",
+  NotCancellable: "REGISTRATION_NOT_CANCELLABLE",
+} as const;
+export type RegistrationErrorCode =
+  (typeof RegistrationErrorCode)[keyof typeof RegistrationErrorCode];
