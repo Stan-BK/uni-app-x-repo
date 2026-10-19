@@ -29,9 +29,12 @@ export type PublicActivityDto = {
 export function computeDisplayStatus(
   startAt: Date | null,
   endAt: Date | null,
+  confirmedCount: number,
+  capacity: number,
   now = new Date(),
 ): DisplayStatus {
   if (endAt && now >= endAt) return ActivityDisplayStatus.Ended;
+  if (confirmedCount >= capacity) return ActivityDisplayStatus.Full;
   if (startAt && now < startAt) return ActivityDisplayStatus.Upcoming;
   return ActivityDisplayStatus.Open;
 }
@@ -40,7 +43,7 @@ type ActivityWithOrg = Activity & { organizer: Pick<Organizer, "name"> };
 
 export function toPublicDto(
   row: ActivityWithOrg,
-  opts: { includeRules: boolean; now?: Date },
+  opts: { includeRules: boolean; confirmedCount: number; now?: Date },
 ): PublicActivityDto {
   const dto: PublicActivityDto = {
     id: row.id,
@@ -58,7 +61,13 @@ export function toPublicDto(
     feeCents: row.feeCents,
     feeNote: row.feeNote,
     lifecycle: row.lifecycle,
-    displayStatus: computeDisplayStatus(row.startAt, row.endAt, opts.now),
+    displayStatus: computeDisplayStatus(
+      row.startAt,
+      row.endAt,
+      opts.confirmedCount,
+      row.capacity,
+      opts.now,
+    ),
     publishedAt: row.publishedAt?.toISOString() ?? null,
     organizer: { displayName: row.organizer.name },
   };

@@ -8,7 +8,7 @@ import {
   PublicActivityOrder,
   PublicActivitySort,
 } from "@activity/shared";
-import { ActivityLifecycle } from "@prisma/client";
+import { ActivityLifecycle, RegistrationStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { toPublicDto } from "./public-activity.mapper";
 
@@ -73,9 +73,17 @@ export class PublicActivitiesService {
       this.prisma.activity.count({ where }),
     ]);
 
+    const confirmedByActivity = await this.countConfirmedByActivityIds(
+      rows.map((row) => row.id),
+    );
+
     return {
       items: rows.map((row) =>
-        toPublicDto(row, { includeRules: false, now }),
+        toPublicDto(row, {
+          includeRules: false,
+          now,
+          confirmedCount: confirmedByActivity.get(row.id) ?? 0,
+        }),
       ),
       total,
       page,
@@ -106,6 +114,22 @@ export class PublicActivitiesService {
     if (row.lifecycle !== ActivityLifecycle.published) {
       throw new NotFoundException("活动不存在");
     }
-    return toPublicDto(row, { includeRules: true });
+    const confirmedCount = await this.prisma.registration.count({
+      where: { activityId: row.id, status: RegistrationStatus.confirmed },
+    });
+    return toPublicDto(row, { includeRules: true, confirmedCount });
+  }
+
+  private async countConfirmedByActivityIds(activityIds: string[]) {
+    if (activityIds.length === 0) return new Map<string, number>();
+    const groups = await this.prisma.registration.groupBy({
+      by: ["activityId"],
+      where: {
+        activityId: { in: activityIds },
+        status: RegistrationStatus.confirmed,
+      },
+      _count: { _all: true },
+    });
+    return new Map(groups.map((g) => [g.activityId, g._count._all]));
   }
 }

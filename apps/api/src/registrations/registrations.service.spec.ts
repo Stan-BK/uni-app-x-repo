@@ -37,6 +37,7 @@ describe("RegistrationsService", () => {
       findUnique: vi.fn(),
       findMany: vi.fn(),
       count: vi.fn(),
+      groupBy: vi.fn(),
     },
   };
 
@@ -297,10 +298,14 @@ describe("RegistrationsService", () => {
           startAt: start,
           place: "滨江",
           endAt: new Date("2030-01-02"),
+          capacity: 10,
         },
       },
     ]);
     prisma.registration.count.mockResolvedValue(1);
+    prisma.registration.groupBy.mockResolvedValue([
+      { activityId: "act1", _count: { _all: 1 } },
+    ]);
 
     const res = await service.listMine("u1", {});
     expect(res).toEqual({

@@ -176,12 +176,30 @@ export class RegistrationsService {
               startAt: true,
               endAt: true,
               place: true,
+              capacity: true,
             },
           },
         },
       }),
       this.prisma.registration.count({ where }),
     ]);
+
+    const activityIds = [...new Set(rows.map((row) => row.activity.id))];
+    const confirmedByActivity =
+      activityIds.length === 0
+        ? new Map<string, number>()
+        : new Map(
+            (
+              await this.prisma.registration.groupBy({
+                by: ["activityId"],
+                where: {
+                  activityId: { in: activityIds },
+                  status: RegistrationStatus.confirmed,
+                },
+                _count: { _all: true },
+              })
+            ).map((g) => [g.activityId, g._count._all]),
+          );
 
     return {
       items: rows.map((row) => ({
@@ -192,10 +210,11 @@ export class RegistrationsService {
           coverUrl: row.activity.coverUrl,
           startAt: row.activity.startAt?.toISOString() ?? null,
           place: row.activity.place,
-          // Task 7 前暂不传 confirmedCount，mine 列表摘要不以 full 为准
           displayStatus: computeDisplayStatus(
             row.activity.startAt,
             row.activity.endAt,
+            confirmedByActivity.get(row.activity.id) ?? 0,
+            row.activity.capacity,
             now,
           ),
         },
