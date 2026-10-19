@@ -9,7 +9,8 @@
     {
       "path": "pages/home/index",
       "style": {
-        "navigationBarTitleText": "活动首页"
+        "navigationBarTitleText": "活动首页",
+        "onReachBottomDistance": 80
       }
     },
     {

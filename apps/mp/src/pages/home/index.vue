@@ -1,59 +1,190 @@
 <template>
   <view class="page">
-    <view v-if="loading" class="state">加载中…</view>
-    <view v-else-if="!activities.length" class="state">暂无活动</view>
+    <view class="toolbar">
+      <input
+        class="search"
+        type="text"
+        confirm-type="search"
+        :value="q"
+        placeholder="搜索活动标题"
+        @input="onQInput"
+        @confirm="onSearch"
+      />
+      <view class="sort">
+        <text
+          class="sort-item"
+          :class="{ active: sort === 'startAt' }"
+          @click="setSort('startAt')"
+        >
+          开始时间
+        </text>
+        <text
+          class="sort-item"
+          :class="{ active: sort === 'publishedAt' }"
+          @click="setSort('publishedAt')"
+        >
+          发布时间
+        </text>
+      </view>
+    </view>
+
+    <view v-if="loading && !items.length" class="state">加载中…</view>
+    <view v-else-if="!items.length" class="state">暂无活动</view>
     <view v-else class="list">
       <view
-        v-for="item in activities"
+        v-for="item in items"
         :key="item.id"
         class="card"
         @click="goDetail(item.id)"
       >
-        <view class="cover" :style="{ backgroundColor: item.coverColor }">
-          <text class="cover-label">{{ item.coverLabel }}</text>
+        <image
+          v-if="item.coverUrl"
+          class="cover-img"
+          :src="item.coverUrl"
+          mode="aspectFill"
+        />
+        <view v-else class="cover cover-placeholder">
+          <text class="cover-label">活动</text>
         </view>
         <view class="body">
           <view class="row-title">
             <text class="title">{{ item.title }}</text>
-            <text class="fee" :class="{ free: item.feeCents === 0 }">{{
-              item.feeLabel
+            <text class="fee" :class="{ free: isFree(item) }">{{
+              feeLabel(item)
             }}</text>
           </view>
-          <text class="meta">{{ item.startAt }}</text>
+          <text class="meta">{{ formatTime(item.startAt) }}</text>
           <view class="row-foot">
-            <text class="place">{{ item.place }}</text>
-            <text class="status" :class="item.status">{{ item.statusLabel }}</text>
+            <text class="place">{{ item.place || "—" }}</text>
+            <text class="status" :class="item.displayStatus">{{
+              displayLabel(item.displayStatus)
+            }}</text>
           </view>
         </view>
+      </view>
+
+      <view v-if="hasMore" class="more" @click="loadMore">
+        <text>{{ loading ? "加载中…" : "加载更多" }}</text>
+      </view>
+      <view v-else class="more muted">
+        <text>没有更多了</text>
       </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
-import { listActivities, type Activity } from '@/mocks/activities'
+import { computed, onMounted, ref } from "vue";
+import { onReachBottom, onShow } from "@dcloudio/uni-app";
+import {
+  listPublicActivities,
+  type PublicActivity,
+} from "@/api/public-activities";
+import { ApiError } from "@/utils/request";
 
-const loading = ref(true)
-const activities = ref<Activity[]>([])
+const DISPLAY_LABEL: Record<string, string> = {
+  upcoming: "未开始",
+  open: "报名中",
+  ended: "已结束",
+};
 
-function load() {
-  loading.value = true
-  // Simulate brief local fetch for preview polish
-  setTimeout(() => {
-    activities.value = listActivities()
-    loading.value = false
-  }, 200)
+const items = ref<PublicActivity[]>([]);
+const loading = ref(false);
+const q = ref("");
+const sort = ref<"startAt" | "publishedAt">("startAt");
+const page = ref(1);
+const total = ref(0);
+const pageSize = 20;
+
+const hasMore = computed(() => items.value.length < total.value);
+
+function displayLabel(status: string) {
+  return DISPLAY_LABEL[status] ?? status;
+}
+
+function isFree(item: PublicActivity) {
+  return item.feeType === "free" || item.feeCents === 0;
+}
+
+function feeLabel(item: PublicActivity) {
+  if (isFree(item)) return "免费";
+  return `¥${(item.feeCents / 100).toFixed(2)}`;
+}
+
+function formatTime(iso?: string | null) {
+  if (!iso) return "时间待定";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString();
+}
+
+function errMessage(e: unknown): string {
+  if (e instanceof ApiError) return e.message;
+  if (e instanceof Error) return e.message;
+  return "加载失败";
+}
+
+function onQInput(e: { detail?: { value?: string } }) {
+  q.value = e.detail?.value ?? "";
+}
+
+function onSearch() {
+  void load({ reset: true });
+}
+
+function setSort(next: "startAt" | "publishedAt") {
+  if (sort.value === next) return;
+  sort.value = next;
+  void load({ reset: true });
+}
+
+async function load(opts: { reset?: boolean } = {}) {
+  if (loading.value) return;
+  if (opts.reset) {
+    page.value = 1;
+  }
+  loading.value = true;
+  try {
+    const res = await listPublicActivities({
+      q: q.value.trim() || undefined,
+      sort: sort.value,
+      page: page.value,
+      pageSize,
+    });
+    const next = res.items ?? [];
+    items.value = opts.reset || page.value === 1 ? next : items.value.concat(next);
+    total.value = res.total ?? 0;
+  } catch (e) {
+    if (!opts.reset && page.value > 1) {
+      page.value -= 1;
+    }
+    uni.showToast({ title: errMessage(e), icon: "none" });
+  } finally {
+    loading.value = false;
+  }
+}
+
+function loadMore() {
+  if (!hasMore.value || loading.value) return;
+  page.value += 1;
+  void load();
 }
 
 function goDetail(id: string) {
-  uni.navigateTo({ url: `/pages/activity/detail?id=${id}` })
+  uni.navigateTo({ url: `/pages/activity/detail?id=${encodeURIComponent(id)}` });
 }
 
-// H5 first paint sometimes misses onShow; mount covers that path.
-onMounted(load)
-onShow(load)
+onMounted(() => {
+  void load({ reset: true });
+});
+onShow(() => {
+  // H5 first paint sometimes misses onShow; mount covers that path.
+  // Refresh list when returning to tab.
+  void load({ reset: true });
+});
+onReachBottom(() => {
+  loadMore();
+});
 </script>
 
 <style scoped>
@@ -62,6 +193,41 @@ onShow(load)
   background: #f4f5f7;
   padding: 24rpx 24rpx 48rpx;
   box-sizing: border-box;
+}
+
+.toolbar {
+  margin-bottom: 24rpx;
+}
+
+.search {
+  width: 100%;
+  height: 72rpx;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+  background: #ffffff;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  color: #1a1d23;
+  margin-bottom: 16rpx;
+}
+
+.sort {
+  display: flex;
+  gap: 16rpx;
+}
+
+.sort-item {
+  font-size: 26rpx;
+  color: #6b7280;
+  padding: 10rpx 20rpx;
+  border-radius: 999rpx;
+  background: #ffffff;
+}
+
+.sort-item.active {
+  color: #0f766e;
+  background: #ecfdf5;
+  font-weight: 600;
 }
 
 .state {
@@ -84,12 +250,23 @@ onShow(load)
   box-shadow: 0 2rpx 12rpx rgba(15, 23, 42, 0.04);
 }
 
+.cover-img {
+  width: 100%;
+  height: 220rpx;
+  display: block;
+  background: #e5e7eb;
+}
+
 .cover {
   height: 220rpx;
   display: flex;
   align-items: flex-end;
   padding: 24rpx;
   box-sizing: border-box;
+}
+
+.cover-placeholder {
+  background: #0f766e;
 }
 
 .cover-label {
@@ -165,9 +342,9 @@ onShow(load)
   background: #ecfdf5;
 }
 
-.status.full {
-  color: #b45309;
-  background: #fffbeb;
+.status.open {
+  color: #0f766e;
+  background: #ecfdf5;
 }
 
 .status.ended {
@@ -178,5 +355,16 @@ onShow(load)
 .status.upcoming {
   color: #1e3a5f;
   background: #eff6ff;
+}
+
+.more {
+  padding: 24rpx 0 8rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: #0f766e;
+}
+
+.more.muted {
+  color: #9ca3af;
 }
 </style>
