@@ -8,6 +8,7 @@ import { AuthModule } from "./auth/auth.module";
 import { OrganizersModule } from "./organizers/organizers.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { PublicActivitiesModule } from "./public-activities/public-activities.module";
+import { RegistrationsModule } from "./registrations/registrations.module";
 import { UploadsModule } from "./uploads/uploads.module";
 
 @Module({
@@ -18,6 +19,7 @@ import { UploadsModule } from "./uploads/uploads.module";
     OrganizersModule,
     ActivitiesModule,
     PublicActivitiesModule,
+    RegistrationsModule,
     UploadsModule,
     AdminAuthModule,
     AdminOrganizersModule,
