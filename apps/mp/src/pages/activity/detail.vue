@@ -56,9 +56,28 @@
 
       <view class="bottom-space" />
       <view class="cta-bar">
+        <!-- 微信：open-type=share；H5：走适配层 Web Share / 复制链接 -->
+        <!-- #ifdef MP-WEIXIN -->
+        <button
+          v-if="canShare"
+          class="share"
+          open-type="share"
+        >
+          分享
+        </button>
+        <!-- #endif -->
+        <!-- #ifndef MP-WEIXIN -->
+        <button
+          v-if="canShare"
+          class="share"
+          @click="onShare"
+        >
+          分享
+        </button>
+        <!-- #endif -->
         <button
           class="cta"
-          :class="{ disabled: !canRegister }"
+          :class="{ disabled: !canRegister, withShare: canShare }"
           :disabled="!canRegister"
           @click="onCta"
         >
@@ -71,11 +90,20 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { onLoad } from "@dcloudio/uni-app";
+import {
+  onLoad,
+  onShareAppMessage,
+  onShareTimeline,
+} from "@dcloudio/uni-app";
 import {
   getPublicActivity,
   type PublicActivity,
 } from "@/api/public-activities";
+import {
+  canShareActivity,
+  getActivityShareMessage,
+  shareActivity,
+} from "@/adapters/share";
 import { ApiError } from "@/utils/request";
 
 const DISPLAY_LABEL: Record<string, string> = {
@@ -109,6 +137,8 @@ const canRegister = computed(() => {
   const status = activity.value?.displayStatus;
   return status === "open" || status === "upcoming";
 });
+
+const canShare = computed(() => canShareActivity(activity.value));
 
 const ctaText = computed(() => {
   const status = activity.value?.displayStatus;
@@ -157,6 +187,38 @@ onLoad((query) => {
   }
   void load(id);
 });
+
+onShareAppMessage(() => {
+  const a = activity.value;
+  if (!canShareActivity(a)) {
+    return { title: "活动", path: "/pages/home/index" };
+  }
+  return getActivityShareMessage(a!);
+});
+
+onShareTimeline(() => {
+  const a = activity.value;
+  if (!canShareActivity(a)) {
+    return { title: "活动" };
+  }
+  const msg = getActivityShareMessage(a!);
+  return {
+    title: msg.title,
+    query: `id=${encodeURIComponent(a!.id)}`,
+    imageUrl: msg.imageUrl,
+  };
+});
+
+async function onShare() {
+  const a = activity.value;
+  if (!canShareActivity(a)) return;
+  try {
+    await shareActivity(a!);
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") return;
+    uni.showToast({ title: "分享失败", icon: "none" });
+  }
+}
 
 function onCta() {
   if (!activity.value || !canRegister.value) return;
@@ -307,14 +369,37 @@ function onCta() {
   left: 0;
   right: 0;
   bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
   padding: 16rpx 32rpx calc(16rpx + env(safe-area-inset-bottom));
   background: rgba(255, 255, 255, 0.96);
   border-top: 1rpx solid #eef0f3;
 }
 
-.cta {
+.share {
+  flex: 0 0 180rpx;
   height: 88rpx;
   line-height: 88rpx;
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  color: #0f766e;
+  font-size: 28rpx;
+  font-weight: 600;
+  border-radius: 12rpx;
+  border: 2rpx solid #0f766e;
+}
+
+.share::after {
+  border: none;
+}
+
+.cta {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  margin: 0;
   background: #0f766e;
   color: #ffffff;
   font-size: 30rpx;

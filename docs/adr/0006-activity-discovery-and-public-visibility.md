@@ -42,6 +42,7 @@ P0-2 已落地组织者发布与运营下架；首页/详情仍接 mock。P0-3 �
 
 7. **端上**  
    - mp 首页/详情接公开 API；报名 CTA 可占位，真实报名属 P0-4。  
+   - **分享：** 仅 `lifecycle=published` 的公开详情可分享；能力走 `apps/mp/src/adapters/share.ts`（微信：右上角/按钮 `open-type=share`；H5：Web Share 或复制链接）。取消/下架后分享链仍按 §4 错误态处理。  
    - Admin 本阶段不改。
 
 ## 备选方案
