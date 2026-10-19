@@ -67,6 +67,7 @@
     </view>
 
     <text class="section-title block">我的报名</text>
+    <text class="hint">以下为演示数据；真实报名将在后续阶段接入服务端。</text>
     <view v-if="loading" class="state">加载中…</view>
     <view v-else-if="!items.length" class="state empty">
       <text class="empty-title">还没有报名记录</text>
@@ -95,6 +96,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
+import { listPublicActivities } from "@/api/public-activities";
 import { listRegistrations, type Registration } from "@/mocks/activities";
 import { useUserStore } from "@/stores/user";
 
@@ -103,6 +105,22 @@ const loading = ref(true);
 const items = ref<Registration[]>([]);
 const busy = ref(false);
 const identityMsg = ref("");
+/** mock 报名里的 activityId 与真实库不一致，按标题解析公开活动 id */
+const titleToPublicId = ref<Record<string, string>>({});
+
+async function refreshPublicIdMap() {
+  try {
+    const res = await listPublicActivities({ pageSize: 50 });
+    const map: Record<string, string> = {};
+    for (const a of res.items ?? []) {
+      if (a.title) map[a.title] = a.id;
+    }
+    // 已结束活动不在公开列表，再按需拉详情意义不大；标题能对上即可
+    titleToPublicId.value = map;
+  } catch {
+    titleToPublicId.value = {};
+  }
+}
 
 function loadRegistrations() {
   loading.value = true;
@@ -110,6 +128,7 @@ function loadRegistrations() {
     items.value = listRegistrations();
     loading.value = false;
   }, 150);
+  void refreshPublicIdMap();
 }
 
 async function withBusy(fn: () => Promise<void>) {
@@ -165,7 +184,22 @@ function goHome() {
 }
 
 function goDetail(activityId: string) {
-  uni.navigateTo({ url: `/pages/activity/detail?id=${activityId}` });
+  const row = items.value.find((r) => r.activityId === activityId);
+  const byTitle = row?.activityTitle
+    ? titleToPublicId.value[row.activityTitle]
+    : undefined;
+  const realId = byTitle || activityId;
+  // mock 固定 id（act-*）对接真实详情会 404，误显示「下架」
+  if (!byTitle && /^act-/.test(activityId)) {
+    uni.showToast({
+      title: "演示报名未关联到线上活动",
+      icon: "none",
+    });
+    return;
+  }
+  uni.navigateTo({
+    url: `/pages/activity/detail?id=${encodeURIComponent(realId)}`,
+  });
 }
 
 onMounted(() => {
@@ -195,6 +229,14 @@ onShow(() => {
   font-weight: 600;
   color: #1a1d23;
   margin-bottom: 12rpx;
+}
+
+.hint {
+  display: block;
+  margin: -4rpx 0 16rpx;
+  font-size: 22rpx;
+  color: #9ca3af;
+  line-height: 1.4;
 }
 
 .section-title.block {

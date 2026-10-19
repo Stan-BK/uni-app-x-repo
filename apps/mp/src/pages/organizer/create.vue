@@ -1,8 +1,8 @@
 <template>
   <view class="page">
     <view class="card">
-      <text class="title">{{ editingId ? "编辑活动" : "发布活动" }}</text>
-      <text class="desc">填写信息后可保存草稿；发布前需补齐必填项。时间请用下方选择器。</text>
+      <text class="title">{{ pageTitle }}</text>
+      <text class="desc">{{ pageDesc }}</text>
 
       <uni-forms
         ref="formRef"
@@ -115,9 +115,20 @@
         </uni-forms-item>
       </uni-forms>
 
-      <view class="actions">
-        <button class="ghost" :disabled="saving" @click="saveDraft">保存草稿</button>
-        <button class="primary" :disabled="saving" @click="publish">发布</button>
+      <view v-if="canEditContent" class="actions">
+        <template v-if="isPublishedEdit">
+          <button class="primary" :disabled="saving" @click="savePublished">
+            保存
+          </button>
+        </template>
+        <template v-else>
+          <button class="ghost" :disabled="saving" @click="saveDraft">
+            保存草稿
+          </button>
+          <button class="primary" :disabled="saving" @click="publish">
+            发布
+          </button>
+        </template>
       </view>
       <text v-if="msg" class="msg">{{ msg }}</text>
     </view>
@@ -125,7 +136,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { computed, reactive, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import UniDataCheckbox from "@dcloudio/uni-ui/lib/uni-data-checkbox/uni-data-checkbox.vue";
 import UniDataSelect from "@dcloudio/uni-ui/lib/uni-data-select/uni-data-select.vue";
@@ -140,6 +151,7 @@ import {
   publishActivity,
   updateActivity,
   uploadCover,
+  type Activity,
   type UpsertBody,
 } from "@/api/activities";
 import { ApiError } from "@/utils/request";
@@ -154,10 +166,36 @@ type UniFormsInstance = {
 const user = useUserStore();
 const formRef = ref<UniFormsInstance | null>(null);
 const editingId = ref<string | null>(null);
+const lifecycle = ref<Activity["lifecycle"] | null>(null);
 const saving = ref(false);
 const uploadingCover = ref(false);
 const coverPreview = ref("");
 const msg = ref("");
+
+const isPublishedEdit = computed(() => lifecycle.value === "published");
+
+/** 新建、草稿、已发布可改；取消/下架/结束不可改 */
+const canEditContent = computed(() => {
+  if (!editingId.value) return true;
+  const life = lifecycle.value;
+  return life === "draft" || life === "published";
+});
+
+const pageTitle = computed(() => {
+  if (isPublishedEdit.value) return "编辑已发布活动";
+  if (editingId.value) return "编辑活动";
+  return "发布活动";
+});
+
+const pageDesc = computed(() => {
+  if (isPublishedEdit.value) {
+    return "修改后点「保存」即可更新线上内容，无需再次发布。";
+  }
+  if (editingId.value && !canEditContent.value) {
+    return "当前活动状态不可再编辑内容。";
+  }
+  return "填写信息后可保存草稿；发布前需补齐必填项。时间请用下方选择器。";
+});
 
 const feeTypeOptions = [
   { text: "免费", value: "free" },
@@ -377,20 +415,8 @@ function buildBody(): UpsertBody {
   };
 }
 
-function fillForm(a: {
-  title: string;
-  coverUrl: string;
-  category: string;
-  place: string;
-  placeLat?: number | null;
-  placeLng?: number | null;
-  startAt?: string | null;
-  endAt?: string | null;
-  capacity: number;
-  rules: string;
-  feeType: "free" | "paid";
-  feeCents: number;
-}) {
+function fillForm(a: Activity) {
+  lifecycle.value = a.lifecycle;
   form.title = a.title ?? "";
   form.coverUrl = a.coverUrl ?? "";
   coverPreview.value = a.coverUrl ?? "";
@@ -433,6 +459,15 @@ const FIELD_LABELS: Record<string, string> = {
   capacity: "名额",
 };
 
+/** API 英文 Conflict 文案 → 中文（全站尚未统一错误码表前的局部映射） */
+const API_MESSAGE_ZH: Record<string, string> = {
+  "Only draft can be published": "仅草稿状态可发布",
+  "Only published can unpublish to draft": "仅已发布活动可退回草稿",
+  "Cannot cancel from current state": "当前状态不可取消",
+  "Cannot edit activity in terminal state": "活动已结束/取消/下架，不可编辑",
+  "title is required": "请填写标题",
+};
+
 function errMessage(e: unknown): string {
   if (e instanceof ApiError) {
     if (e.fields?.length) {
@@ -442,17 +477,23 @@ function errMessage(e: unknown): string {
       const labels = e.fields.map((k) => FIELD_LABELS[k] ?? k);
       return `发布失败，请填写：${labels.join("、")}`;
     }
-    return e.message;
+    return API_MESSAGE_ZH[e.message] ?? e.message;
   }
-  if (e instanceof Error) return e.message;
+  if (e instanceof Error) {
+    return API_MESSAGE_ZH[e.message] ?? e.message;
+  }
   return "操作失败";
 }
 
 function showError(text: string) {
   msg.value = text;
+  // toast 过长会被系统截断；长文案以底部 msg 为准，toast 只给短提示
+  const toastTitle =
+    text.length > 20 ? `${text.slice(0, 18)}…` : text;
   uni.showToast({
-    title: text.length > 20 ? "请完善必填项" : text,
+    title: toastTitle,
     icon: "none",
+    duration: 2500,
   });
 }
 
@@ -507,6 +548,10 @@ async function saveDraft() {
 
 async function publish() {
   if (!ensureCanPublish()) return;
+  if (isPublishedEdit.value) {
+    showError("活动已发布，请使用「保存」更新内容");
+    return;
+  }
   const ok = await validateForm();
   if (!ok) return;
   saving.value = true;
@@ -514,6 +559,7 @@ async function publish() {
   try {
     const id = await saveOrCreate();
     await publishActivity(id);
+    lifecycle.value = "published";
     msg.value = "已发布";
     uni.showToast({ title: "已发布", icon: "success" });
     setTimeout(() => {
@@ -530,11 +576,40 @@ async function publish() {
   }
 }
 
+/** 已发布活动：只 PATCH 更新，不再调 publish */
+async function savePublished() {
+  if (!ensureCanPublish()) return;
+  if (!editingId.value || !isPublishedEdit.value) {
+    showError("当前不是已发布活动");
+    return;
+  }
+  const ok = await validateForm();
+  if (!ok) return;
+  saving.value = true;
+  msg.value = "";
+  try {
+    await updateActivity(editingId.value, buildBody());
+    msg.value = "已保存";
+    uni.showToast({ title: "已保存", icon: "success" });
+  } catch (e) {
+    showError(errMessage(e));
+  } finally {
+    saving.value = false;
+  }
+}
+
 async function loadActivity(id: string) {
   try {
     const a = await getActivity(id);
     editingId.value = a.id;
     fillForm(a);
+    if (
+      a.lifecycle === "cancelled" ||
+      a.lifecycle === "removed" ||
+      a.lifecycle === "ended"
+    ) {
+      showError("该活动当前状态不可编辑");
+    }
   } catch (e) {
     showError(errMessage(e));
   }
