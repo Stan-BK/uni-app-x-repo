@@ -138,29 +138,43 @@ function setSort(next: "startAt" | "publishedAt") {
   void load({ reset: true });
 }
 
+/** Bumped on reset so in-flight responses are ignored. */
+let loadGen = 0;
+
 async function load(opts: { reset?: boolean } = {}) {
-  if (loading.value) return;
   if (opts.reset) {
     page.value = 1;
+    loadGen += 1;
+  } else if (loading.value) {
+    // load-more only: do not stack append requests
+    return;
   }
+
+  const gen = loadGen;
+  const requestPage = page.value;
   loading.value = true;
   try {
     const res = await listPublicActivities({
       q: q.value.trim() || undefined,
       sort: sort.value,
-      page: page.value,
+      page: requestPage,
       pageSize,
     });
+    if (gen !== loadGen) return;
     const next = res.items ?? [];
-    items.value = opts.reset || page.value === 1 ? next : items.value.concat(next);
+    items.value =
+      opts.reset || requestPage === 1 ? next : items.value.concat(next);
     total.value = res.total ?? 0;
   } catch (e) {
+    if (gen !== loadGen) return;
     if (!opts.reset && page.value > 1) {
       page.value -= 1;
     }
     uni.showToast({ title: errMessage(e), icon: "none" });
   } finally {
-    loading.value = false;
+    if (gen === loadGen) {
+      loading.value = false;
+    }
   }
 }
 
