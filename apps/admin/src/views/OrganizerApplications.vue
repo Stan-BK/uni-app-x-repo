@@ -79,6 +79,7 @@ onMounted(() => {
     <div class="bar">
       <h1>组织者申请审核</h1>
       <el-space>
+        <router-link class="nav-link" to="/activities">活动列表</router-link>
         <el-button :loading="loading" @click="load">刷新</el-button>
         <el-button @click="logout">退出</el-button>
       </el-space>
@@ -144,6 +145,14 @@ onMounted(() => {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
+}
+.nav-link {
+  color: var(--el-color-primary);
+  text-decoration: none;
+  font-size: 14px;
+}
+.nav-link:hover {
+  text-decoration: underline;
 }
 .table {
   width: 100%;

@@ -20,14 +20,47 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public fields?: string[],
   ) {
     super(message);
     this.name = "ApiError";
   }
 }
 
+function messageFromBody(body: unknown): { message: string; fields?: string[] } {
+  if (typeof body !== "object" || body === null) {
+    return { message: "请求失败" };
+  }
+  const raw = body as {
+    message?: unknown;
+    fields?: unknown;
+  };
+  let message = "";
+  let fields: string[] | undefined;
+
+  if (Array.isArray(raw.message)) {
+    message = raw.message.map(String).join("；");
+  } else if (typeof raw.message === "object" && raw.message !== null) {
+    const nested = raw.message as { message?: unknown; fields?: unknown };
+    if (typeof nested.message === "string") {
+      message = nested.message;
+    }
+    if (Array.isArray(nested.fields)) {
+      fields = nested.fields.map(String);
+    }
+  } else if (raw.message != null) {
+    message = String(raw.message);
+  }
+
+  if (Array.isArray(raw.fields)) {
+    fields = raw.fields.map(String);
+  }
+
+  return { message: message || "请求失败", fields };
+}
+
 type RequestOptions = {
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   data?: unknown;
   auth?: boolean;
 };
@@ -50,7 +83,8 @@ export function request<T>(path: string, options: RequestOptions = {}): Promise<
   return new Promise((resolve, reject) => {
     uni.request({
       url: `${getApiBase()}${path}`,
-      method,
+      // PATCH 已纳入 RequestOptions；部分 uni 类型定义可能尚未包含，故断言
+      method: method as UniApp.RequestOptions["method"],
       data: data as UniApp.RequestOptions["data"],
       header,
       success: (res) => {
@@ -60,18 +94,14 @@ export function request<T>(path: string, options: RequestOptions = {}): Promise<
         }
         const body = res.data;
         if (status < 200 || status >= 300) {
-          const message =
-            typeof body === "object" &&
-            body !== null &&
-            "message" in body &&
-            (body as { message: unknown }).message != null
-              ? String(
-                  Array.isArray((body as { message: unknown }).message)
-                    ? ((body as { message: string[] }).message).join(", ")
-                    : (body as { message: string }).message,
-                )
-              : `HTTP ${status}`;
-          reject(new ApiError(status, message));
+          const parsed = messageFromBody(body);
+          reject(
+            new ApiError(
+              status,
+              parsed.message || `HTTP ${status}`,
+              parsed.fields,
+            ),
+          );
           return;
         }
         resolve(body as T);

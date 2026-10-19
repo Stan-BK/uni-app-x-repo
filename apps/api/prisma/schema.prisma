@@ -31,6 +31,19 @@ enum UserStatus {
   banned
 }
 
+enum ActivityLifecycle {
+  draft
+  published
+  cancelled
+  removed
+  ended
+}
+
+enum FeeType {
+  free
+  paid
+}
+
 model User {
   id        String     @id @default(cuid())
   nickname  String?
@@ -68,6 +81,37 @@ model Organizer {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   owner          User          @relation(fields: [ownerUserId], references: [id])
+  activities     Activity[]
+}
+
+model Activity {
+  id             String            @id @default(cuid())
+  organizerId    String
+  title          String
+  coverUrl       String            @default("")
+  category       String            @default("")
+  description    String?
+  rules          String            @default("")
+  startAt        DateTime?
+  endAt          DateTime?
+  place          String            @default("")
+  placeLat       Float?
+  placeLng       Float?
+  capacity       Int               @default(1)
+  feeType        FeeType           @default(free)
+  feeCents       Int               @default(0)
+  feeNote        String?
+  lifecycle      ActivityLifecycle @default(draft)
+  cancelReason   String?
+  removeReason   String?
+  platformFeeBps Int?
+  publishedAt    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  organizer      Organizer         @relation(fields: [organizerId], references: [id])
+
+  @@index([organizerId, lifecycle])
+  @@index([lifecycle, startAt])
 }
 
 model AdminUser {

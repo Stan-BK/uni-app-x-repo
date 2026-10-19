@@ -54,7 +54,13 @@
         "setting" : {
             "urlCheck" : false
         },
-        "usingComponents" : true
+        "usingComponents" : true,
+        "requiredPrivateInfos" : [ "chooseLocation", "getLocation" ],
+        "permission" : {
+            "scope.userLocation" : {
+                "desc" : "用于在地图上选择活动举办地点"
+            }
+        }
     },
     "mp-alipay" : {
         "usingComponents" : true

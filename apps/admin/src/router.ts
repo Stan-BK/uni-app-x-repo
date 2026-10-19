@@ -18,6 +18,11 @@ export const router = createRouter({
       name: "organizers",
       component: OrganizerApplicationsView,
     },
+    {
+      path: "/activities",
+      name: "activities",
+      component: () => import("./views/Activities.vue"),
+    },
   ],
 });
 

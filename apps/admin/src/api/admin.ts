@@ -49,3 +49,27 @@ export function rejectOrganizer(id: string, reason: string) {
     body: { reason },
   });
 }
+
+export type ActivityRow = {
+  id: string;
+  title: string;
+  lifecycle: string;
+  feeType: string;
+  feeCents: number;
+  startAt: string | null;
+  endAt: string | null;
+  removeReason: string | null;
+  organizer: { id: string; name: string };
+};
+
+export function listActivities(lifecycle?: string) {
+  const q = lifecycle ? `?lifecycle=${encodeURIComponent(lifecycle)}` : "";
+  return apiRequest<ActivityRow[]>(`/admin/activities${q}`);
+}
+
+export function removeActivity(id: string, reason: string) {
+  return apiRequest<ActivityRow>(`/admin/activities/${id}/remove`, {
+    method: "POST",
+    body: { reason },
+  });
+}

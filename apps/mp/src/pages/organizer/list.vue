@@ -1,14 +1,56 @@
 <template>
   <view class="page">
-    <view v-if="!drafts.length" class="empty card">
+    <view v-if="loading && !items.length" class="empty card">
+      <text class="empty-desc">加载中…</text>
+    </view>
+    <view v-else-if="!items.length" class="empty card">
       <text class="empty-title">暂无活动</text>
-      <text class="empty-desc">服务端活动列表将在 P0-2 接入；当前仅展示本机草稿。</text>
+      <text class="empty-desc">创建活动后将显示在这里。</text>
       <button class="primary" @click="goCreate">去发布</button>
     </view>
     <view v-else class="list">
-      <view v-for="item in drafts" :key="item.id" class="card">
-        <text class="title">{{ item.title }}</text>
-        <text class="meta">状态：本地草稿 · {{ formatTime(item.createdAt) }}</text>
+      <view v-for="item in items" :key="item.id" class="card">
+        <view class="row" @click="goDetail(item.id)">
+          <text class="title">{{ item.title || "未命名活动" }}</text>
+          <text class="meta">状态：{{ lifecycleLabel(item.lifecycle) }}</text>
+        </view>
+        <view class="ops">
+          <button
+            v-if="item.lifecycle === 'draft'"
+            class="mini primary"
+            size="mini"
+            :disabled="actingId === item.id"
+            @click.stop="onPublish(item.id)"
+          >
+            发布
+          </button>
+          <button
+            v-if="item.lifecycle === 'published'"
+            class="mini ghost"
+            size="mini"
+            :disabled="actingId === item.id"
+            @click.stop="onUnpublish(item.id)"
+          >
+            退回草稿
+          </button>
+          <button
+            v-if="item.lifecycle === 'published'"
+            class="mini danger"
+            size="mini"
+            :disabled="actingId === item.id"
+            @click.stop="onCancel(item.id)"
+          >
+            取消
+          </button>
+          <button
+            v-if="item.lifecycle === 'draft' || item.lifecycle === 'published'"
+            class="mini ghost"
+            size="mini"
+            @click.stop="goEdit(item.id)"
+          >
+            编辑
+          </button>
+        </view>
       </view>
     </view>
   </view>
@@ -17,22 +59,46 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
+import {
+  cancelActivity,
+  listMyActivities,
+  publishActivity,
+  unpublishActivity,
+  type Activity,
+} from "@/api/activities";
+import { ApiError } from "@/utils/request";
 
-type Draft = { id: string; title: string; status: string; createdAt: string };
+const items = ref<Activity[]>([]);
+const loading = ref(false);
+const actingId = ref<string | null>(null);
 
-const DRAFT_KEY = "organizer_activity_drafts";
-const drafts = ref<Draft[]>([]);
+const LIFECYCLE_LABEL: Record<string, string> = {
+  draft: "草稿",
+  published: "已发布",
+  cancelled: "已取消",
+  removed: "已下架",
+  ended: "已结束",
+};
 
-function load() {
-  const raw = uni.getStorageSync(DRAFT_KEY);
-  drafts.value = Array.isArray(raw) ? raw : [];
+function lifecycleLabel(lifecycle: string) {
+  return LIFECYCLE_LABEL[lifecycle] ?? lifecycle;
 }
 
-function formatTime(iso: string) {
+function errMessage(e: unknown): string {
+  if (e instanceof ApiError) return e.message;
+  if (e instanceof Error) return e.message;
+  return "操作失败";
+}
+
+async function load() {
+  loading.value = true;
   try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
+    const res = await listMyActivities();
+    items.value = res.items ?? [];
+  } catch (e) {
+    uni.showToast({ title: errMessage(e), icon: "none" });
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -40,7 +106,62 @@ function goCreate() {
   uni.navigateTo({ url: "/pages/organizer/create" });
 }
 
-onShow(load);
+/** 卡片主体 → 只读详情（不进编辑态） */
+function goDetail(id: string) {
+  uni.navigateTo({
+    url: `/pages/organizer/detail?id=${encodeURIComponent(id)}`,
+  });
+}
+
+/** 仅「编辑」按钮进入编辑页 */
+function goEdit(id: string) {
+  uni.navigateTo({
+    url: `/pages/organizer/create?id=${encodeURIComponent(id)}`,
+  });
+}
+
+async function onPublish(id: string) {
+  actingId.value = id;
+  try {
+    await publishActivity(id);
+    uni.showToast({ title: "已发布", icon: "success" });
+    await load();
+  } catch (e) {
+    uni.showToast({ title: errMessage(e), icon: "none" });
+  } finally {
+    actingId.value = null;
+  }
+}
+
+async function onUnpublish(id: string) {
+  actingId.value = id;
+  try {
+    await unpublishActivity(id);
+    uni.showToast({ title: "已退回草稿", icon: "success" });
+    await load();
+  } catch (e) {
+    uni.showToast({ title: errMessage(e), icon: "none" });
+  } finally {
+    actingId.value = null;
+  }
+}
+
+async function onCancel(id: string) {
+  actingId.value = id;
+  try {
+    await cancelActivity(id);
+    uni.showToast({ title: "已取消", icon: "success" });
+    await load();
+  } catch (e) {
+    uni.showToast({ title: errMessage(e), icon: "none" });
+  } finally {
+    actingId.value = null;
+  }
+}
+
+onShow(() => {
+  void load();
+});
 </script>
 
 <style scoped>
@@ -48,6 +169,7 @@ onShow(load);
   min-height: 100vh;
   background: #f4f5f7;
   padding: 24rpx;
+  box-sizing: border-box;
 }
 .card {
   background: #fff;
@@ -70,6 +192,9 @@ onShow(load);
   color: #9ca3af;
   margin-bottom: 24rpx;
 }
+.row {
+  margin-bottom: 16rpx;
+}
 .title {
   display: block;
   font-size: 30rpx;
@@ -80,12 +205,37 @@ onShow(load);
   font-size: 24rpx;
   color: #6b7280;
 }
+.ops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
 button.primary {
   background: #0f766e;
   color: #fff;
-  width: 280rpx;
+}
+button.ghost {
+  background: #e5e7eb;
+  color: #111827;
+}
+button.danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+button.mini {
+  margin: 0;
+  padding: 0 20rpx;
+}
+button.primary.mini {
+  width: auto;
 }
 button::after {
   border: none;
+}
+button[disabled] {
+  opacity: 0.5;
+}
+.empty button.primary {
+  width: 280rpx;
 }
 </style>
