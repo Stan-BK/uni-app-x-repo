@@ -52,6 +52,13 @@
       </view>
 
       <button
+        v-if="activityId"
+        class="ghost"
+        @click="goRegistrations"
+      >
+        报名名单
+      </button>
+      <button
         v-if="canEdit"
         class="primary"
         @click="goEdit"
@@ -108,6 +115,13 @@ function goEdit() {
   if (!activityId.value) return;
   uni.navigateTo({
     url: `/pages/organizer/create?id=${encodeURIComponent(activityId.value)}`,
+  });
+}
+
+function goRegistrations() {
+  if (!activityId.value) return;
+  uni.navigateTo({
+    url: `/pages/organizer/registrations?activityId=${encodeURIComponent(activityId.value)}`,
   });
 }
 
@@ -209,6 +223,11 @@ button.primary {
   margin-top: 16rpx;
   background: #0f766e;
   color: #fff;
+}
+button.ghost {
+  margin-top: 16rpx;
+  background: #e5e7eb;
+  color: #111827;
 }
 button::after {
   border: none;
