@@ -206,6 +206,59 @@ export class RegistrationsService {
     };
   }
 
+  async listForOrganizer(
+    userId: string,
+    activityId: string,
+    query: ListMineQuery,
+  ) {
+    const organizer = await this.prisma.organizer.findUnique({
+      where: { ownerUserId: userId },
+    });
+    const activity = await this.prisma.activity.findUnique({
+      where: { id: activityId },
+    });
+    if (!activity) {
+      throw new NotFoundException("活动不存在");
+    }
+    if (!organizer || activity.organizerId !== organizer.id) {
+      throw new ForbiddenException("无权查看该活动报名名单");
+    }
+
+    const page = Math.max(1, Number(query.page) || 1);
+    const pageSize = Math.min(50, Math.max(1, Number(query.pageSize) || 20));
+    const where: Prisma.RegistrationWhereInput = {
+      activityId,
+      ...(query.status
+        ? { status: query.status as RegistrationStatus }
+        : {}),
+    };
+    const skip = (page - 1) * pageSize;
+    const [rows, total] = await Promise.all([
+      this.prisma.registration.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: pageSize,
+      }),
+      this.prisma.registration.count({ where }),
+    ]);
+
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        userId: row.userId,
+        name: row.name,
+        phone: row.phone,
+        status: row.status,
+        createdAt: row.createdAt.toISOString(),
+        cancelledAt: row.cancelledAt?.toISOString() ?? null,
+      })),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
   private async lockActivity(
     tx: Prisma.TransactionClient,
     activityId: string,

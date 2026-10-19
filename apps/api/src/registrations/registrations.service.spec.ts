@@ -27,6 +27,12 @@ describe("RegistrationsService", () => {
     $transaction: vi.fn(async (fn: (t: typeof tx) => Promise<unknown>) =>
       fn(tx),
     ),
+    organizer: {
+      findUnique: vi.fn(),
+    },
+    activity: {
+      findUnique: vi.fn(),
+    },
     registration: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -311,6 +317,57 @@ describe("RegistrationsService", () => {
             displayStatus: "upcoming",
           }),
         }),
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 20,
+    });
+  });
+
+  it("listForOrganizer forbidden when not owner", async () => {
+    prisma.organizer.findUnique.mockResolvedValue({ id: "org1" });
+    prisma.activity.findUnique.mockResolvedValue({
+      id: "act1",
+      organizerId: "org-other",
+    });
+    await expect(
+      service.listForOrganizer("u1", "act1", {}),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("listForOrganizer success when owner", async () => {
+    prisma.organizer.findUnique.mockResolvedValue({ id: "org1" });
+    prisma.activity.findUnique.mockResolvedValue({
+      id: "act1",
+      organizerId: "org1",
+    });
+    prisma.registration.findMany.mockResolvedValue([
+      {
+        id: "r1",
+        activityId: "act1",
+        userId: "u2",
+        name: "张三",
+        phone: "13800138000",
+        status: RegistrationStatus.confirmed,
+        cancelledAt: null,
+        createdAt: new Date("2026-10-01T00:00:00.000Z"),
+        updatedAt: new Date("2026-10-01T00:00:00.000Z"),
+      },
+    ]);
+    prisma.registration.count.mockResolvedValue(1);
+
+    const res = await service.listForOrganizer("u1", "act1", {});
+    expect(res).toEqual({
+      items: [
+        {
+          id: "r1",
+          userId: "u2",
+          name: "张三",
+          phone: "13800138000",
+          status: RegistrationStatus.confirmed,
+          createdAt: "2026-10-01T00:00:00.000Z",
+          cancelledAt: null,
+        },
       ],
       total: 1,
       page: 1,

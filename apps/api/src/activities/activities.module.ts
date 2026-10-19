@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { PublisherGuard } from "../common/guards/publisher.guard";
+import { RegistrationsModule } from "../registrations/registrations.module";
 import { ActivitiesController } from "./activities.controller";
 import { ActivitiesService } from "./activities.service";
 import {
@@ -9,7 +10,7 @@ import {
 } from "./registration-cancel.hook";
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, RegistrationsModule],
   controllers: [ActivitiesController],
   providers: [
     ActivitiesService,

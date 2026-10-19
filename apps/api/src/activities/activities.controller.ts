@@ -15,6 +15,8 @@ import {
 } from "../common/decorators/current-user.decorator";
 import { PublisherGuard } from "../common/guards/publisher.guard";
 import { UserJwtGuard } from "../common/guards/user-jwt.guard";
+import { ListMyRegistrationsQuery } from "../registrations/dto/list-my-registrations.query";
+import { RegistrationsService } from "../registrations/registrations.service";
 import { ActivitiesService } from "./activities.service";
 import { CancelActivityDto } from "./dto/cancel-activity.dto";
 import { UpsertActivityDto } from "./dto/upsert-activity.dto";
@@ -22,7 +24,10 @@ import { UpsertActivityDto } from "./dto/upsert-activity.dto";
 @Controller("organizer/activities")
 @UseGuards(UserJwtGuard, PublisherGuard)
 export class ActivitiesController {
-  constructor(private readonly activitiesService: ActivitiesService) {}
+  constructor(
+    private readonly activitiesService: ActivitiesService,
+    private readonly registrations: RegistrationsService,
+  ) {}
 
   @Post()
   create(
@@ -44,6 +49,15 @@ export class ActivitiesController {
       skip: skip ? Number(skip) : undefined,
       take: take ? Number(take) : undefined,
     });
+  }
+
+  @Get(":id/registrations")
+  listRegistrations(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param("id") id: string,
+    @Query() query: ListMyRegistrationsQuery,
+  ) {
+    return this.registrations.listForOrganizer(user.userId, id, query);
   }
 
   @Get(":id")
