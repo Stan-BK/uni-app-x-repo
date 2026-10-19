@@ -1,51 +1,55 @@
 <template>
   <view class="page">
-    <view v-if="!activity" class="state">活动不存在或已下架</view>
-    <template v-else>
-      <view class="cover" :style="{ backgroundColor: activity.coverColor }">
-        <text class="cover-label">{{ activity.coverLabel }}</text>
+    <view v-if="loading" class="state">加载中…</view>
+    <view v-else-if="errorMessage" class="state">{{ errorMessage }}</view>
+    <template v-else-if="activity">
+      <image
+        v-if="activity.coverUrl"
+        class="cover-img"
+        :src="activity.coverUrl"
+        mode="aspectFill"
+      />
+      <view v-else class="cover cover-placeholder">
+        <text class="cover-label">活动</text>
       </view>
 
       <view class="panel">
         <view class="title-row">
           <text class="title">{{ activity.title }}</text>
-          <text class="fee" :class="{ free: activity.feeCents === 0 }">{{
-            activity.feeLabel
-          }}</text>
+          <text class="fee" :class="{ free: isFree }">{{ feeLabel }}</text>
         </view>
-        <text class="status" :class="activity.status">{{
-          activity.statusLabel
+        <text class="status" :class="activity.displayStatus">{{
+          displayLabel
         }}</text>
 
         <view class="info">
           <view class="info-row">
             <text class="label">时间</text>
             <text class="value"
-              >{{ activity.startAt }} — {{ activity.endAt }}</text
+              >{{ formatTime(activity.startAt) }} —
+              {{ formatTime(activity.endAt) }}</text
             >
           </view>
           <view class="info-row">
             <text class="label">地点</text>
-            <text class="value">{{ activity.place }}</text>
+            <text class="value">{{ activity.place || "—" }}</text>
           </view>
           <view class="info-row">
             <text class="label">费用</text>
-            <text class="value">{{ activity.feeLabel }}（首期线下结算）</text>
+            <text class="value">{{ feeLabel }}（首期线下结算）</text>
           </view>
           <view class="info-row">
             <text class="label">主办</text>
-            <text class="value">{{ activity.organizer }}</text>
+            <text class="value">{{ activity.organizer.displayName }}</text>
           </view>
           <view class="info-row">
             <text class="label">名额</text>
-            <text class="value"
-              >{{ activity.enrolled }} / {{ activity.capacity }}</text
-            >
+            <text class="value">上限 {{ activity.capacity }} 人</text>
           </view>
         </view>
       </view>
 
-      <view class="panel">
+      <view v-if="activity.rules" class="panel">
         <text class="section-title">活动须知</text>
         <text class="rules">{{ activity.rules }}</text>
       </view>
@@ -56,7 +60,7 @@
           class="cta"
           :class="{ disabled: !canRegister }"
           :disabled="!canRegister"
-          @click="goRegister"
+          @click="onCta"
         >
           {{ ctaText }}
         </button>
@@ -66,40 +70,97 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
-import { getActivityById, type Activity } from '@/mocks/activities'
+import { computed, ref } from "vue";
+import { onLoad } from "@dcloudio/uni-app";
+import {
+  getPublicActivity,
+  type PublicActivity,
+} from "@/api/public-activities";
+import { ApiError } from "@/utils/request";
 
-const activity = ref<Activity | null>(null)
+const DISPLAY_LABEL: Record<string, string> = {
+  upcoming: "未开始",
+  open: "报名中",
+  ended: "已结束",
+};
+
+const activity = ref<PublicActivity | null>(null);
+const loading = ref(true);
+const errorMessage = ref("");
+
+const isFree = computed(() => {
+  const a = activity.value;
+  if (!a) return true;
+  return a.feeType === "free" || a.feeCents === 0;
+});
+
+const feeLabel = computed(() => {
+  const a = activity.value;
+  if (!a || isFree.value) return "免费";
+  return `¥${(a.feeCents / 100).toFixed(2)}`;
+});
+
+const displayLabel = computed(() => {
+  const status = activity.value?.displayStatus ?? "";
+  return DISPLAY_LABEL[status] ?? status;
+});
 
 const canRegister = computed(() => {
-  const a = activity.value
-  if (!a) return false
-  return a.status === 'open' || a.status === 'full'
-})
+  const status = activity.value?.displayStatus;
+  return status === "open" || status === "upcoming";
+});
 
 const ctaText = computed(() => {
-  const a = activity.value
-  if (!a) return '报名'
-  if (a.status === 'ended') return '活动已结束'
-  if (a.status === 'upcoming') return '报名未开始'
-  if (a.status === 'full') return '申请候补'
-  return '立即报名'
-})
+  const status = activity.value?.displayStatus;
+  if (status === "ended") return "活动已结束";
+  return "立即报名";
+});
+
+function formatTime(iso?: string | null) {
+  if (!iso) return "时间待定";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString();
+}
+
+function resolveErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.code === "ACTIVITY_CANCELLED") return "活动已取消";
+    if (err.code === "ACTIVITY_REMOVED") return "活动已下架";
+    if (err.status === 404) return "活动不存在或已下架";
+    return err.message || "加载失败";
+  }
+  return "加载失败";
+}
+
+async function load(id: string) {
+  loading.value = true;
+  errorMessage.value = "";
+  activity.value = null;
+  try {
+    const data = await getPublicActivity(id);
+    activity.value = data;
+    uni.setNavigationBarTitle({ title: "活动详情" });
+  } catch (err) {
+    errorMessage.value = resolveErrorMessage(err);
+  } finally {
+    loading.value = false;
+  }
+}
 
 onLoad((query) => {
-  const id = String(query?.id ?? '')
-  activity.value = getActivityById(id) ?? null
-  if (activity.value) {
-    uni.setNavigationBarTitle({ title: '活动详情' })
+  const id = String(query?.id ?? "").trim();
+  if (!id) {
+    loading.value = false;
+    errorMessage.value = "活动不存在或已下架";
+    return;
   }
-})
+  void load(id);
+});
 
-function goRegister() {
-  if (!activity.value || !canRegister.value) return
-  uni.navigateTo({
-    url: `/pages/register/index?id=${activity.value.id}`,
-  })
+function onCta() {
+  if (!activity.value || !canRegister.value) return;
+  uni.showToast({ title: "报名即将开放", icon: "none" });
 }
 </script>
 
@@ -117,12 +178,23 @@ function goRegister() {
   font-size: 28rpx;
 }
 
+.cover-img {
+  width: 100%;
+  height: 360rpx;
+  display: block;
+  background: #e5e7eb;
+}
+
 .cover {
   height: 360rpx;
   display: flex;
   align-items: flex-end;
   padding: 32rpx;
   box-sizing: border-box;
+}
+
+.cover-placeholder {
+  background: #0f766e;
 }
 
 .cover-label {
@@ -173,11 +245,6 @@ function goRegister() {
   color: #0f766e;
   background: #ecfdf5;
   margin-bottom: 28rpx;
-}
-
-.status.full {
-  color: #b45309;
-  background: #fffbeb;
 }
 
 .status.ended {
