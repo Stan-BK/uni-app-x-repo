@@ -14,6 +14,7 @@ export type Registration = {
     title: string;
     coverUrl: string;
     startAt?: string | null;
+    endAt?: string | null;
     place: string;
     displayStatus?: string;
   };

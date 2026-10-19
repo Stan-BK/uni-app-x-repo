@@ -67,7 +67,6 @@
     </view>
 
     <text class="section-title block">我的报名</text>
-    <text class="hint">以下为演示数据；真实报名将在后续阶段接入服务端。</text>
     <view v-if="loading" class="state">加载中…</view>
     <view v-else-if="!items.length" class="state empty">
       <text class="empty-title">还没有报名记录</text>
@@ -75,18 +74,27 @@
       <button class="empty-btn" @click="goHome">浏览活动</button>
     </view>
     <view v-else class="list">
-      <view v-for="item in items" :key="item.id" class="card">
+      <view
+        v-for="item in items"
+        :key="item.id"
+        class="card"
+        @click="goDetail(item)"
+      >
         <view class="card-top">
-          <text class="title">{{ item.activityTitle }}</text>
-          <text class="status" :class="item.status">{{ item.statusLabel }}</text>
+          <text class="title">{{ item.activity?.title || "活动" }}</text>
+          <text class="status" :class="item.status">{{
+            statusLabel(item.status)
+          }}</text>
         </view>
         <view class="meta">
+          <text>地点：{{ item.activity?.place || "—" }}</text>
+          <text>时间：{{ formatTime(item.activity?.startAt) }}</text>
           <text>报名人：{{ item.name }}</text>
           <text>手机：{{ item.phone }}</text>
-          <text>提交时间：{{ item.createdAt }}</text>
+          <text>提交时间：{{ formatTime(item.createdAt) }}</text>
         </view>
-        <view class="actions">
-          <text class="link" @click="goDetail(item.activityId)">查看活动</text>
+        <view v-if="canCancel(item)" class="actions">
+          <text class="link cancel" @click.stop="onCancel(item)">取消报名</text>
         </view>
       </view>
     </view>
@@ -96,39 +104,84 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
-import { listPublicActivities } from "@/api/public-activities";
-import { listRegistrations, type Registration } from "@/mocks/activities";
+import {
+  cancelRegistration,
+  listMyRegistrations,
+  type Registration,
+} from "@/api/registrations";
 import { useUserStore } from "@/stores/user";
+import { ApiError } from "@/utils/request";
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: "待确认",
+  confirmed: "已确认",
+  cancelled: "已取消",
+  waitlist: "候补中",
+};
 
 const user = useUserStore();
 const loading = ref(true);
 const items = ref<Registration[]>([]);
 const busy = ref(false);
 const identityMsg = ref("");
-/** mock 报名里的 activityId 与真实库不一致，按标题解析公开活动 id */
-const titleToPublicId = ref<Record<string, string>>({});
 
-async function refreshPublicIdMap() {
+function statusLabel(status: string) {
+  return STATUS_LABEL[status] ?? status;
+}
+
+function formatTime(iso?: string | null) {
+  if (!iso) return "时间待定";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString();
+}
+
+function activityNotEnded(item: Registration): boolean {
+  const a = item.activity;
+  if (!a) return false;
+  if (a.displayStatus !== "ended") return true;
+  if (a.endAt && new Date(a.endAt).getTime() > Date.now()) return true;
+  return false;
+}
+
+function canCancel(item: Registration): boolean {
+  return item.status === "confirmed" && activityNotEnded(item);
+}
+
+function errMessage(err: unknown): string {
+  if (err instanceof ApiError) return err.message || "请求失败";
+  return err instanceof Error ? err.message : "请求失败";
+}
+
+async function loadRegistrations() {
+  loading.value = true;
   try {
-    const res = await listPublicActivities({ pageSize: 50 });
-    const map: Record<string, string> = {};
-    for (const a of res.items ?? []) {
-      if (a.title) map[a.title] = a.id;
+    if (!user.isLoggedIn) {
+      await user.login();
     }
-    // 已结束活动不在公开列表，再按需拉详情意义不大；标题能对上即可
-    titleToPublicId.value = map;
-  } catch {
-    titleToPublicId.value = {};
+    const res = await listMyRegistrations({ pageSize: 50 });
+    items.value = res.items ?? [];
+  } catch (e) {
+    items.value = [];
+    uni.showToast({ title: errMessage(e), icon: "none" });
+  } finally {
+    loading.value = false;
   }
 }
 
-function loadRegistrations() {
-  loading.value = true;
-  setTimeout(() => {
-    items.value = listRegistrations();
-    loading.value = false;
-  }, 150);
-  void refreshPublicIdMap();
+async function onCancel(item: Registration) {
+  const res = await uni.showModal({
+    title: "取消报名",
+    content: "确定取消该活动报名？",
+  });
+  if (!res.confirm) return;
+  try {
+    await cancelRegistration(item.id);
+    uni.showToast({ title: "已取消", icon: "none" });
+    await loadRegistrations();
+  } catch (e) {
+    uni.showToast({ title: errMessage(e), icon: "none" });
+  }
 }
 
 async function withBusy(fn: () => Promise<void>) {
@@ -149,6 +202,7 @@ async function onLogin() {
     identityMsg.value = user.canPublish
       ? "登录成功，已具备发布权限"
       : "登录成功";
+    await loadRegistrations();
   });
 }
 
@@ -168,6 +222,7 @@ async function onRefresh() {
 
 function onLogout() {
   user.logout();
+  items.value = [];
   identityMsg.value = "已退出";
 }
 
@@ -183,31 +238,23 @@ function goHome() {
   uni.switchTab({ url: "/pages/home/index" });
 }
 
-function goDetail(activityId: string) {
-  const row = items.value.find((r) => r.activityId === activityId);
-  const byTitle = row?.activityTitle
-    ? titleToPublicId.value[row.activityTitle]
-    : undefined;
-  const realId = byTitle || activityId;
-  // mock 固定 id（act-*）对接真实详情会 404，误显示「下架」
-  if (!byTitle && /^act-/.test(activityId)) {
-    uni.showToast({
-      title: "演示报名未关联到线上活动",
-      icon: "none",
-    });
+function goDetail(item: Registration) {
+  const activityId = item.activity?.id || item.activityId;
+  if (!activityId) {
+    uni.showToast({ title: "活动不存在", icon: "none" });
     return;
   }
   uni.navigateTo({
-    url: `/pages/activity/detail?id=${encodeURIComponent(realId)}`,
+    url: `/pages/activity/detail?id=${encodeURIComponent(activityId)}`,
   });
 }
 
 onMounted(() => {
-  loadRegistrations();
+  void loadRegistrations();
 });
 
 onShow(() => {
-  loadRegistrations();
+  void loadRegistrations();
   if (user.isLoggedIn) {
     void user.refreshIdentity().catch(() => {
       /* 网络失败时保留本地态 */
@@ -229,14 +276,6 @@ onShow(() => {
   font-weight: 600;
   color: #1a1d23;
   margin-bottom: 12rpx;
-}
-
-.hint {
-  display: block;
-  margin: -4rpx 0 16rpx;
-  font-size: 22rpx;
-  color: #9ca3af;
-  line-height: 1.4;
 }
 
 .section-title.block {
@@ -391,5 +430,9 @@ button::after {
 .link {
   font-size: 26rpx;
   color: #0f766e;
+}
+
+.link.cancel {
+  color: #b45309;
 }
 </style>
