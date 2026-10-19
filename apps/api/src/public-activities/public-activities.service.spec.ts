@@ -62,8 +62,29 @@ describe("PublicActivitiesService", () => {
     );
   });
 
+  it("list respects explicit order", async () => {
+    prisma.activity.findMany.mockResolvedValue([]);
+    prisma.activity.count.mockResolvedValue(0);
+
+    await service.list({ sort: "startAt", order: "desc" });
+    expect(prisma.activity.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { startAt: "desc" } }),
+    );
+
+    await service.list({ sort: "publishedAt", order: "asc" });
+    expect(prisma.activity.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { publishedAt: "asc" } }),
+    );
+  });
+
   it("list rejects invalid sort", async () => {
     await expect(service.list({ sort: "nope" as "startAt" })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it("list rejects invalid order", async () => {
+    await expect(service.list({ order: "sideways" })).rejects.toBeInstanceOf(
       BadRequestException,
     );
   });

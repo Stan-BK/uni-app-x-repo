@@ -10,6 +10,11 @@ export class ListPublicActivitiesQuery {
   @IsString()
   sort?: string;
 
+  /** asc | desc；省略时按 sort 字段默认（startAt→asc，publishedAt→desc） */
+  @IsOptional()
+  @IsString()
+  order?: string;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()

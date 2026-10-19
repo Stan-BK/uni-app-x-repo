@@ -16,14 +16,14 @@
           :class="{ active: sort === 'startAt' }"
           @click="setSort('startAt')"
         >
-          开始时间
+          {{ startAtSortLabel }}
         </text>
         <text
           class="sort-item"
           :class="{ active: sort === 'publishedAt' }"
           @click="setSort('publishedAt')"
         >
-          发布时间
+          {{ publishedAtSortLabel }}
         </text>
       </view>
     </view>
@@ -92,11 +92,23 @@ const items = ref<PublicActivity[]>([]);
 const loading = ref(false);
 const q = ref("");
 const sort = ref<"startAt" | "publishedAt">("startAt");
+/** startAt 默认升序；publishedAt 默认降序；再点同一项切换方向 */
+const order = ref<"asc" | "desc">("asc");
 const page = ref(1);
 const total = ref(0);
 const pageSize = 20;
 
 const hasMore = computed(() => items.value.length < total.value);
+
+/** 选中项展示方向；再点同一项切换正/倒序 */
+const startAtSortLabel = computed(() => {
+  if (sort.value !== "startAt") return "开始时间";
+  return order.value === "asc" ? "开始时间 · 早→晚" : "开始时间 · 晚→早";
+});
+const publishedAtSortLabel = computed(() => {
+  if (sort.value !== "publishedAt") return "发布时间";
+  return order.value === "asc" ? "发布时间 · 旧→新" : "发布时间 · 新→旧";
+});
 
 function displayLabel(status: string) {
   return DISPLAY_LABEL[status] ?? status;
@@ -132,9 +144,17 @@ function onSearch() {
   void load({ reset: true });
 }
 
+function defaultOrderFor(field: "startAt" | "publishedAt"): "asc" | "desc" {
+  return field === "publishedAt" ? "desc" : "asc";
+}
+
 function setSort(next: "startAt" | "publishedAt") {
-  if (sort.value === next) return;
-  sort.value = next;
+  if (sort.value === next) {
+    order.value = order.value === "asc" ? "desc" : "asc";
+  } else {
+    sort.value = next;
+    order.value = defaultOrderFor(next);
+  }
   void load({ reset: true });
 }
 
@@ -157,6 +177,7 @@ async function load(opts: { reset?: boolean } = {}) {
     const res = await listPublicActivities({
       q: q.value.trim() || undefined,
       sort: sort.value,
+      order: order.value,
       page: requestPage,
       pageSize,
     });

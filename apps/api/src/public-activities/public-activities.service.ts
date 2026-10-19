@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import {
   PublicActivityErrorCode,
+  PublicActivityOrder,
   PublicActivitySort,
 } from "@activity/shared";
 import { ActivityLifecycle } from "@prisma/client";
@@ -14,6 +15,7 @@ import { toPublicDto } from "./public-activity.mapper";
 export type ListPublicQuery = {
   q?: string;
   sort?: string;
+  order?: string;
   page?: number;
   pageSize?: number;
 };
@@ -33,6 +35,18 @@ export class PublicActivitiesService {
       throw new BadRequestException("Invalid sort");
     }
 
+    const defaultOrder =
+      sort === PublicActivitySort.PublishedAt
+        ? PublicActivityOrder.Desc
+        : PublicActivityOrder.Asc;
+    const order = query.order ?? defaultOrder;
+    if (
+      order !== PublicActivityOrder.Asc &&
+      order !== PublicActivityOrder.Desc
+    ) {
+      throw new BadRequestException("Invalid order");
+    }
+
     const q = query.q?.trim() ?? "";
     const now = new Date();
     const where = {
@@ -44,8 +58,8 @@ export class PublicActivitiesService {
     };
     const orderBy =
       sort === PublicActivitySort.PublishedAt
-        ? { publishedAt: "desc" as const }
-        : { startAt: "asc" as const };
+        ? { publishedAt: order }
+        : { startAt: order };
 
     const skip = (page - 1) * pageSize;
     const [rows, total] = await Promise.all([

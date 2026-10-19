@@ -59,6 +59,14 @@ export const PublicActivitySort = {
 export type PublicActivitySort =
   (typeof PublicActivitySort)[keyof typeof PublicActivitySort];
 
+/** 公开列表排序方向；未传时 startAt 默认 asc、publishedAt 默认 desc */
+export const PublicActivityOrder = {
+  Asc: "asc",
+  Desc: "desc",
+} as const;
+export type PublicActivityOrder =
+  (typeof PublicActivityOrder)[keyof typeof PublicActivityOrder];
+
 export const PublicActivityErrorCode = {
   Cancelled: "ACTIVITY_CANCELLED",
   Removed: "ACTIVITY_REMOVED",

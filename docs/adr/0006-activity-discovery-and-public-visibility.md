@@ -21,7 +21,8 @@ P0-2 已落地组织者发布与运营下架；首页/详情仍接 mock。P0-3 �
 
 3. **列表查询（P0-3 最小集）**  
    - `q`：标题关键词（trim；空则不过滤；大小写不敏感包含匹配）。  
-   - `sort`：`startAt`（默认，升序）| `publishedAt`（降序）。  
+   - `sort`：`startAt`（默认）| `publishedAt`。  
+   - `order`：`asc` | `desc`；省略时 `startAt` 默认 `asc`、`publishedAt` 默认 `desc`；端上可再点同一排序项切换方向。  
    - 分页：`page`/`pageSize`（默认 20，上限 50）；响应含 `items`、`total`、`page`、`pageSize`。  
    - **分类等高级筛选 → P1**（同步修订 roadmap）。
 

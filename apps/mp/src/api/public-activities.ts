@@ -25,6 +25,7 @@ export type PublicActivity = {
 export type ListPublicParams = {
   q?: string;
   sort?: "startAt" | "publishedAt";
+  order?: "asc" | "desc";
   page?: number;
   pageSize?: number;
 };
@@ -45,6 +46,7 @@ export function listPublicActivities(params: ListPublicParams = {}) {
   const q = toQuery({
     q: params.q,
     sort: params.sort,
+    order: params.order,
     page: params.page,
     pageSize: params.pageSize,
   });
