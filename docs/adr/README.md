@@ -18,7 +18,7 @@
 | [0003](./0003-identity-and-organizer.md) | 多端身份与 Organizer 模型 | Accepted |
 | [0004](./0004-admin-rbac.md) | 管理后台 RBAC | Accepted |
 | [0005](./0005-activity-lifecycle-and-model.md) | 活动生命周期与数据模型 | Implemented |
-| 0006 | 活动发现与公开展示规则 | Proposed（待写） |
+| [0006](./0006-activity-discovery-and-public-visibility.md) | 活动发现与公开展示规则 | Implemented |
 | 0007 | 报名幂等与名额并发 | Proposed（待写） |
 | 0008 | 审核、下架与审计 | Proposed（待写） |
 | 0009 | 联调、验收与观测基线 | Proposed（待写） |

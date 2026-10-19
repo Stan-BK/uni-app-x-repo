@@ -41,3 +41,27 @@ export const RegistrationStatus = {
 } as const;
 export type RegistrationStatus =
   (typeof RegistrationStatus)[keyof typeof RegistrationStatus];
+
+/** 公开展示态（由 startAt/endAt 计算；满员 full 留 P0-4） */
+export const ActivityDisplayStatus = {
+  Upcoming: "upcoming",
+  Open: "open",
+  Ended: "ended",
+  // Full: "full", // P0-4
+} as const;
+export type ActivityDisplayStatus =
+  (typeof ActivityDisplayStatus)[keyof typeof ActivityDisplayStatus];
+
+export const PublicActivitySort = {
+  StartAt: "startAt",
+  PublishedAt: "publishedAt",
+} as const;
+export type PublicActivitySort =
+  (typeof PublicActivitySort)[keyof typeof PublicActivitySort];
+
+export const PublicActivityErrorCode = {
+  Cancelled: "ACTIVITY_CANCELLED",
+  Removed: "ACTIVITY_REMOVED",
+} as const;
+export type PublicActivityErrorCode =
+  (typeof PublicActivityErrorCode)[keyof typeof PublicActivityErrorCode];

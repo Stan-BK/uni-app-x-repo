@@ -9,13 +9,16 @@
     {
       "path": "pages/home/index",
       "style": {
-        "navigationBarTitleText": "活动首页"
+        "navigationBarTitleText": "活动首页",
+        "onReachBottomDistance": 80
       }
     },
     {
       "path": "pages/activity/detail",
       "style": {
-        "navigationBarTitleText": "活动详情"
+        "navigationBarTitleText": "活动详情",
+        "enableShareAppMessage": true,
+        "enableShareTimeline": true
       }
     },
     {

@@ -21,32 +21,50 @@ export class ApiError extends Error {
     public status: number,
     message: string,
     public fields?: string[],
+    public code?: string,
   ) {
     super(message);
     this.name = "ApiError";
   }
 }
 
-function messageFromBody(body: unknown): { message: string; fields?: string[] } {
+function messageFromBody(body: unknown): {
+  message: string;
+  fields?: string[];
+  code?: string;
+} {
   if (typeof body !== "object" || body === null) {
     return { message: "请求失败" };
   }
   const raw = body as {
     message?: unknown;
     fields?: unknown;
+    code?: unknown;
   };
   let message = "";
   let fields: string[] | undefined;
+  let code: string | undefined;
+
+  if (typeof raw.code === "string") {
+    code = raw.code;
+  }
 
   if (Array.isArray(raw.message)) {
     message = raw.message.map(String).join("；");
   } else if (typeof raw.message === "object" && raw.message !== null) {
-    const nested = raw.message as { message?: unknown; fields?: unknown };
+    const nested = raw.message as {
+      message?: unknown;
+      fields?: unknown;
+      code?: unknown;
+    };
     if (typeof nested.message === "string") {
       message = nested.message;
     }
     if (Array.isArray(nested.fields)) {
       fields = nested.fields.map(String);
+    }
+    if (typeof nested.code === "string") {
+      code = nested.code;
     }
   } else if (raw.message != null) {
     message = String(raw.message);
@@ -56,7 +74,7 @@ function messageFromBody(body: unknown): { message: string; fields?: string[] } 
     fields = raw.fields.map(String);
   }
 
-  return { message: message || "请求失败", fields };
+  return { message: message || "请求失败", fields, code };
 }
 
 type RequestOptions = {
@@ -100,6 +118,7 @@ export function request<T>(path: string, options: RequestOptions = {}): Promise<
               status,
               parsed.message || `HTTP ${status}`,
               parsed.fields,
+              parsed.code,
             ),
           );
           return;
@@ -107,7 +126,8 @@ export function request<T>(path: string, options: RequestOptions = {}): Promise<
         resolve(body as T);
       },
       fail: (err) => {
-        reject(new Error(err.errMsg || "network error"));
+        const detail = err.errMsg || "network error";
+        reject(new Error(`请求失败：${detail}`));
       },
     });
   });
