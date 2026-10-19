@@ -7,6 +7,7 @@ import { AdminOrganizersModule } from "./admin-organizers/admin-organizers.modul
 import { AuthModule } from "./auth/auth.module";
 import { OrganizersModule } from "./organizers/organizers.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { UploadsModule } from "./uploads/uploads.module";
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { PrismaModule } from "./prisma/prisma.module";
     AuthModule,
     OrganizersModule,
     ActivitiesModule,
+    UploadsModule,
     AdminAuthModule,
     AdminOrganizersModule,
     AdminActivitiesModule,

@@ -95,6 +95,8 @@ model Activity {
   startAt        DateTime?
   endAt          DateTime?
   place          String            @default("")
+  placeLat       Float?
+  placeLng       Float?
   capacity       Int               @default(1)
   feeType        FeeType           @default(free)
   feeCents       Int               @default(0)

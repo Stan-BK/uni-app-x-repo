@@ -13,6 +13,7 @@ import {
   type Activity,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { isActivityCategory } from "./activity-categories";
 import type { UpsertActivityDto } from "./dto/upsert-activity.dto";
 import {
   REGISTRATION_CANCEL_HOOK,
@@ -46,6 +47,17 @@ export class ActivitiesService {
     return { organizer, activity };
   }
 
+  private static readonly publishFieldLabels: Record<string, string> = {
+    title: "标题",
+    coverUrl: "封面",
+    category: "分类",
+    rules: "活动须知",
+    place: "地点",
+    startAt: "开始时间",
+    endAt: "结束时间",
+    capacity: "名额",
+  };
+
   private assertPublishable(a: Activity) {
     const missing: string[] = [];
     if (!a.title?.trim()) missing.push("title");
@@ -57,19 +69,25 @@ export class ActivitiesService {
     if (!a.endAt) missing.push("endAt");
     if (!a.capacity || a.capacity < 1) missing.push("capacity");
     if (missing.length) {
+      const labels = missing.map(
+        (key) => ActivitiesService.publishFieldLabels[key] ?? key,
+      );
       throw new BadRequestException({
-        message: "Missing required fields for publish",
+        message: `发布失败，请填写：${labels.join("、")}`,
         fields: missing,
       });
     }
+    if (!isActivityCategory(a.category.trim())) {
+      throw new BadRequestException("分类不在可选列表中");
+    }
     if (a.endAt! <= a.startAt!) {
-      throw new BadRequestException("endAt must be after startAt");
+      throw new BadRequestException("结束时间必须晚于开始时间");
     }
     if (a.feeType === FeeType.free && a.feeCents !== 0) {
-      throw new BadRequestException("feeCents must be 0 when feeType is free");
+      throw new BadRequestException("免费活动费用须为 0");
     }
     if (a.feeType === FeeType.paid && a.feeCents <= 0) {
-      throw new BadRequestException("feeCents must be > 0 when feeType is paid");
+      throw new BadRequestException("收费活动请填写大于 0 的费用（单位：分）");
     }
   }
 
@@ -85,6 +103,8 @@ export class ActivitiesService {
       ...(dto.startAt !== undefined ? { startAt: new Date(dto.startAt) } : {}),
       ...(dto.endAt !== undefined ? { endAt: new Date(dto.endAt) } : {}),
       ...(dto.place !== undefined ? { place: dto.place.trim() } : {}),
+      ...(dto.placeLat !== undefined ? { placeLat: dto.placeLat } : {}),
+      ...(dto.placeLng !== undefined ? { placeLng: dto.placeLng } : {}),
       ...(dto.capacity !== undefined ? { capacity: dto.capacity } : {}),
       ...(dto.feeType !== undefined ? { feeType: dto.feeType } : {}),
       ...(dto.feeCents !== undefined ? { feeCents: dto.feeCents } : {}),

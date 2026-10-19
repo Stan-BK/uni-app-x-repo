@@ -2,14 +2,19 @@ import { FeeType } from "@prisma/client";
 import {
   IsBoolean,
   IsEnum,
+  IsIn,
   IsInt,
   IsISO8601,
+  IsNumber,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min,
   MinLength,
 } from "class-validator";
+import { Type } from "class-transformer";
+import { ACTIVITY_CATEGORIES } from "../activity-categories";
 
 export class UpsertActivityDto {
   @IsOptional()
@@ -25,7 +30,7 @@ export class UpsertActivityDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(40)
+  @IsIn(ACTIVITY_CATEGORIES, { message: "分类不在可选列表中" })
   category?: string;
 
   @IsOptional()
@@ -50,6 +55,20 @@ export class UpsertActivityDto {
   @IsString()
   @MaxLength(200)
   place?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  placeLat?: number | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  placeLng?: number | null;
 
   @IsOptional()
   @IsInt()

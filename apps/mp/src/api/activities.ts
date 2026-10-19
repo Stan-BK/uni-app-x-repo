@@ -1,4 +1,4 @@
-import { request } from "@/utils/request";
+import { ApiError, getApiBase, getUserToken, request } from "@/utils/request";
 
 export type Activity = {
   id: string;
@@ -10,6 +10,8 @@ export type Activity = {
   startAt?: string | null;
   endAt?: string | null;
   place: string;
+  placeLat?: number | null;
+  placeLng?: number | null;
   capacity: number;
   feeType: "free" | "paid";
   feeCents: number;
@@ -28,6 +30,8 @@ export type UpsertBody = Partial<{
   startAt: string;
   endAt: string;
   place: string;
+  placeLat: number | null;
+  placeLng: number | null;
   capacity: number;
   feeType: "free" | "paid";
   feeCents: number;
@@ -76,5 +80,51 @@ export function cancelActivity(id: string, reason?: string) {
   return request<Activity>(`/organizer/activities/${id}/cancel`, {
     method: "POST",
     data: { reason },
+  });
+}
+
+/** 本地选图后上传封面，返回可公网访问的 URL */
+export function uploadCover(filePath: string): Promise<{ url: string }> {
+  const token = getUserToken();
+  return new Promise((resolve, reject) => {
+    uni.uploadFile({
+      url: `${getApiBase()}/organizer/uploads/cover`,
+      filePath,
+      name: "file",
+      header: token ? { Authorization: `Bearer ${token}` } : {},
+      success: (res) => {
+        if (res.statusCode === 401) {
+          reject(new ApiError(401, "请重新登录"));
+          return;
+        }
+        let body: unknown = res.data;
+        if (typeof body === "string") {
+          try {
+            body = JSON.parse(body);
+          } catch {
+            reject(new Error("上传响应无效"));
+            return;
+          }
+        }
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          const msg =
+            typeof body === "object" &&
+            body !== null &&
+            "message" in body &&
+            (body as { message: unknown }).message != null
+              ? String((body as { message: string }).message)
+              : `上传失败 HTTP ${res.statusCode}`;
+          reject(new ApiError(res.statusCode, msg));
+          return;
+        }
+        const url = (body as { url?: string }).url;
+        if (!url) {
+          reject(new Error("上传成功但未返回地址"));
+          return;
+        }
+        resolve({ url });
+      },
+      fail: (err) => reject(new Error(err.errMsg || "上传失败")),
+    });
   });
 }

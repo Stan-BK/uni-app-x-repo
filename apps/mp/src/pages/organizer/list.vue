@@ -10,7 +10,7 @@
     </view>
     <view v-else class="list">
       <view v-for="item in items" :key="item.id" class="card">
-        <view class="row" @click="goEdit(item.id)">
+        <view class="row" @click="goDetail(item.id)">
           <text class="title">{{ item.title || "未命名活动" }}</text>
           <text class="meta">状态：{{ lifecycleLabel(item.lifecycle) }}</text>
         </view>
@@ -43,6 +43,7 @@
             取消
           </button>
           <button
+            v-if="item.lifecycle === 'draft' || item.lifecycle === 'published'"
             class="mini ghost"
             size="mini"
             @click.stop="goEdit(item.id)"
@@ -105,8 +106,18 @@ function goCreate() {
   uni.navigateTo({ url: "/pages/organizer/create" });
 }
 
+/** 卡片主体 → 只读详情（不进编辑态） */
+function goDetail(id: string) {
+  uni.navigateTo({
+    url: `/pages/organizer/detail?id=${encodeURIComponent(id)}`,
+  });
+}
+
+/** 仅「编辑」按钮进入编辑页 */
 function goEdit(id: string) {
-  uni.navigateTo({ url: `/pages/organizer/create?id=${encodeURIComponent(id)}` });
+  uni.navigateTo({
+    url: `/pages/organizer/create?id=${encodeURIComponent(id)}`,
+  });
 }
 
 async function onPublish(id: string) {
