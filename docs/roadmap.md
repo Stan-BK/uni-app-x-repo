@@ -75,14 +75,18 @@
 
 ## P0-4 免费报名闭环
 
-**ADR：** 0007
+**ADR：** [0007](./adr/0007-registration-idempotency-and-capacity.md)（Accepted）  
+**设计：** [docs/superpowers/specs/2026-10-19-p0-4-free-registration-design.md](./superpowers/specs/2026-10-19-p0-4-free-registration-design.md)  
+**计划：** [docs/superpowers/plans/2026-10-19-p0-4-free-registration.md](./superpowers/plans/2026-10-19-p0-4-free-registration.md)
 
 - [ ] 报名表单（姓名、手机号）  
 - [ ] 服务端二次校验 + 幂等  
 - [ ] 名额并发占用  
+- [ ] 用户主动取消报名（释放名额；未结束前）  
 - [ ] 我的报名 / 组织者报名名单  
+- [ ] 公开 `displayStatus=full` + 生命周期取消报名钩子  
 
-**验收：** AT-REG-01～06（含并发与越权）。
+**验收：** AT-REG-01～06（含并发与越权）；用户可取消；仅 `feeType=free` 可报；`paid` 后置 P2。
 
 ---
 
@@ -113,8 +117,8 @@
 
 ## P1（后置）
 
-分类等高级筛选、取消报名、订阅消息、举报、统计看板、活动开始提醒。  
-（标题搜索与开始/发布时间排序已纳入 P0-3。）
+分类等高级筛选、订阅消息、举报、统计看板、活动开始提醒。  
+（标题搜索与开始/发布时间排序已纳入 P0-3；用户取消报名已纳入 P0-4。）
 
 ## P2 / 独立里程碑
 
