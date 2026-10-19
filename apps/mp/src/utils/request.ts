@@ -27,7 +27,7 @@ export class ApiError extends Error {
 }
 
 type RequestOptions = {
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   data?: unknown;
   auth?: boolean;
 };
@@ -50,7 +50,8 @@ export function request<T>(path: string, options: RequestOptions = {}): Promise<
   return new Promise((resolve, reject) => {
     uni.request({
       url: `${getApiBase()}${path}`,
-      method,
+      // PATCH 已纳入 RequestOptions；部分 uni 类型定义可能尚未包含，故断言
+      method: method as UniApp.RequestOptions["method"],
       data: data as UniApp.RequestOptions["data"],
       header,
       success: (res) => {
