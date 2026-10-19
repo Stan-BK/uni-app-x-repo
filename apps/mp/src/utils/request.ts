@@ -126,7 +126,8 @@ export function request<T>(path: string, options: RequestOptions = {}): Promise<
         resolve(body as T);
       },
       fail: (err) => {
-        reject(new Error(err.errMsg || "network error"));
+        const detail = err.errMsg || "network error";
+        reject(new Error(`请求失败：${detail}`));
       },
     });
   });
