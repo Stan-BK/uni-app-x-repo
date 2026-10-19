@@ -1,13 +1,11 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { PublisherGuard } from "../common/guards/publisher.guard";
+import { PrismaRegistrationCancelHook } from "../registrations/prisma-registration-cancel.hook";
 import { RegistrationsModule } from "../registrations/registrations.module";
 import { ActivitiesController } from "./activities.controller";
 import { ActivitiesService } from "./activities.service";
-import {
-  NoopRegistrationCancelHook,
-  REGISTRATION_CANCEL_HOOK,
-} from "./registration-cancel.hook";
+import { REGISTRATION_CANCEL_HOOK } from "./registration-cancel.hook";
 
 @Module({
   imports: [AuthModule, RegistrationsModule],
@@ -15,7 +13,10 @@ import {
   providers: [
     ActivitiesService,
     PublisherGuard,
-    { provide: REGISTRATION_CANCEL_HOOK, useClass: NoopRegistrationCancelHook },
+    {
+      provide: REGISTRATION_CANCEL_HOOK,
+      useClass: PrismaRegistrationCancelHook,
+    },
   ],
   exports: [ActivitiesService, REGISTRATION_CANCEL_HOOK],
 })
