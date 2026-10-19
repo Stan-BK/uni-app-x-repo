@@ -43,14 +43,17 @@
 
 ## P0-2 活动域
 
-**ADR：** 0005
+**ADR：** [0005](./adr/0005-activity-lifecycle-and-model.md)（Accepted）  
+**设计：** [docs/superpowers/specs/2026-10-19-p0-2-activity-domain-design.md](./superpowers/specs/2026-10-19-p0-2-activity-domain-design.md)  
+**计划：** [docs/superpowers/plans/2026-10-19-p0-2-activity-domain.md](./superpowers/plans/2026-10-19-p0-2-activity-domain.md)
 
-- [ ] 活动字段与校验（时间、分类、费用类型）  
-- [ ] 草稿 / 提交审核 / 驳回重提  
-- [ ] review_status 与 lifecycle 分离  
+- [ ] 活动字段与校验（时间、分类、费用类型 free/paid；不开放收款）  
+- [ ] 草稿 / 直接发布 / 退回草稿 / 取消活动  
+- [ ] 单一 lifecycle（无活动审核态）  
 - [ ] 组织者「我的活动」列表  
+- [ ] 运营下架 API（`removed`）+ 最小 Admin 操作  
 
-**验收：** PRD AT-ACT-01～05 核心路径。
+**验收：** AT-ACT-01～03 + 修订后的发布/退回/取消/下架路径（原审核用例不作验收）。
 
 ---
 
