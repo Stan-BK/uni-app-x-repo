@@ -3,6 +3,7 @@
 - **日期：** 2026-10-20  
 - **状态：** Draft（待实现；ADR Accepted）  
 - **关联 ADR：** [0008](../../adr/0008-operational-governance-audit-logs.md)（Accepted）  
+- **实现计划：** [docs/superpowers/plans/2026-10-20-audit-logs-governance.md](../plans/2026-10-20-audit-logs-governance.md)  
 - **关联：** ADR-0004（admin 才可看审计）、ADR-0005（下架已写入）、ADR-0011（冻结/恢复已写入）
 
 ## 1. 目标

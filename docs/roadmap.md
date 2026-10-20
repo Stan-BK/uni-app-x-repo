@@ -94,6 +94,7 @@
 
 **ADR：** [0008](./adr/0008-operational-governance-audit-logs.md)（Accepted）  
 **设计：** [docs/superpowers/specs/2026-10-20-audit-logs-governance-design.md](./superpowers/specs/2026-10-20-audit-logs-governance-design.md)  
+**计划：** [docs/superpowers/plans/2026-10-20-audit-logs-governance.md](./superpowers/plans/2026-10-20-audit-logs-governance.md)  
 **前置：** [ADR-0011](./adr/0011-default-publish-permission.md) 已落地（去掉 Organizer、用户默认可发布）。
 
 - [x] 去掉 Organizer / 申请流；`User.canPublish` 默认 true（ADR-0011）  

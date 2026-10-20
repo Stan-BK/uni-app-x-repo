@@ -4,6 +4,7 @@
 - **日期：** 2026-10-20
 - **关联：** roadmap P0-5、PRD AT-ADM（修订）、[ADR-0004](./0004-admin-rbac.md)、[ADR-0005](./0005-activity-lifecycle-and-model.md)、[ADR-0011](./0011-default-publish-permission.md)
 - **设计规格：** [docs/superpowers/specs/2026-10-20-audit-logs-governance-design.md](../superpowers/specs/2026-10-20-audit-logs-governance-design.md)
+- **实现计划：** [docs/superpowers/plans/2026-10-20-audit-logs-governance.md](../superpowers/plans/2026-10-20-audit-logs-governance.md)
 
 ## 背景
 
