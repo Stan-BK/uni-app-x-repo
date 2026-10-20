@@ -1,6 +1,6 @@
 # ADR-0008: 运营治理（发布权冻结、下架与审计）
 
-- **状态：** Accepted
+- **状态：** Implemented
 - **日期：** 2026-10-20
 - **关联：** roadmap P0-5、PRD AT-ADM（修订）、[ADR-0004](./0004-admin-rbac.md)、[ADR-0005](./0005-activity-lifecycle-and-model.md)、[ADR-0011](./0011-default-publish-permission.md)
 - **设计规格：** [docs/superpowers/specs/2026-10-20-audit-logs-governance-design.md](../superpowers/specs/2026-10-20-audit-logs-governance-design.md)
@@ -62,7 +62,7 @@ P0-5 的运营治理在 ADR-0011 之后变为：**冻结/恢复用户发布权�
 
 - 正面：冻结、下架、审计三条治理路径可在 Admin 验收；RBAC 与 ADR-0004 对齐。  
 - 负面 / 跟进：展示名非快照，改名后旧日志跟新名字；`operator` 看不到自己操作记录（需要时另立决策）。  
-- 实现后将本 ADR 标为 `Implemented`，并勾选 roadmap「审计日志查询」。
+- 已落地：`GET /admin/audit-logs` 与 Admin `/audit-logs`；roadmap「审计日志查询」已勾选。
 
 ## 实现备注
 

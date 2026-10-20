@@ -1,8 +1,8 @@
 # P0-5 审计日志查询设计规格
 
 - **日期：** 2026-10-20  
-- **状态：** Draft（待实现；ADR Accepted）  
-- **关联 ADR：** [0008](../../adr/0008-operational-governance-audit-logs.md)（Accepted）  
+- **状态：** Implemented  
+- **关联 ADR：** [0008](../../adr/0008-operational-governance-audit-logs.md)（Implemented）  
 - **实现计划：** [docs/superpowers/plans/2026-10-20-audit-logs-governance.md](../plans/2026-10-20-audit-logs-governance.md)  
 - **关联：** ADR-0004（admin 才可看审计）、ADR-0005（下架已写入）、ADR-0011（冻结/恢复已写入）
 
@@ -193,7 +193,7 @@ Admin 页：手工过一遍筛选、分页、`operator` 看不到入口。无强
 - [x] `docs/adr/README.md`  
 - [x] `docs/roadmap.md` P0-5 挂 ADR/规格；下架 UI 视为已有  
 - [x] ADR-0004 审计查询指向 0008  
-- [ ] 实现后：0008 → Implemented；本规格 → Implemented；勾选「审计日志查询」
+- [x] 实现后：0008 → Implemented；本规格 → Implemented；勾选「审计日志查询」
 
 ## 8. 验收
 
