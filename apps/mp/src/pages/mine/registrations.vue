@@ -4,7 +4,10 @@
       <text class="section-title">账号</text>
       <text class="line">状态：{{ user.isLoggedIn ? "已登录" : "未登录" }}</text>
       <text class="line">昵称：{{ user.me?.nickname || "-" }}</text>
-      <text class="line">组织者：{{ user.publishStatusLabel }}</text>
+      <text
+        v-if="user.isLoggedIn && !user.canPublish"
+        class="msg"
+      >发布权限已关闭</text>
       <text v-if="identityMsg" class="msg">{{ identityMsg }}</text>
 
       <view class="btn-row">
@@ -30,23 +33,6 @@
             刷新状态
           </button>
           <button
-            v-if="user.canApplyOrganizer"
-            class="primary"
-            size="mini"
-            :disabled="busy"
-            @click="onApply"
-          >
-            申请组织者
-          </button>
-          <button
-            v-if="user.publishStatus === 'pending'"
-            class="ghost"
-            size="mini"
-            disabled
-          >
-            审核中
-          </button>
-          <button
             v-if="user.canPublish"
             class="primary"
             size="mini"
@@ -55,7 +41,6 @@
             发布活动
           </button>
           <button
-            v-if="user.canPublish"
             class="ghost"
             size="mini"
             @click="goOrganizerMine"
@@ -207,17 +192,10 @@ async function onLogin() {
   });
 }
 
-async function onApply() {
-  await withBusy(async () => {
-    const org = await user.applyOrganizer("MP Dev Club", "我的页申请");
-    identityMsg.value = `申请已提交：${org.publishStatus}`;
-  });
-}
-
 async function onRefresh() {
   await withBusy(async () => {
     await user.refreshIdentity();
-    identityMsg.value = `已刷新：${user.publishStatusLabel}`;
+    identityMsg.value = "已刷新";
   });
 }
 

@@ -1,5 +1,4 @@
 import { defineStore } from "pinia";
-import { PublishStatus } from "@activity/shared";
 import { loginWithWeixin } from "../adapters/auth";
 import { getUserToken, request, setUserToken } from "../utils/request";
 
@@ -7,22 +6,7 @@ export type MeResult = {
   id: string;
   nickname: string | null;
   avatarUrl: string | null;
-  organizer: { publishStatus: string } | null;
-};
-
-export type OrganizerApplyResult = {
-  id: string;
-  name: string;
-  publishStatus: string;
-  applyReason: string | null;
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  [PublishStatus.None]: "未申请",
-  [PublishStatus.Pending]: "审核中",
-  [PublishStatus.Approved]: "已通过（可发布）",
-  [PublishStatus.Rejected]: "已驳回",
-  [PublishStatus.Frozen]: "已冻结",
+  canPublish: boolean;
 };
 
 export const useUserStore = defineStore("user", {
@@ -33,21 +17,6 @@ export const useUserStore = defineStore("user", {
   }),
   getters: {
     isLoggedIn: (s) => Boolean(s.token),
-    publishStatus: (s) => s.me?.organizer?.publishStatus ?? null,
-    publishStatusLabel: (s) => {
-      const status = s.me?.organizer?.publishStatus;
-      if (!status) return "无组织者";
-      return STATUS_LABEL[status] ?? status;
-    },
-    canApplyOrganizer: (s) => {
-      if (!s.token) return false;
-      const status = s.me?.organizer?.publishStatus;
-      return (
-        !status ||
-        status === PublishStatus.None ||
-        status === PublishStatus.Rejected
-      );
-    },
     canPublish: (s) => s.canPublishFlag,
   },
   actions: {
@@ -74,18 +43,7 @@ export const useUserStore = defineStore("user", {
         return;
       }
       await this.fetchMe();
-      const res = await request<{ canPublish: boolean }>(
-        "/organizers/can-publish",
-      );
-      this.canPublishFlag = res.canPublish;
-    },
-    async applyOrganizer(name: string, reason?: string) {
-      const organizer = await request<OrganizerApplyResult>("/organizers/apply", {
-        method: "POST",
-        data: { name, reason },
-      });
-      await this.refreshIdentity();
-      return organizer;
+      this.canPublishFlag = this.me?.canPublish ?? false;
     },
   },
 });

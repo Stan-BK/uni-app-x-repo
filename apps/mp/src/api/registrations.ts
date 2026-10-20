@@ -75,6 +75,6 @@ export function listOrganizerRegistrations(
     page: number;
     pageSize: number;
   }>(
-    `/organizer/activities/${encodeURIComponent(activityId)}/registrations${toQuery(params)}`,
+    `/me/activities/${encodeURIComponent(activityId)}/registrations${toQuery(params)}`,
   );
 }

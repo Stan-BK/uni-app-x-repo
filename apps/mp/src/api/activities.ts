@@ -46,7 +46,7 @@ export type UpsertBody = Partial<{
 }>;
 
 export function createActivity(body: UpsertBody) {
-  return request<Activity>("/organizer/activities", {
+  return request<Activity>("/me/activities", {
     method: "POST",
     data: body,
   });
@@ -55,35 +55,35 @@ export function createActivity(body: UpsertBody) {
 export function listMyActivities(lifecycle?: string) {
   const q = lifecycle ? `?lifecycle=${encodeURIComponent(lifecycle)}` : "";
   return request<{ items: Activity[]; total: number }>(
-    `/organizer/activities${q}`,
+    `/me/activities${q}`,
   );
 }
 
 export function getActivity(id: string) {
-  return request<Activity>(`/organizer/activities/${id}`);
+  return request<Activity>(`/me/activities/${id}`);
 }
 
 export function updateActivity(id: string, body: UpsertBody) {
-  return request<Activity>(`/organizer/activities/${id}`, {
+  return request<Activity>(`/me/activities/${id}`, {
     method: "PATCH",
     data: body,
   });
 }
 
 export function publishActivity(id: string) {
-  return request<Activity>(`/organizer/activities/${id}/publish`, {
+  return request<Activity>(`/me/activities/${id}/publish`, {
     method: "POST",
   });
 }
 
 export function unpublishActivity(id: string) {
-  return request<Activity>(`/organizer/activities/${id}/unpublish`, {
+  return request<Activity>(`/me/activities/${id}/unpublish`, {
     method: "POST",
   });
 }
 
 export function cancelActivity(id: string, reason?: string) {
-  return request<Activity>(`/organizer/activities/${id}/cancel`, {
+  return request<Activity>(`/me/activities/${id}/cancel`, {
     method: "POST",
     data: { reason },
   });
@@ -94,7 +94,7 @@ export function uploadCover(filePath: string): Promise<{ url: string }> {
   const token = getUserToken();
   return new Promise((resolve, reject) => {
     uni.uploadFile({
-      url: `${getApiBase()}/organizer/uploads/cover`,
+      url: `${getApiBase()}/me/uploads/cover`,
       filePath,
       name: "file",
       header: token ? { Authorization: `Bearer ${token}` } : {},
