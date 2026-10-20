@@ -38,28 +38,46 @@ async function load(nextPage = page.value) {
 }
 
 function displayName(row: AdminUserRow) {
-  return row.nickname || "用户";
+  return row.nickname?.trim() || "用户";
 }
 
-async function promptReason(title: string, confirmButtonText: string) {
-  const { value } = await ElMessageBox.prompt("请输入原因", title, {
-    confirmButtonText,
-    cancelButtonText: "取消",
-    inputPattern: /\S+/,
-    inputErrorMessage: "原因不能为空",
-  });
+function subjectLabel(row: AdminUserRow) {
+  return `${displayName(row)}（${row.id}）`;
+}
+
+async function handleUnauthorized(e: unknown) {
+  if (e instanceof ApiError && e.status === 401) {
+    await router.replace("/login");
+    return true;
+  }
+  return false;
+}
+
+async function promptReason(row: AdminUserRow, action: "冻结" | "恢复") {
+  const subject = subjectLabel(row);
+  const { value } = await ElMessageBox.prompt(
+    `将${action}「${subject}」的发布权，请输入原因`,
+    `${action}发布权 · ${subject}`,
+    {
+      confirmButtonText: action,
+      cancelButtonText: "取消",
+      inputPattern: /\S+/,
+      inputErrorMessage: "原因不能为空",
+    },
+  );
   return value.trim();
 }
 
 async function onFreeze(row: AdminUserRow) {
   try {
-    const reason = await promptReason("冻结发布权", "冻结");
+    const reason = await promptReason(row, "冻结");
     busyId.value = row.id;
     await freezePublish(row.id, reason);
     ElMessage.success("已冻结发布权");
     await load();
   } catch (e) {
     if (e === "cancel" || e === "close") return;
+    if (await handleUnauthorized(e)) return;
     ElMessage.error(e instanceof ApiError ? e.message : "冻结失败");
   } finally {
     busyId.value = null;
@@ -68,13 +86,14 @@ async function onFreeze(row: AdminUserRow) {
 
 async function onUnfreeze(row: AdminUserRow) {
   try {
-    const reason = await promptReason("恢复发布权", "恢复");
+    const reason = await promptReason(row, "恢复");
     busyId.value = row.id;
     await unfreezePublish(row.id, reason);
     ElMessage.success("已恢复发布权");
     await load();
   } catch (e) {
     if (e === "cancel" || e === "close") return;
+    if (await handleUnauthorized(e)) return;
     ElMessage.error(e instanceof ApiError ? e.message : "恢复失败");
   } finally {
     busyId.value = null;
@@ -109,13 +128,19 @@ onMounted(() => {
     <el-table
       v-loading="loading"
       class="table"
+      row-key="id"
       :data="rows"
       stripe
       empty-text="暂无用户"
     >
-      <el-table-column label="昵称" min-width="160">
+      <el-table-column label="昵称" min-width="140">
         <template #default="{ row }">
           {{ displayName(row) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="用户 ID" min-width="220">
+        <template #default="{ row }">
+          <span class="user-id">{{ row.id }}</span>
         </template>
       </el-table-column>
       <el-table-column label="发布权" width="120">
@@ -194,6 +219,11 @@ onMounted(() => {
 }
 .table {
   width: 100%;
+}
+.user-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  user-select: all;
 }
 .pager {
   margin-top: 16px;
