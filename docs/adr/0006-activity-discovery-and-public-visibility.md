@@ -2,7 +2,8 @@
 
 - **状态：** Implemented
 - **日期：** 2026-10-19
-- **关联：** roadmap P0-3、PRD AT-ACT-06（修订）、ADR-0005；报名 → ADR-0007
+- **修订：** 2026-10-20 公开 DTO 主办改为 `hostName`（[ADR-0011](./0011-default-publish-permission.md)）。
+- **关联：** roadmap P0-3、PRD AT-ACT-06（修订）、ADR-0005、ADR-0011；报名 → ADR-0007
 - **设计规格：** [docs/superpowers/specs/2026-10-19-p0-3-discovery-and-detail-design.md](../superpowers/specs/2026-10-19-p0-3-discovery-and-detail-design.md)
 
 ## 背景
@@ -38,8 +39,8 @@ P0-2 已落地组织者发布与运营下架；首页/详情仍接 mock。P0-3 �
    - 列表不返回已报名人数；可返回 `capacity` 上限。
 
 6. **公开 DTO 裁剪**  
-   - 含：`id`、`title`、`coverUrl`、`category`、`description`、`rules`（详情）、时间地点坐标、`capacity`、费用字段、`lifecycle`、`displayStatus`、`publishedAt`、`organizer.displayName`。  
-   - 不含：`cancelReason`、`removeReason`、`platformFeeBps`、组织者联系方式/内部状态、审计字段。
+   - 含：`id`、`title`、`coverUrl`、`category`、`description`、`rules`（详情）、时间地点坐标、`capacity`、费用字段、`lifecycle`、`displayStatus`、`publishedAt`、`hostName`（用户昵称，见 ADR-0011）。  
+   - 不含：`cancelReason`、`removeReason`、`platformFeeBps`、用户联系方式/内部状态、审计字段。
 
 7. **端上**  
    - mp 首页/详情接公开 API；报名 CTA 可占位，真实报名属 P0-4。  

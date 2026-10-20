@@ -6,12 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import {
-  ActivityLifecycle,
-  FeeType,
-  PublishStatus,
-  type Activity,
-} from "@prisma/client";
+import { ActivityLifecycle, FeeType, type Activity } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { isActivityCategory } from "./activity-categories";
 import type { UpsertActivityDto } from "./dto/upsert-activity.dto";
@@ -28,23 +23,24 @@ export class ActivitiesService {
     private readonly registrationCancel: RegistrationCancelHook,
   ) {}
 
-  private async requireApprovedOrganizer(userId: string) {
-    const organizer = await this.prisma.organizer.findUnique({
-      where: { ownerUserId: userId },
-    });
-    if (!organizer || organizer.publishStatus !== PublishStatus.approved) {
-      throw new ForbiddenException("Publisher approval required");
-    }
-    return organizer;
+  private async requireUser(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new ForbiddenException("用户不存在");
+    return user;
+  }
+
+  private async requireCanPublish(userId: string) {
+    const user = await this.requireUser(userId);
+    if (!user.canPublish) throw new ForbiddenException("发布权限已关闭");
+    return user;
   }
 
   private async requireOwnedActivity(userId: string, activityId: string) {
-    const organizer = await this.requireApprovedOrganizer(userId);
     const activity = await this.prisma.activity.findFirst({
-      where: { id: activityId, organizerId: organizer.id },
+      where: { id: activityId, ownerUserId: userId },
     });
     if (!activity) throw new NotFoundException("Activity not found");
-    return { organizer, activity };
+    return { activity };
   }
 
   private static readonly publishFieldLabels: Record<string, string> = {
@@ -130,12 +126,12 @@ export class ActivitiesService {
   }
 
   async create(userId: string, dto: UpsertActivityDto): Promise<Activity> {
-    const organizer = await this.requireApprovedOrganizer(userId);
+    await this.requireCanPublish(userId);
     if (!dto.title?.trim()) {
       throw new BadRequestException("title is required");
     }
     const data = {
-      organizerId: organizer.id,
+      ownerUserId: userId,
       title: dto.title.trim(),
       ...this.mapDto({ ...dto, title: undefined }),
       lifecycle: ActivityLifecycle.draft,
@@ -153,6 +149,9 @@ export class ActivitiesService {
     dto: UpsertActivityDto,
   ): Promise<Activity> {
     const { activity } = await this.requireOwnedActivity(userId, id);
+    if (dto.publish) {
+      await this.requireCanPublish(userId);
+    }
     if (
       activity.lifecycle === ActivityLifecycle.cancelled ||
       activity.lifecycle === ActivityLifecycle.removed ||
@@ -172,6 +171,7 @@ export class ActivitiesService {
 
   async publish(userId: string, id: string): Promise<Activity> {
     const { activity } = await this.requireOwnedActivity(userId, id);
+    await this.requireCanPublish(userId);
     if (activity.lifecycle !== ActivityLifecycle.draft) {
       throw new ConflictException("Only draft can be published");
     }
@@ -226,9 +226,8 @@ export class ActivitiesService {
     userId: string,
     opts: { lifecycle?: ActivityLifecycle; skip?: number; take?: number },
   ) {
-    const organizer = await this.requireApprovedOrganizer(userId);
     const where = {
-      organizerId: organizer.id,
+      ownerUserId: userId,
       ...(opts.lifecycle ? { lifecycle: opts.lifecycle } : {}),
     };
     const take = Math.min(opts.take ?? 20, 50);

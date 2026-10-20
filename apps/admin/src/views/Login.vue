@@ -33,7 +33,7 @@ async function onSubmit() {
     const redirect =
       typeof route.query.redirect === "string"
         ? route.query.redirect
-        : "/organizers";
+        : "/users";
     await router.replace(redirect);
   } catch (e) {
     ElMessage.error(e instanceof ApiError ? e.message : "登录失败");

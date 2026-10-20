@@ -13,7 +13,7 @@ import {
   CurrentUser,
   type CurrentUserPayload,
 } from "../common/decorators/current-user.decorator";
-import { PublisherGuard } from "../common/guards/publisher.guard";
+import { CanPublishGuard } from "../common/guards/can-publish.guard";
 import { UserJwtGuard } from "../common/guards/user-jwt.guard";
 import { ListMyRegistrationsQuery } from "../registrations/dto/list-my-registrations.query";
 import { RegistrationsService } from "../registrations/registrations.service";
@@ -21,8 +21,8 @@ import { ActivitiesService } from "./activities.service";
 import { CancelActivityDto } from "./dto/cancel-activity.dto";
 import { UpsertActivityDto } from "./dto/upsert-activity.dto";
 
-@Controller("organizer/activities")
-@UseGuards(UserJwtGuard, PublisherGuard)
+@Controller("me/activities")
+@UseGuards(UserJwtGuard)
 export class ActivitiesController {
   constructor(
     private readonly activitiesService: ActivitiesService,
@@ -30,6 +30,7 @@ export class ActivitiesController {
   ) {}
 
   @Post()
+  @UseGuards(CanPublishGuard)
   create(
     @CurrentUser() user: CurrentUserPayload,
     @Body() dto: UpsertActivityDto,
@@ -57,7 +58,7 @@ export class ActivitiesController {
     @Param("id") id: string,
     @Query() query: ListMyRegistrationsQuery,
   ) {
-    return this.registrations.listForOrganizer(user.userId, id, query);
+    return this.registrations.listForOwner(user.userId, id, query);
   }
 
   @Get(":id")
@@ -75,6 +76,7 @@ export class ActivitiesController {
   }
 
   @Post(":id/publish")
+  @UseGuards(CanPublishGuard)
   publish(@CurrentUser() user: CurrentUserPayload, @Param("id") id: string) {
     return this.activitiesService.publish(user.userId, id);
   }

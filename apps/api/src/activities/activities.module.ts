@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
-import { PublisherGuard } from "../common/guards/publisher.guard";
+import { CanPublishGuard } from "../common/guards/can-publish.guard";
 import { PrismaRegistrationCancelHook } from "../registrations/prisma-registration-cancel.hook";
 import { RegistrationsModule } from "../registrations/registrations.module";
 import { ActivitiesController } from "./activities.controller";
@@ -12,7 +12,7 @@ import { REGISTRATION_CANCEL_HOOK } from "./registration-cancel.hook";
   controllers: [ActivitiesController],
   providers: [
     ActivitiesService,
-    PublisherGuard,
+    CanPublishGuard,
     {
       provide: REGISTRATION_CANCEL_HOOK,
       useClass: PrismaRegistrationCancelHook,

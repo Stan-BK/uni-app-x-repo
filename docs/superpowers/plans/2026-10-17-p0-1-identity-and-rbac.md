@@ -1,5 +1,7 @@
 # P0-1 身份与权限 Implementation Plan
 
+> **历史计划。** 组织者申请/审核已被 [ADR-0011](../../adr/0011-default-publish-permission.md) 取代；登录与 Admin RBAC 决策仍有效。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 落地 NestJS + Prisma API 的用户/组织者身份与 Admin RBAC，使「无发布权不可创建活动」「未授权不可进后台」可验收。

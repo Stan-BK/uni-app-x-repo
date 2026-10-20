@@ -98,5 +98,27 @@ describe("AuthService", () => {
     expect(result.user.id).toBe("user-dev-2");
     expect(weixin.code2Session).not.toHaveBeenCalled();
   });
+
+  it("getMe returns canPublish from user row without organizer", async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: "user-1",
+      nickname: "Alice",
+      avatarUrl: "https://example.com/a.png",
+      canPublish: true,
+    });
+
+    const result = await service.getMe("user-1");
+
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+    });
+    expect(result).toEqual({
+      id: "user-1",
+      nickname: "Alice",
+      avatarUrl: "https://example.com/a.png",
+      canPublish: true,
+    });
+    expect(result).not.toHaveProperty("organizer");
+  });
 });
 

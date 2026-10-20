@@ -62,7 +62,7 @@
           </view>
           <view class="info-row">
             <text class="label">主办</text>
-            <text class="value">{{ activity.organizer.displayName }}</text>
+            <text class="value">{{ activity.hostName }}</text>
           </view>
           <view class="info-row">
             <text class="label">名额</text>

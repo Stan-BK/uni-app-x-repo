@@ -2,7 +2,8 @@
 
 - **状态：** Implemented
 - **日期：** 2026-10-19
-- **关联：** roadmap P0-2、PRD AT-ACT（修订）、ADR-0003、ADR-0004；支付另见未来支付 ADR / backend-ops 阶段 C
+- **修订：** 2026-10-20 起活动归属 `User`（`ownerUserId`），发布权见 [ADR-0011](./0011-default-publish-permission.md)；生命周期决策不变。
+- **关联：** roadmap P0-2、PRD AT-ACT（修订）、ADR-0003（登录）、ADR-0011（发布权）、ADR-0004；支付另见未来支付 ADR / backend-ops 阶段 C
 - **设计规格：** [docs/superpowers/specs/2026-10-19-p0-2-activity-domain-design.md](../superpowers/specs/2026-10-19-p0-2-activity-domain-design.md)
 
 ## 背景
@@ -15,15 +16,15 @@ P0-2 需落地活动创建、草稿、发布与组织者侧管理。原 PRD 默�
    - 枚举：`draft | published | cancelled | removed | ended`  
    - 从 `packages/shared` **废弃** `ActivityReviewStatus`（不再作为活动权威状态）。
 
-2. **组织者可直接发布**（须 `Organizer.publishStatus=approved`，沿用 PublisherGuard）。  
+2. **所有者可直接发布**（须 `User.canPublish=true`，见 ADR-0011）。  
    - 支持草稿保存与编辑。  
    - `draft` → `published`：发布前做完整必填与时间校验。  
-   - `published` → `draft`（退回草稿）或 → `cancelled`（取消活动）：由组织者选择。  
-   - 退回草稿 / 取消 / 运营下架时：**取消该活动全部有效报名**（退费在支付 ADR；P0-4 前钩子可为空实现）。
+   - `published` → `draft`（退回草稿）或 → `cancelled`（取消活动）：由活动所有者选择。  
+   - 退回草稿 / 取消 / 运营下架时：**取消该活动全部有效报名**（退费在支付 ADR；钩子见 ADR-0007）。
 
-3. **运营下架为 `removed`**，与组织者退回草稿区分。  
+3. **运营下架为 `removed`**，与所有者退回草稿区分。  
    - 仅 Admin（`operator`/`admin`）可将 `published` → `removed`。  
-   - 组织者不可将 `removed` / `cancelled` / `ended` 自行改回 `published`。
+   - 所有者不可将 `removed` / `cancelled` / `ended` 自行改回 `published`。
 
 4. **`ended`**：`now >= endAt` 时对 `published` 视为已结束；P0 允许查询时计算展示，持久化写库可后置。
 
@@ -36,12 +37,12 @@ P0-2 需落地活动创建、草稿、发布与组织者侧管理。原 PRD 默�
    - 首期地点按线下；不做纯线上场次。  
    - 可创建 `paid` 活动并校验金额，**不开放支付/报名收款**。
 
-6. **API 边界（P0-2）**  
-   - 组织者：`/organizer/activities` CRUD 语义的创建/编辑/列表/详情 + `publish` / `unpublish` / `cancel`。  
-   - 运营：`POST /admin/activities/:id/remove`（+ 最小列表便于联调）；写 `AuditLog`。  
-   - 公开发现/详情 → ADR-0006；报名 → ADR-0007；完整治理队列 UI 可加强于 P0-5。
+6. **API 边界**  
+   - 用户（所有者）：`/me/activities` CRUD + `publish` / `unpublish` / `cancel`（原 `/organizer/activities`，见 ADR-0011）。  
+   - 运营：`POST /admin/activities/:id/remove`（+ 列表）；写 `AuditLog`。  
+   - 公开发现/详情 → ADR-0006；报名 → ADR-0007；治理 UI → P0-5 / ADR-0008。
 
-7. **产品默认修订**：D-02 改为「组织者可直接发布；运营可下架」。原 AT-ACT-04/05（提交审核/驳回）不再作为 P0-2 验收。
+7. **产品默认修订**：D-02 为「可发布用户直接上架；运营可下架」。原 AT-ACT-04/05（提交审核/驳回）不作 P0 验收。
 
 ## 备选方案
 

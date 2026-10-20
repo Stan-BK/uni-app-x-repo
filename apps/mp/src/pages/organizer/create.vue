@@ -149,10 +149,20 @@
           </button>
         </template>
         <template v-else>
-          <button class="ghost" :disabled="saving" @click="saveDraft">
+          <button
+            v-if="!isNewActivity || user.canPublish"
+            class="ghost"
+            :disabled="saving"
+            @click="saveDraft"
+          >
             保存草稿
           </button>
-          <button class="primary" :disabled="saving" @click="publish">
+          <button
+            v-if="user.canPublish"
+            class="primary"
+            :disabled="saving"
+            @click="publish"
+          >
             发布
           </button>
         </template>
@@ -193,6 +203,8 @@ type UniFormsInstance = {
 const user = useUserStore();
 const formRef = ref<UniFormsInstance | null>(null);
 const editingId = ref<string | null>(null);
+/** 路由带 id 即为编辑；不要等 getActivity 完成再判断，避免 onShow 误当成新建 */
+const isNewActivity = ref(true);
 const lifecycle = ref<Activity["lifecycle"] | null>(null);
 const saving = ref(false);
 const uploadingCover = ref(false);
@@ -507,14 +519,27 @@ function fillForm(a: Activity) {
       : "";
 }
 
-function ensureCanPublish(): boolean {
+function ensureLoggedIn(): boolean {
   if (!user.isLoggedIn) {
     uni.showToast({ title: "请先登录", icon: "none" });
     return false;
   }
+  return true;
+}
+
+async function ensureCanPublish(): Promise<boolean> {
+  if (!ensureLoggedIn()) return false;
+  if (!user.me) {
+    try {
+      await user.refreshIdentity();
+    } catch {
+      uni.showToast({ title: "无法确认发布权限", icon: "none" });
+      return false;
+    }
+  }
   if (!user.canPublish) {
-    uni.showToast({ title: "暂无发布权限", icon: "none" });
-    msg.value = "无发布权限";
+    uni.showToast({ title: "发布权限已关闭", icon: "none" });
+    msg.value = "发布权限已关闭";
     return false;
   }
   return true;
@@ -599,7 +624,11 @@ async function saveOrCreate(): Promise<string> {
 }
 
 async function saveDraft() {
-  if (!ensureCanPublish()) return;
+  if (editingId.value) {
+    if (!ensureLoggedIn()) return;
+  } else if (!(await ensureCanPublish())) {
+    return;
+  }
   if (!form.title.trim()) {
     showError("保存草稿至少填写标题");
     return;
@@ -619,7 +648,7 @@ async function saveDraft() {
 }
 
 async function publish() {
-  if (!ensureCanPublish()) return;
+  if (!(await ensureCanPublish())) return;
   if (isPublishedEdit.value) {
     showError("活动已发布，请使用「保存」更新内容");
     return;
@@ -650,7 +679,7 @@ async function publish() {
 
 /** 已发布活动：只 PATCH 更新，不再调 publish */
 async function savePublished() {
-  if (!ensureCanPublish()) return;
+  if (!ensureLoggedIn()) return;
   if (!editingId.value || !isPublishedEdit.value) {
     showError("当前不是已发布活动");
     return;
@@ -689,6 +718,7 @@ async function loadActivity(id: string) {
 
 onLoad((query) => {
   const id = String(query?.id ?? "").trim();
+  isNewActivity.value = !id;
   if (id) {
     void loadActivity(id);
   }
@@ -699,11 +729,15 @@ onShow(() => {
     uni.showToast({ title: "请先登录", icon: "none" });
     return;
   }
-  void user.refreshIdentity().then(() => {
-    if (!user.canPublish) {
-      uni.showToast({ title: "暂无发布权限", icon: "none" });
-    }
-  });
+  void user.refreshIdentity()
+    .then(() => {
+      if (isNewActivity.value && user.me && !user.canPublish) {
+        uni.showToast({ title: "发布权限已关闭", icon: "none" });
+      }
+    })
+    .catch(() => {
+      /* 网络失败时保留本地态 */
+    });
 });
 </script>
 
