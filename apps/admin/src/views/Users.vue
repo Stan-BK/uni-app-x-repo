@@ -8,7 +8,7 @@ import {
   unfreezePublish,
   type AdminUserRow,
 } from "../api/admin";
-import { ApiError, setAdminToken } from "../api/http";
+import { ApiError, isAdminRole, setAdminToken } from "../api/http";
 
 const router = useRouter();
 const rows = ref<AdminUserRow[]>([]);
@@ -119,6 +119,7 @@ onMounted(() => {
     <div class="bar">
       <h1>用户发布权</h1>
       <el-space>
+        <router-link v-if="isAdminRole()" class="nav-link" to="/audit-logs">审计日志</router-link>
         <router-link class="nav-link" to="/activities">活动列表</router-link>
         <el-button :loading="loading" @click="load()">刷新</el-button>
         <el-button @click="logout">退出</el-button>
