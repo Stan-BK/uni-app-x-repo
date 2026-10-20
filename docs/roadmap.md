@@ -92,13 +92,14 @@
 
 ## P0-5 运营治理（发布权 / 下架 / 审计）
 
-**ADR：** 0008（待写；范围以 [ADR-0011](./adr/0011-default-publish-permission.md) 为准）  
-**前置：** 先按 ADR-0011 去掉 Organizer、用户默认可发布。
+**ADR：** [0008](./adr/0008-operational-governance-audit-logs.md)（Accepted）  
+**设计：** [docs/superpowers/specs/2026-10-20-audit-logs-governance-design.md](./superpowers/specs/2026-10-20-audit-logs-governance-design.md)  
+**前置：** [ADR-0011](./adr/0011-default-publish-permission.md) 已落地（去掉 Organizer、用户默认可发布）。
 
 - [x] 去掉 Organizer / 申请流；`User.canPublish` 默认 true（ADR-0011）  
 - [x] Admin：冻结/恢复发布权（含原因与审计）  
-- [ ] 活动下架 UI（API 已有）  
-- [ ] 审计日志查询  
+- [x] 活动下架 UI（API 已有；本期不打磨）  
+- [ ] 审计日志查询（ADR-0008 本期增量）  
 
 **验收：** AT-ADM 以「冻结发布权 + 下架 + 审计」为准；不再验收「成为组织者」申请队列。
 

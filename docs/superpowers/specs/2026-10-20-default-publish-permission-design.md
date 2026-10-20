@@ -101,11 +101,11 @@ DTO：以 `hostName: string` 替换 `organizer: { displayName }`。
 
 ## 7. 对 P0-5 的影响
 
-ADR-0008（待写）不再包含「组织者申请队列」，改为：
+[ADR-0008](../../adr/0008-operational-governance-audit-logs.md)（Accepted）不再包含「组织者申请队列」，改为：
 
 - 用户发布权冻结/恢复（原因、审计）  
-- 活动下架（已有 API，补 Admin UI）  
-- 审计日志查询  
+- 活动下架（API + Admin 列表已有）  
+- 审计日志查询（本期增量）  
 
 ## 8. 非目标
 
