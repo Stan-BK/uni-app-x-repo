@@ -1,6 +1,6 @@
 # ADR-0011: 用户默认可发布（取消 Organizer）
 
-- **状态：** Accepted
+- **状态：** Implemented
 - **日期：** 2026-10-20
 - **关联：** 取代 [ADR-0003](./0003-identity-and-organizer.md) 中的 Organizer / 申请发布权；修订 ADR-0004～0007；roadmap 下一阶段 P0-5 / ADR-0008
 - **设计规格：** [docs/superpowers/specs/2026-10-20-default-publish-permission-design.md](../superpowers/specs/2026-10-20-default-publish-permission-design.md)
@@ -52,7 +52,8 @@ ADR-0003 规定独立 `Organizer` 实体、`publishStatus` 申请态、默认无
 
 - 正面：发布路径变短；P0-5 治理变为冻结发布权 + 下架 + 审计，不再做「成为组织者」审核。  
 - 负面 / 跟进：数据迁移；mp「申请组织者」入口拆除；Admin 组织者队列改为用户发布权；ADR-0008 按本决策撰写。  
-- 历史 P0-1～P0-4 规格/计划保留为当时实现记录，文首可注明被本 ADR 取代的组织者部分。
+- 历史 P0-1～P0-4 规格/计划保留为当时实现记录，文首可注明被本 ADR 取代的组织者部分。  
+- 已落地：迁移 `drop_organizer_add_owner`；活动管理 `/me/activities`；Admin `/users` 冻结/恢复发布权。
 
 ## 实现备注
 

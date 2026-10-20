@@ -1,8 +1,8 @@
 # 用户默认可发布（取消组织者）设计规格
 
 - **日期：** 2026-10-20  
-- **状态：** Accepted（待实现）  
-- **关联 ADR：** [0011](../../adr/0011-default-publish-permission.md)（Accepted，取代 ADR-0003 的 Organizer 部分）  
+- **状态：** Implemented  
+- **关联 ADR：** [0011](../../adr/0011-default-publish-permission.md)（Implemented，取代 ADR-0003 的 Organizer 部分）  
 - **关联：** ADR-0004～0007 修订、roadmap P0-5 / ADR-0008；支付仍 P2
 
 ## 1. 目标
@@ -122,7 +122,7 @@ ADR-0008（待写）不再包含「组织者申请队列」，改为：
 - [x] `prd-summary.md` D-01 / 角色  
 - [x] `roadmap.md` P0-5 范围  
 - [x] `docs/技术栈.md` mp 职责表述  
-- [ ] 实现后 0011 → Implemented；本规格 → Implemented  
+- [x] 实现后 0011 → Implemented；本规格 → Implemented  
 
 ## 10. 验收
 

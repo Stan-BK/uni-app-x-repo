@@ -95,8 +95,8 @@
 **ADR：** 0008（待写；范围以 [ADR-0011](./adr/0011-default-publish-permission.md) 为准）  
 **前置：** 先按 ADR-0011 去掉 Organizer、用户默认可发布。
 
-- [ ] 去掉 Organizer / 申请流；`User.canPublish` 默认 true（ADR-0011）  
-- [ ] Admin：冻结/恢复发布权（含原因与审计）  
+- [x] 去掉 Organizer / 申请流；`User.canPublish` 默认 true（ADR-0011）  
+- [x] Admin：冻结/恢复发布权（含原因与审计）  
 - [ ] 活动下架 UI（API 已有）  
 - [ ] 审计日志查询  
 

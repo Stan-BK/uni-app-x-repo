@@ -23,6 +23,6 @@
 | 0008 | 发布权冻结、下架与审计 | Proposed（待写；范围见 ADR-0011） |
 | 0009 | 联调、验收与观测基线 | Proposed（待写） |
 | [0010](./0010-backend-ops-stack.md) | 后端基础设施与阶段升级选型 | Accepted |
-| [0011](./0011-default-publish-permission.md) | 用户默认可发布（取消 Organizer） | Accepted |
+| [0011](./0011-default-publish-permission.md) | 用户默认可发布（取消 Organizer） | Implemented |
 
 状态说明：`Proposed` → `Accepted` → `Implemented`；废弃用 `Superseded` / `Rejected`。
