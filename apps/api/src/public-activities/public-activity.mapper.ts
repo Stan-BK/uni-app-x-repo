@@ -35,10 +35,12 @@ export function computeDisplayStatus(
   confirmedCount: number,
   capacity: number,
   now = new Date(),
+  registrationDeadlineAt?: Date | null,
 ): DisplayStatus {
   if (endAt && now >= endAt) return ActivityDisplayStatus.Ended;
   if (confirmedCount >= capacity) return ActivityDisplayStatus.Full;
-  if (startAt && now < startAt) return ActivityDisplayStatus.Upcoming;
+  const deadline = registrationDeadlineAt ?? startAt;
+  if (deadline && now >= deadline) return ActivityDisplayStatus.Closed;
   return ActivityDisplayStatus.Open;
 }
 
@@ -74,6 +76,7 @@ export function toPublicDto(
       opts.confirmedCount,
       row.capacity,
       opts.now,
+      row.registrationDeadlineAt,
     ),
     publishedAt: row.publishedAt?.toISOString() ?? null,
     organizer: { displayName: row.organizer.name },

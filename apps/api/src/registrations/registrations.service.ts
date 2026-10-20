@@ -243,6 +243,7 @@ export class RegistrationsService {
             confirmedByActivity.get(row.activity.id) ?? 0,
             row.activity.capacity,
             now,
+            row.activity.registrationDeadlineAt,
           ),
         },
       })),

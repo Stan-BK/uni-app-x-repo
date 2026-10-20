@@ -45,7 +45,7 @@ P0-3 已落地公开发现与详情；详情报名 CTA 仍为占位。P0-4 需�
    - 保证并发下不超卖；不做分布式锁、不引入 Redis。
 
 7. **满员展示态**  
-   - 在公开 DTO 的 `displayStatus` 中启用 `full`：未结束且有效报名数 `>= capacity` 时为 `full`（优先级高于 `upcoming`/`open`，低于 `ended`）。  
+   - 在公开 DTO 的 `displayStatus` 中启用 `full`：未结束且有效报名数 `>= capacity` 时为 `full`（优先级高于 `open`，低于 `ended`）。活动未开场但报名未截止时为 `open`，不使用 `upcoming`。  
    - 列表可不返回已报名人数；可返回 `capacity`。
 
 8. **取消报名（两类）**  

@@ -125,7 +125,7 @@ describe("PublicActivitiesService", () => {
     prisma.registration.count.mockResolvedValue(0);
 
     const dto = await service.getById("a1");
-    expect(dto.displayStatus).toBe("upcoming");
+    expect(dto.displayStatus).toBe("open");
     expect(dto.organizer).toEqual({ displayName: "探索社" });
     expect(dto).not.toHaveProperty("cancelReason");
     expect(dto).not.toHaveProperty("removeReason");
@@ -161,6 +161,41 @@ describe("PublicActivitiesService", () => {
 
     const dto = await service.getById("a1");
     expect(dto.displayStatus).toBe("full");
+  });
+
+  it("get returns closed when registration deadline passed", async () => {
+    const start = new Date("2030-01-01T10:00:00.000Z");
+    const end = new Date("2030-01-01T12:00:00.000Z");
+    prisma.activity.findUnique.mockResolvedValue({
+      id: "a1",
+      title: "徒步",
+      coverUrl: "https://x/c.jpg",
+      category: "观赛",
+      description: null,
+      rules: "须知",
+      startAt: start,
+      endAt: end,
+      registrationDeadlineAt: new Date("2020-01-01T00:00:00.000Z"),
+      allowUserCancel: true,
+      refundable: false,
+      place: "滨江",
+      placeLat: 1,
+      placeLng: 2,
+      capacity: 10,
+      feeType: "free",
+      feeCents: 0,
+      feeNote: null,
+      lifecycle: ActivityLifecycle.published,
+      publishedAt: new Date("2026-10-01T00:00:00.000Z"),
+      cancelReason: null,
+      removeReason: null,
+      platformFeeBps: 100,
+      organizer: { name: "探索社" },
+    });
+    prisma.registration.count.mockResolvedValue(0);
+
+    const dto = await service.getById("a1");
+    expect(dto.displayStatus).toBe("closed");
   });
 
   it("get throws cancelled with code", async () => {

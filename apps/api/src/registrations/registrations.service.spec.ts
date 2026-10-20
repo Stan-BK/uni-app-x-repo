@@ -357,7 +357,7 @@ describe("RegistrationsService", () => {
             coverUrl: "https://x/c.jpg",
             place: "滨江",
             startAt: start.toISOString(),
-            displayStatus: "upcoming",
+            displayStatus: "open",
           }),
         }),
       ],

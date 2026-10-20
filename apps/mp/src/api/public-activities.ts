@@ -20,7 +20,7 @@ export type PublicActivity = {
   feeCents: number;
   feeNote?: string | null;
   lifecycle: string;
-  displayStatus: "upcoming" | "open" | "ended" | "full";
+  displayStatus: "upcoming" | "open" | "ended" | "full" | "closed";
   publishedAt?: string | null;
   organizer: { displayName: string };
 };

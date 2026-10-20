@@ -42,12 +42,14 @@ export const RegistrationStatus = {
 export type RegistrationStatus =
   (typeof RegistrationStatus)[keyof typeof RegistrationStatus];
 
-/** 公开展示态（由 startAt/endAt 与时间、名额等计算） */
+/** 公开展示态（由时间、名额、报名截止计算；反映报名通道而非活动是否已开场） */
 export const ActivityDisplayStatus = {
+  /** @deprecated 未开始且报名未截止统一为 open；保留以兼容旧客户端 */
   Upcoming: "upcoming",
   Open: "open",
   Ended: "ended",
   Full: "full",
+  Closed: "closed",
 } as const;
 export type ActivityDisplayStatus =
   (typeof ActivityDisplayStatus)[keyof typeof ActivityDisplayStatus];

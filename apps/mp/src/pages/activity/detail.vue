@@ -134,10 +134,11 @@ import {
 import { ApiError, getUserToken } from "@/utils/request";
 
 const DISPLAY_LABEL: Record<string, string> = {
-  upcoming: "未开始",
+  upcoming: "报名中",
   open: "报名中",
   ended: "已结束",
   full: "已满员",
+  closed: "报名截止",
 };
 
 const activity = ref<PublicActivity | null>(null);
@@ -166,21 +167,11 @@ const displayLabel = computed(() => {
   return DISPLAY_LABEL[status] ?? status;
 });
 
-const registrationClosed = computed(() => {
-  const a = activity.value;
-  if (!a) return false;
-  const deadlineIso = a.registrationDeadlineAt ?? a.startAt;
-  if (!deadlineIso) return false;
-  const d = new Date(deadlineIso);
-  return !Number.isNaN(d.getTime()) && Date.now() >= d.getTime();
-});
-
 const canRegister = computed(() => {
   const a = activity.value;
   if (!a) return false;
   if (alreadyRegistered.value) return false;
   if (a.feeType === "paid") return false;
-  if (registrationClosed.value) return false;
   return a.displayStatus === "open" || a.displayStatus === "upcoming";
 });
 
@@ -192,7 +183,7 @@ const ctaText = computed(() => {
   if (alreadyRegistered.value) return "已报名";
   if (a.feeType === "paid") return "暂不支持线上报名";
   if (a.displayStatus === "ended") return "活动已结束";
-  if (registrationClosed.value) return "报名已截止";
+  if (a.displayStatus === "closed") return "报名已截止";
   if (a.displayStatus === "full") return "名额已满";
   return "立即报名";
 });
@@ -396,12 +387,14 @@ function onCta() {
   background: #f3f4f6;
 }
 
+.status.open,
 .status.upcoming {
-  color: #1e3a5f;
-  background: #eff6ff;
+  color: #0f766e;
+  background: #ecfdf5;
 }
 
-.status.full {
+.status.full,
+.status.closed {
   color: #b45309;
   background: #fffbeb;
 }

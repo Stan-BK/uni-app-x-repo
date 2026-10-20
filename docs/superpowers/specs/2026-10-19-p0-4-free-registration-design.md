@@ -109,7 +109,7 @@ COMMIT
 | `allowUserCancel=false` | 409 + `CANCEL_NOT_ALLOWED` |
 | 活动已结束 | 409 + `ACTIVITY_ENDED`（不可再取消） |
 
-取消成功后，公开 `displayStatus` 可能从 `full` 回落为 `open`/`upcoming`。
+取消成功后，公开 `displayStatus` 可能从 `full` 回落为 `open`。
 
 ### 4.3 `GET /registrations/me`
 
@@ -133,9 +133,11 @@ COMMIT
 ```text
 if now >= endAt → ended
 else if confirmedCount >= capacity → full
-else if now < startAt → upcoming
+else if now >= (registrationDeadlineAt ?? startAt) → closed
 else → open
 ```
+
+展示态反映**报名通道**，不单独用「未开始」表示 `now < startAt`。活动尚未开场但报名未截止、未满员时为 `open`（报名中）。
 
 - `packages/shared`：启用 `ActivityDisplayStatus.Full = "full"`。  
 - 满员时报名接口仍返回 `ACTIVITY_FULL`；CTA 禁用。
@@ -166,7 +168,7 @@ else → open
 
 | 端 | 范围 |
 | --- | --- |
-| **mp** | 详情：免费且 `open`/`upcoming` 可报；`full`/`ended`/`paid` 禁用；报名表单页；提交/取消接 API；「我的报名」列表可取消未结束活动的报名 |
+| **mp** | 详情：免费且 `open` 可报；`full`/`ended`/`closed`/`paid` 禁用；报名表单页；提交/取消接 API；「我的报名」列表可取消未结束活动的报名 |
 | **mp 组织者** | 活动详情/管理入口进入报名名单 |
 | **admin** | 本阶段可不改名单 UI |
 | **api** | RegistrationsModule + Prisma migration + 钩子实现 + 公开 `full` |
