@@ -11,7 +11,7 @@
       </button>
       <button class="ghost" @click="goMine">我的活动</button>
     </view>
-    <view v-if="user.isLoggedIn && !user.canPublish" class="tip card">
+    <view v-if="user.isLoggedIn && user.me && !user.canPublish" class="tip card">
       <text>发布权限已关闭</text>
     </view>
   </view>

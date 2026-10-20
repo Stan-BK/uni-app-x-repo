@@ -5,7 +5,7 @@
       <text class="line">状态：{{ user.isLoggedIn ? "已登录" : "未登录" }}</text>
       <text class="line">昵称：{{ user.me?.nickname || "-" }}</text>
       <text
-        v-if="user.isLoggedIn && !user.canPublish"
+        v-if="user.isLoggedIn && user.me && !user.canPublish"
         class="msg"
       >发布权限已关闭</text>
       <text v-if="identityMsg" class="msg">{{ identityMsg }}</text>

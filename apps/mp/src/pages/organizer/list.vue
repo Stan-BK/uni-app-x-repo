@@ -6,7 +6,9 @@
     <view v-else-if="!items.length" class="empty card">
       <text class="empty-title">暂无活动</text>
       <text class="empty-desc">创建活动后将显示在这里。</text>
-      <button class="primary" @click="goCreate">去发布</button>
+      <button v-if="user.canPublish" class="primary" @click="goCreate">
+        去发布
+      </button>
     </view>
     <view v-else class="list">
       <view v-for="item in items" :key="item.id" class="card">
@@ -16,7 +18,7 @@
         </view>
         <view class="ops">
           <button
-            v-if="item.lifecycle === 'draft'"
+            v-if="item.lifecycle === 'draft' && user.canPublish"
             class="mini primary"
             size="mini"
             :disabled="actingId === item.id"
@@ -66,8 +68,10 @@ import {
   unpublishActivity,
   type Activity,
 } from "@/api/activities";
+import { useUserStore } from "@/stores/user";
 import { ApiError } from "@/utils/request";
 
+const user = useUserStore();
 const items = ref<Activity[]>([]);
 const loading = ref(false);
 const actingId = ref<string | null>(null);
@@ -160,6 +164,11 @@ async function onCancel(id: string) {
 }
 
 onShow(() => {
+  if (user.isLoggedIn) {
+    void user.refreshIdentity().catch(() => {
+      /* 网络失败时保留本地态 */
+    });
+  }
   void load();
 });
 </script>
