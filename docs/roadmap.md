@@ -4,7 +4,7 @@
 > 产品原文：`docs/产品文档.docx`；摘要：`docs/product/prd-summary.md`。  
 > **基础设施与云资源升级：** 见 [backend-ops-roadmap.md](./backend-ops-roadmap.md)（ADR-0010）。功能按本文件 P0/P1/P2；中间件/部署按该文档阶段 A–D。
 
-**MVP 边界：** 免费活动发布—发现—报名—组织者名单—后台审核/下架。  
+**MVP 边界：** 免费活动发布—发现—报名—所有者名单—后台发布权冻结/下架。  
 **明确不做（首期）：** 在线支付/退款、签到、评价、候补、分销。  
 **已确认后置：** 收费报名 / 支付订单归 **P2** 与运维「阶段 C（有交易再上）」，上线前另立支付 ADR。
 
@@ -28,13 +28,13 @@
 
 ## P0-1 身份与权限
 
-**ADR：** [0003](./adr/0003-identity-and-organizer.md)、[0004](./adr/0004-admin-rbac.md)（Accepted）  
-**计划：** [docs/superpowers/plans/2026-10-17-p0-1-identity-and-rbac.md](./superpowers/plans/2026-10-17-p0-1-identity-and-rbac.md)
+**ADR：** [0003](./adr/0003-identity-and-organizer.md)（登录部分仍有效；Organizer 已被 [0011](./adr/0011-default-publish-permission.md) 取代）、[0004](./adr/0004-admin-rbac.md)（Implemented）  
+**计划：** [docs/superpowers/plans/2026-10-17-p0-1-identity-and-rbac.md](./superpowers/plans/2026-10-17-p0-1-identity-and-rbac.md)（历史实现；发布权模型见 ADR-0011）
 
 - [x] NestJS + Prisma 正式脚手架与 DB 连接  
-- [x] User / Organizer / AdminUser 模型  
+- [x] User / AdminUser 模型（Organizer 将按 ADR-0011 拆除）  
 - [x] 微信登录适配（抖音/小红书接口预留）  
-- [x] 申请组织者 / 发布权限开关（用户侧 apply + PublisherGuard；Admin 审核）  
+- [x] 发布权限（历史：申请组织者；现行：`User.canPublish` 默认 true，见 ADR-0011）  
 - [x] Admin 登录与基础角色（API + Admin 最小页）  
 
 **验收：** 无权限不可创建活动；后台未授权不可访问。
@@ -90,16 +90,17 @@
 
 ---
 
-## P0-5 运营审核与治理
+## P0-5 运营治理（发布权 / 下架 / 审计）
 
-**ADR：** 0008
+**ADR：** 0008（待写；范围以 [ADR-0011](./adr/0011-default-publish-permission.md) 为准）  
+**前置：** 先按 ADR-0011 去掉 Organizer、用户默认可发布。
 
-- [ ] 待审核队列、通过/驳回原因  
-- [ ] 下架与取消  
-- [ ] 审计日志  
-- [ ] 组织者发布权限冻结  
+- [ ] 去掉 Organizer / 申请流；`User.canPublish` 默认 true（ADR-0011）  
+- [ ] Admin：冻结/恢复发布权（含原因与审计）  
+- [ ] 活动下架 UI（API 已有）  
+- [ ] 审计日志查询  
 
-**验收：** AT-ADM-01～06 核心项。
+**验收：** AT-ADM 以「冻结发布权 + 下架 + 审计」为准；不再验收「成为组织者」申请队列。
 
 ---
 

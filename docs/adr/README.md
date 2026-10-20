@@ -15,13 +15,14 @@
 | --- | --- | --- |
 | [0001](./0001-monorepo-and-tech-stack.md) | Monorepo 与全栈技术基线 | Accepted |
 | [0002](./0002-doc-driven-ai-workflow.md) | 文档与 ADR 驱动的 AI 开发流程 | Accepted |
-| [0003](./0003-identity-and-organizer.md) | 多端身份与 Organizer 模型 | Accepted |
-| [0004](./0004-admin-rbac.md) | 管理后台 RBAC | Accepted |
+| [0003](./0003-identity-and-organizer.md) | 多端身份与 Organizer 模型 | Superseded（发布权见 0011） |
+| [0004](./0004-admin-rbac.md) | 管理后台 RBAC | Implemented |
 | [0005](./0005-activity-lifecycle-and-model.md) | 活动生命周期与数据模型 | Implemented |
 | [0006](./0006-activity-discovery-and-public-visibility.md) | 活动发现与公开展示规则 | Implemented |
 | [0007](./0007-registration-idempotency-and-capacity.md) | 报名幂等与名额并发 | Implemented |
-| 0008 | 审核、下架与审计 | Proposed（待写） |
+| 0008 | 发布权冻结、下架与审计 | Proposed（待写；范围见 ADR-0011） |
 | 0009 | 联调、验收与观测基线 | Proposed（待写） |
 | [0010](./0010-backend-ops-stack.md) | 后端基础设施与阶段升级选型 | Accepted |
+| [0011](./0011-default-publish-permission.md) | 用户默认可发布（取消 Organizer） | Accepted |
 
 状态说明：`Proposed` → `Accepted` → `Implemented`；废弃用 `Superseded` / `Rejected`。

@@ -1,6 +1,6 @@
 # ADR-0003: 多端身份与 Organizer 模型
 
-- **状态：** Implemented
+- **状态：** Superseded（Organizer / 申请发布权由 [ADR-0011](./0011-default-publish-permission.md) 取代；`User` + `UserIdentity` + JWT 登录决策仍有效）
 - **日期：** 2026-10-17
 - **关联：** roadmap P0-1、PRD D-01、ADR-0001
 

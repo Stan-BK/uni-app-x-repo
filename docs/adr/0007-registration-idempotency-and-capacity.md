@@ -2,7 +2,8 @@
 
 - **状态：** Implemented
 - **日期：** 2026-10-19
-- **关联：** roadmap P0-4、PRD AT-REG / D-03～D-06 / D-08、ADR-0005、ADR-0006；支付另见未来支付 ADR / backend-ops 阶段 C
+- **修订：** 2026-10-20 报名名单改为活动所有者（[ADR-0011](./0011-default-publish-permission.md)），不再使用组织者。
+- **关联：** roadmap P0-4、PRD AT-REG / D-03～D-06 / D-08、ADR-0005、ADR-0006、ADR-0011；支付另见未来支付 ADR / backend-ops 阶段 C
 - **设计规格：** [docs/superpowers/specs/2026-10-19-p0-4-free-registration-design.md](../superpowers/specs/2026-10-19-p0-4-free-registration-design.md)
 - **实现计划：** [docs/superpowers/plans/2026-10-19-p0-4-free-registration.md](../superpowers/plans/2026-10-19-p0-4-free-registration.md)
 
@@ -55,7 +56,7 @@ P0-3 已落地公开发现与详情；详情报名 CTA 仍为占位。P0-4 需�
 
 9. **API 边界（P0-4）**  
    - 用户：创建报名、取消本人报名、我的报名列表（及可选单条详情）。  
-   - 组织者：某活动下的报名名单（须拥有该活动）。  
+   - 活动所有者：某活动下的报名名单（须为 `ownerUserId`）。  
    - 公开模块可提供「当前用户是否已报」的可选字段或独立查询（实现时二选一，见设计规格）。  
    - Admin 报名治理加强 → P0-5；不在本 ADR 展开。
 
