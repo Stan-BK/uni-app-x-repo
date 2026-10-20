@@ -21,8 +21,8 @@ import { ActivitiesService } from "./activities.service";
 import { CancelActivityDto } from "./dto/cancel-activity.dto";
 import { UpsertActivityDto } from "./dto/upsert-activity.dto";
 
-@Controller("organizer/activities")
-@UseGuards(UserJwtGuard, CanPublishGuard)
+@Controller("me/activities")
+@UseGuards(UserJwtGuard)
 export class ActivitiesController {
   constructor(
     private readonly activitiesService: ActivitiesService,
@@ -30,6 +30,7 @@ export class ActivitiesController {
   ) {}
 
   @Post()
+  @UseGuards(CanPublishGuard)
   create(
     @CurrentUser() user: CurrentUserPayload,
     @Body() dto: UpsertActivityDto,
@@ -75,6 +76,7 @@ export class ActivitiesController {
   }
 
   @Post(":id/publish")
+  @UseGuards(CanPublishGuard)
   publish(@CurrentUser() user: CurrentUserPayload, @Param("id") id: string) {
     return this.activitiesService.publish(user.userId, id);
   }

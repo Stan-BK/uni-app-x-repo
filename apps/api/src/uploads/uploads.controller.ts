@@ -26,7 +26,7 @@ const ALLOWED_MIME = new Set([
 const coversDir = join(process.cwd(), "uploads", "covers");
 mkdirSync(coversDir, { recursive: true });
 
-@Controller("organizer/uploads")
+@Controller("me/uploads")
 @UseGuards(UserJwtGuard, CanPublishGuard)
 export class UploadsController {
   @Post("cover")
