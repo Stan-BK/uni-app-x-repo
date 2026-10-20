@@ -17,7 +17,9 @@
 | 成功态 | 直接 `confirmed`（D-03）；无审核流 |
 | 表单 | 姓名 + 手机号（D-08）；须登录 |
 | 名额 | 有效报名 = `status=confirmed` 计数（D-04） |
-| 用户取消 | P0-4 支持；仅本人；未结束前可将 `confirmed` → `cancelled` 并释放名额（修订 D-06） |
+| 用户取消 | P0-4 支持；仅本人；未结束且活动 `allowUserCancel=true` 可将 `confirmed` → `cancelled` 并释放名额（修订 D-06） |
+| 报名截止 | 活动字段 `registrationDeadlineAt`（默认=`startAt`）；`now >= deadline` 不可报 |
+| 可退款 | 活动字段 `refundable`（默认 false）；P0 仅展示，无退款流水 |
 | 系统取消 | 退回草稿 / 取消活动 / 运营下架 → 有效报名改 `cancelled` |
 | 并发 | Postgres 事务 + 活动行 `FOR UPDATE`；无 Redis |
 | 幂等 | `@@unique([userId, activityId])` |
@@ -78,6 +80,7 @@ Activity / User 侧增加 `registrations` 关系。
 | `phone` 大陆手机号格式（实现约定正则） | 400 |
 | 活动不存在 / 非 `published` | 404 或 409 + `ACTIVITY_NOT_OPENABLE` |
 | 已结束 `now >= endAt` | 409 + `ACTIVITY_ENDED` |
+| 报名截止 `now >= registrationDeadlineAt` | 409 + `REGISTRATION_CLOSED` |
 | `feeType=paid` | 409 + `PAID_NOT_SUPPORTED` |
 | 有效报名数 `>= capacity` | 409 + `ACTIVITY_FULL` |
 | 已 `confirmed` | 200 + 已有报名（幂等） |
@@ -102,7 +105,8 @@ COMMIT
 | --- | --- |
 | 报名不存在 / 非本人 | 404 / 403 |
 | 已是 `cancelled` | 200 幂等，返回当前 DTO |
-| `confirmed` 且活动 `now < endAt` | 事务内锁活动行 → 改 `cancelled` + `cancelledAt` → 释放名额 |
+| `confirmed` 且活动 `now < endAt` 且 `allowUserCancel` | 事务内锁活动行 → 改 `cancelled` + `cancelledAt` → 释放名额 |
+| `allowUserCancel=false` | 409 + `CANCEL_NOT_ALLOWED` |
 | 活动已结束 | 409 + `ACTIVITY_ENDED`（不可再取消） |
 
 取消成功后，公开 `displayStatus` 可能从 `full` 回落为 `open`/`upcoming`。

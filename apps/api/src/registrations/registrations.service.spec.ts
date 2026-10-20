@@ -59,6 +59,8 @@ describe("RegistrationsService", () => {
     capacity: 2,
     startAt: new Date("2030-01-01"),
     endAt: new Date("2030-01-02"),
+    registrationDeadlineAt: new Date("2030-01-01"),
+    allowUserCancel: true,
   };
 
   it("create confirms when capacity available", async () => {
@@ -140,6 +142,28 @@ describe("RegistrationsService", () => {
     });
   });
 
+  it("create rejects when registration deadline passed", async () => {
+    tx.$queryRaw.mockResolvedValue([
+      {
+        ...publishedFree,
+        registrationDeadlineAt: new Date("2020-06-01"),
+        startAt: new Date("2030-01-01"),
+        endAt: new Date("2030-01-02"),
+      },
+    ]);
+    await expect(
+      service.create("u1", {
+        activityId: "act1",
+        name: "张三",
+        phone: "13800138000",
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: RegistrationErrorCode.RegistrationClosed,
+      }),
+    });
+  });
+
   it("create is idempotent when already confirmed", async () => {
     const existing = {
       id: "r1",
@@ -204,6 +228,20 @@ describe("RegistrationsService", () => {
       }),
     );
     expect(tx.registration.create).not.toHaveBeenCalled();
+  });
+
+  it("cancel rejects when allowUserCancel is false", async () => {
+    prisma.registration.findUnique.mockResolvedValue({
+      id: "r1",
+      userId: "u1",
+      status: RegistrationStatus.confirmed,
+      activity: { ...publishedFree, allowUserCancel: false },
+    });
+    await expect(service.cancel("u1", "r1")).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: RegistrationErrorCode.CancelNotAllowed,
+      }),
+    });
   });
 
   it("cancel releases confirmed registration", async () => {

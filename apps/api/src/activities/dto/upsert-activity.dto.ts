@@ -51,6 +51,20 @@ export class UpsertActivityDto {
   @IsISO8601()
   endAt?: string;
 
+  /** 报名截止；省略时服务端默认用 startAt */
+  @IsOptional()
+  @IsISO8601()
+  registrationDeadlineAt?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  allowUserCancel?: boolean;
+
+  /** 可退款预留；P0 不走支付 */
+  @IsOptional()
+  @IsBoolean()
+  refundable?: boolean;
+
   @IsOptional()
   @IsString()
   @MaxLength(200)

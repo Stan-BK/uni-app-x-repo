@@ -13,6 +13,9 @@ export type PublicActivityDto = {
   rules?: string;
   startAt: string | null;
   endAt: string | null;
+  registrationDeadlineAt: string | null;
+  allowUserCancel: boolean;
+  refundable: boolean;
   place: string;
   placeLat: number | null;
   placeLng: number | null;
@@ -53,6 +56,10 @@ export function toPublicDto(
     description: row.description,
     startAt: row.startAt?.toISOString() ?? null,
     endAt: row.endAt?.toISOString() ?? null,
+    registrationDeadlineAt:
+      (row.registrationDeadlineAt ?? row.startAt)?.toISOString() ?? null,
+    allowUserCancel: row.allowUserCancel,
+    refundable: row.refundable,
     place: row.place,
     placeLat: row.placeLat,
     placeLng: row.placeLng,

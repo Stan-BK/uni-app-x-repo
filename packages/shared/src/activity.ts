@@ -81,6 +81,8 @@ export const RegistrationErrorCode = {
   ActivityNotOpenable: "ACTIVITY_NOT_OPENABLE",
   AlreadyRegistered: "ALREADY_REGISTERED",
   NotCancellable: "REGISTRATION_NOT_CANCELLABLE",
+  RegistrationClosed: "REGISTRATION_CLOSED",
+  CancelNotAllowed: "CANCEL_NOT_ALLOWED",
 } as const;
 export type RegistrationErrorCode =
   (typeof RegistrationErrorCode)[keyof typeof RegistrationErrorCode];

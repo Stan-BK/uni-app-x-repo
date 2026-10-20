@@ -6,6 +6,11 @@ export class ListMyRegistrationsQuery {
   @IsString()
   status?: string;
 
+  /** 按活动筛选（详情页判断是否已报名） */
+  @IsOptional()
+  @IsString()
+  activityId?: string;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()

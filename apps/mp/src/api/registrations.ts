@@ -17,6 +17,9 @@ export type Registration = {
     endAt?: string | null;
     place: string;
     displayStatus?: string;
+    allowUserCancel?: boolean;
+    refundable?: boolean;
+    registrationDeadlineAt?: string | null;
   };
 };
 
@@ -51,6 +54,7 @@ export function listMyRegistrations(
     page?: number;
     pageSize?: number;
     status?: string;
+    activityId?: string;
   } = {},
 ) {
   return request<{

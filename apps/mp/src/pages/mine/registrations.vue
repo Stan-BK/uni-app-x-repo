@@ -145,7 +145,8 @@ function activityNotEnded(item: Registration): boolean {
 }
 
 function canCancel(item: Registration): boolean {
-  return item.status === "confirmed" && activityNotEnded(item);
+  if (item.status !== "confirmed" || !activityNotEnded(item)) return false;
+  return item.activity?.allowUserCancel !== false;
 }
 
 function errMessage(err: unknown): string {

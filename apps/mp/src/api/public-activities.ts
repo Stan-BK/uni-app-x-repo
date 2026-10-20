@@ -9,6 +9,9 @@ export type PublicActivity = {
   rules?: string;
   startAt?: string | null;
   endAt?: string | null;
+  registrationDeadlineAt?: string | null;
+  allowUserCancel?: boolean;
+  refundable?: boolean;
   place: string;
   placeLat?: number | null;
   placeLng?: number | null;

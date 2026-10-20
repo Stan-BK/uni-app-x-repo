@@ -27,11 +27,19 @@ export type ListMineQuery = {
   page?: number;
   pageSize?: number;
   status?: string;
+  activityId?: string;
 };
 
 type LockedActivity = Pick<
   Activity,
-  "id" | "lifecycle" | "feeType" | "capacity" | "startAt" | "endAt"
+  | "id"
+  | "lifecycle"
+  | "feeType"
+  | "capacity"
+  | "startAt"
+  | "endAt"
+  | "registrationDeadlineAt"
+  | "allowUserCancel"
 >;
 
 @Injectable()
@@ -111,6 +119,8 @@ export class RegistrationsService {
             capacity: true,
             startAt: true,
             endAt: true,
+            registrationDeadlineAt: true,
+            allowUserCancel: true,
           },
         },
       },
@@ -128,6 +138,12 @@ export class RegistrationsService {
       throw new ConflictException({
         message: "活动已结束，无法取消报名",
         code: RegistrationErrorCode.ActivityEnded,
+      });
+    }
+    if (!row.activity.allowUserCancel) {
+      throw new ConflictException({
+        message: "该活动不允许取消报名",
+        code: RegistrationErrorCode.CancelNotAllowed,
       });
     }
     if (row.status !== RegistrationStatus.confirmed) {
@@ -158,6 +174,7 @@ export class RegistrationsService {
       ...(query.status
         ? { status: query.status as RegistrationStatus }
         : {}),
+      ...(query.activityId ? { activityId: query.activityId } : {}),
     };
     const skip = (page - 1) * pageSize;
     const now = new Date();
@@ -177,6 +194,9 @@ export class RegistrationsService {
               endAt: true,
               place: true,
               capacity: true,
+              allowUserCancel: true,
+              registrationDeadlineAt: true,
+              refundable: true,
             },
           },
         },
@@ -209,7 +229,14 @@ export class RegistrationsService {
           title: row.activity.title,
           coverUrl: row.activity.coverUrl,
           startAt: row.activity.startAt?.toISOString() ?? null,
+          endAt: row.activity.endAt?.toISOString() ?? null,
           place: row.activity.place,
+          allowUserCancel: row.activity.allowUserCancel,
+          refundable: row.activity.refundable,
+          registrationDeadlineAt:
+            (
+              row.activity.registrationDeadlineAt ?? row.activity.startAt
+            )?.toISOString() ?? null,
           displayStatus: computeDisplayStatus(
             row.activity.startAt,
             row.activity.endAt,
@@ -283,7 +310,8 @@ export class RegistrationsService {
     activityId: string,
   ): Promise<LockedActivity | null> {
     const rows = await tx.$queryRaw<LockedActivity[]>`
-      SELECT id, lifecycle, "feeType", capacity, "startAt", "endAt"
+      SELECT id, lifecycle, "feeType", capacity, "startAt", "endAt",
+             "registrationDeadlineAt", "allowUserCancel"
       FROM "Activity"
       WHERE id = ${activityId}
       FOR UPDATE
@@ -302,6 +330,13 @@ export class RegistrationsService {
       throw new ConflictException({
         message: "活动已结束",
         code: RegistrationErrorCode.ActivityEnded,
+      });
+    }
+    const deadline = activity.registrationDeadlineAt ?? activity.startAt;
+    if (deadline && new Date() >= new Date(deadline)) {
+      throw new ConflictException({
+        message: "报名已截止",
+        code: RegistrationErrorCode.RegistrationClosed,
       });
     }
     if (activity.feeType === FeeType.paid) {

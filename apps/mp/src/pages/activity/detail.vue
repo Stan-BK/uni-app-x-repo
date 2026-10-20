@@ -31,12 +31,34 @@
             >
           </view>
           <view class="info-row">
+            <text class="label">报名截止</text>
+            <text class="value">{{
+              formatTime(
+                activity.registrationDeadlineAt ?? activity.startAt,
+              )
+            }}</text>
+          </view>
+          <view class="info-row">
             <text class="label">地点</text>
             <text class="value">{{ activity.place || "—" }}</text>
           </view>
           <view class="info-row">
             <text class="label">费用</text>
             <text class="value">{{ feeLabel }}（首期线下结算）</text>
+          </view>
+          <view class="info-row">
+            <text class="label">取消政策</text>
+            <text class="value">{{
+              activity.allowUserCancel === false
+                ? "报名后不可取消"
+                : "允许用户取消报名"
+            }}</text>
+          </view>
+          <view class="info-row">
+            <text class="label">退款政策</text>
+            <text class="value">{{
+              activity.refundable ? "可退款（支付上线后生效）" : "不可退款"
+            }}</text>
           </view>
           <view class="info-row">
             <text class="label">主办</text>
@@ -92,6 +114,7 @@
 import { computed, ref } from "vue";
 import {
   onLoad,
+  onShow,
   onShareAppMessage,
   onShareTimeline,
 } from "@dcloudio/uni-app";
@@ -100,11 +123,15 @@ import {
   type PublicActivity,
 } from "@/api/public-activities";
 import {
+  listMyRegistrations,
+  type Registration,
+} from "@/api/registrations";
+import {
   canShareActivity,
   getActivityShareMessage,
   shareActivity,
 } from "@/adapters/share";
-import { ApiError } from "@/utils/request";
+import { ApiError, getUserToken } from "@/utils/request";
 
 const DISPLAY_LABEL: Record<string, string> = {
   upcoming: "未开始",
@@ -114,8 +141,13 @@ const DISPLAY_LABEL: Record<string, string> = {
 };
 
 const activity = ref<PublicActivity | null>(null);
+const myRegistration = ref<Registration | null>(null);
 const loading = ref(true);
 const errorMessage = ref("");
+
+const alreadyRegistered = computed(
+  () => myRegistration.value?.status === "confirmed",
+);
 
 const isFree = computed(() => {
   const a = activity.value;
@@ -134,10 +166,21 @@ const displayLabel = computed(() => {
   return DISPLAY_LABEL[status] ?? status;
 });
 
+const registrationClosed = computed(() => {
+  const a = activity.value;
+  if (!a) return false;
+  const deadlineIso = a.registrationDeadlineAt ?? a.startAt;
+  if (!deadlineIso) return false;
+  const d = new Date(deadlineIso);
+  return !Number.isNaN(d.getTime()) && Date.now() >= d.getTime();
+});
+
 const canRegister = computed(() => {
   const a = activity.value;
   if (!a) return false;
+  if (alreadyRegistered.value) return false;
   if (a.feeType === "paid") return false;
+  if (registrationClosed.value) return false;
   return a.displayStatus === "open" || a.displayStatus === "upcoming";
 });
 
@@ -146,8 +189,10 @@ const canShare = computed(() => canShareActivity(activity.value));
 const ctaText = computed(() => {
   const a = activity.value;
   if (!a) return "立即报名";
+  if (alreadyRegistered.value) return "已报名";
   if (a.feeType === "paid") return "暂不支持线上报名";
   if (a.displayStatus === "ended") return "活动已结束";
+  if (registrationClosed.value) return "报名已截止";
   if (a.displayStatus === "full") return "名额已满";
   return "立即报名";
 });
@@ -169,20 +214,41 @@ function resolveErrorMessage(err: unknown): string {
   return "加载失败";
 }
 
+async function loadMyRegistration(activityId: string) {
+  myRegistration.value = null;
+  if (!getUserToken()) return;
+  try {
+    const res = await listMyRegistrations({
+      activityId,
+      status: "confirmed",
+      page: 1,
+      pageSize: 1,
+    });
+    myRegistration.value = res.items?.[0] ?? null;
+  } catch {
+    // 未登录或拉取失败时不阻断详情；保持可报名态由服务端校验兜底
+    myRegistration.value = null;
+  }
+}
+
 async function load(id: string) {
   loading.value = true;
   errorMessage.value = "";
   activity.value = null;
+  myRegistration.value = null;
   try {
     const data = await getPublicActivity(id);
     activity.value = data;
     uni.setNavigationBarTitle({ title: "活动详情" });
+    await loadMyRegistration(id);
   } catch (err) {
     errorMessage.value = resolveErrorMessage(err);
   } finally {
     loading.value = false;
   }
 }
+
+const loadedActivityId = ref("");
 
 onLoad((query) => {
   const id = String(query?.id ?? "").trim();
@@ -191,7 +257,15 @@ onLoad((query) => {
     errorMessage.value = "活动不存在或已下架";
     return;
   }
+  loadedActivityId.value = id;
   void load(id);
+});
+
+onShow(() => {
+  // 从报名/取消返回时刷新「是否已报名」
+  if (loadedActivityId.value && activity.value) {
+    void loadMyRegistration(loadedActivityId.value);
+  }
 });
 
 onShareAppMessage(() => {

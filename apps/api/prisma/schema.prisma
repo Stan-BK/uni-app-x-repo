@@ -100,16 +100,19 @@ model Activity {
   category       String            @default("")
   description    String?
   rules          String            @default("")
-  startAt        DateTime?
-  endAt          DateTime?
-  place          String            @default("")
-  placeLat       Float?
-  placeLng       Float?
-  capacity       Int               @default(1)
-  feeType        FeeType           @default(free)
-  feeCents       Int               @default(0)
-  feeNote        String?
-  lifecycle      ActivityLifecycle @default(draft)
+  startAt                  DateTime?
+  endAt                    DateTime?
+  registrationDeadlineAt   DateTime?
+  allowUserCancel          Boolean           @default(true)
+  refundable               Boolean           @default(false)
+  place                    String            @default("")
+  placeLat                 Float?
+  placeLng                 Float?
+  capacity                 Int               @default(1)
+  feeType                  FeeType           @default(free)
+  feeCents                 Int               @default(0)
+  feeNote                  String?
+  lifecycle                ActivityLifecycle @default(draft)
   cancelReason   String?
   removeReason   String?
   platformFeeBps Int?
