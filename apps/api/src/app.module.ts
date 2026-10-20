@@ -3,9 +3,8 @@ import { ConfigModule } from "@nestjs/config";
 import { ActivitiesModule } from "./activities/activities.module";
 import { AdminActivitiesModule } from "./admin-activities/admin-activities.module";
 import { AdminAuthModule } from "./admin-auth/admin-auth.module";
-import { AdminOrganizersModule } from "./admin-organizers/admin-organizers.module";
+import { AdminUsersModule } from "./admin-users/admin-users.module";
 import { AuthModule } from "./auth/auth.module";
-import { OrganizersModule } from "./organizers/organizers.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { PublicActivitiesModule } from "./public-activities/public-activities.module";
 import { RegistrationsModule } from "./registrations/registrations.module";
@@ -16,13 +15,12 @@ import { UploadsModule } from "./uploads/uploads.module";
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     AuthModule,
-    OrganizersModule,
     ActivitiesModule,
     PublicActivitiesModule,
     RegistrationsModule,
     UploadsModule,
     AdminAuthModule,
-    AdminOrganizersModule,
+    AdminUsersModule,
     AdminActivitiesModule,
   ],
 })
