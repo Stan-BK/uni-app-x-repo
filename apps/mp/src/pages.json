@@ -36,7 +36,7 @@
     {
       "path": "pages/organizer/home",
       "style": {
-        "navigationBarTitleText": "组织者工作台"
+        "navigationBarTitleText": "发布"
       }
     },
     {

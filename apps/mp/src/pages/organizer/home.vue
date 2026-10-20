@@ -1,17 +1,18 @@
 <template>
   <view class="page">
     <view class="card">
-      <text class="title">组织者工作台</text>
-      <text class="line">权限：{{ user.publishStatusLabel }}</text>
+      <text class="title">发布 / 我的活动</text>
       <text class="line">canPublish：{{ user.canPublish ? "是" : "否" }}</text>
     </view>
 
-    <view v-if="user.canPublish" class="actions">
-      <button class="primary" @click="goCreate">发布活动</button>
+    <view v-if="user.isLoggedIn" class="actions">
+      <button v-if="user.canPublish" class="primary" @click="goCreate">
+        发布活动
+      </button>
       <button class="ghost" @click="goMine">我的活动</button>
     </view>
-    <view v-else class="tip card">
-      <text>当前账号尚无发布权限。请先完成组织者申请并等待审核通过。</text>
+    <view v-if="user.isLoggedIn && user.me && !user.canPublish" class="tip card">
+      <text>发布权限已关闭</text>
     </view>
   </view>
 </template>

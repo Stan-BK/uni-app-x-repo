@@ -253,21 +253,18 @@ export class RegistrationsService {
     };
   }
 
-  async listForOrganizer(
+  async listForOwner(
     userId: string,
     activityId: string,
     query: ListMineQuery,
   ) {
-    const organizer = await this.prisma.organizer.findUnique({
-      where: { ownerUserId: userId },
-    });
     const activity = await this.prisma.activity.findUnique({
       where: { id: activityId },
     });
     if (!activity) {
       throw new NotFoundException("活动不存在");
     }
-    if (!organizer || activity.organizerId !== organizer.id) {
+    if (activity.ownerUserId !== userId) {
       throw new ForbiddenException("无权查看该活动报名名单");
     }
 

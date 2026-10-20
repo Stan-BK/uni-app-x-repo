@@ -68,7 +68,7 @@ export class PublicActivitiesService {
         orderBy,
         skip,
         take: pageSize,
-        include: { organizer: { select: { name: true } } },
+        include: { owner: { select: { nickname: true } } },
       }),
       this.prisma.activity.count({ where }),
     ]);
@@ -94,7 +94,7 @@ export class PublicActivitiesService {
   async getById(id: string) {
     const row = await this.prisma.activity.findUnique({
       where: { id },
-      include: { organizer: { select: { name: true } } },
+      include: { owner: { select: { nickname: true } } },
     });
     if (!row || row.lifecycle === ActivityLifecycle.draft) {
       throw new NotFoundException("活动不存在");

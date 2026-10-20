@@ -13,14 +13,6 @@ enum IdentityProvider {
   xhs
 }
 
-enum PublishStatus {
-  none
-  pending
-  approved
-  rejected
-  frozen
-}
-
 enum AdminRole {
   operator
   admin
@@ -59,8 +51,9 @@ model User {
   status    UserStatus @default(active)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+  canPublish    Boolean        @default(true)
   identities    UserIdentity[]
-  organizer     Organizer?
+  activities    Activity[]
   registrations Registration[]
 }
 
@@ -77,24 +70,9 @@ model UserIdentity {
   @@index([userId])
 }
 
-model Organizer {
-  id             String        @id @default(cuid())
-  ownerUserId    String        @unique
-  name           String
-  type           String        @default("personal")
-  description    String?
-  publishStatus  PublishStatus @default(none)
-  applyReason    String?
-  reviewNote     String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  owner          User          @relation(fields: [ownerUserId], references: [id])
-  activities     Activity[]
-}
-
 model Activity {
   id             String            @id @default(cuid())
-  organizerId    String
+  ownerUserId    String
   title          String
   coverUrl       String            @default("")
   category       String            @default("")
@@ -119,10 +97,10 @@ model Activity {
   publishedAt    DateTime?
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
-  organizer      Organizer         @relation(fields: [organizerId], references: [id])
+  owner          User              @relation(fields: [ownerUserId], references: [id])
   registrations  Registration[]
 
-  @@index([organizerId, lifecycle])
+  @@index([ownerUserId, lifecycle])
   @@index([lifecycle, startAt])
 }
 

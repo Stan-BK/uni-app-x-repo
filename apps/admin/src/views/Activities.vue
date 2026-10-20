@@ -77,7 +77,7 @@ onMounted(() => {
     <div class="bar">
       <h1>活动列表</h1>
       <el-space>
-        <router-link class="nav-link" to="/organizers">组织者审核</router-link>
+        <router-link class="nav-link" to="/users">用户发布权</router-link>
         <el-select
           v-model="lifecycleFilter"
           placeholder="生命周期"
@@ -102,9 +102,9 @@ onMounted(() => {
       empty-text="暂无活动"
     >
       <el-table-column prop="title" label="标题" min-width="160" />
-      <el-table-column label="组织者" min-width="120">
+      <el-table-column label="主办" min-width="120">
         <template #default="{ row }">
-          {{ row.organizer?.name || "—" }}
+          {{ row.owner?.nickname || "用户" }}
         </template>
       </el-table-column>
       <el-table-column prop="lifecycle" label="状态" width="100" />

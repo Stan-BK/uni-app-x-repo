@@ -2,7 +2,7 @@ import {
   ActivityDisplayStatus,
   type ActivityDisplayStatus as DisplayStatus,
 } from "@activity/shared";
-import type { Activity, FeeType, Organizer } from "@prisma/client";
+import type { Activity, FeeType } from "@prisma/client";
 
 export type PublicActivityDto = {
   id: string;
@@ -26,8 +26,15 @@ export type PublicActivityDto = {
   lifecycle: string;
   displayStatus: DisplayStatus;
   publishedAt: string | null;
-  organizer: { displayName: string };
+  hostName: string;
 };
+
+export function hostNameFromNickname(
+  nickname: string | null | undefined,
+): string {
+  const n = nickname?.trim();
+  return n ? n : "用户";
+}
 
 export function computeDisplayStatus(
   startAt: Date | null,
@@ -44,10 +51,10 @@ export function computeDisplayStatus(
   return ActivityDisplayStatus.Open;
 }
 
-type ActivityWithOrg = Activity & { organizer: Pick<Organizer, "name"> };
+type ActivityWithOwner = Activity & { owner: { nickname: string | null } };
 
 export function toPublicDto(
-  row: ActivityWithOrg,
+  row: ActivityWithOwner,
   opts: { includeRules: boolean; confirmedCount: number; now?: Date },
 ): PublicActivityDto {
   const dto: PublicActivityDto = {
@@ -79,7 +86,7 @@ export function toPublicDto(
       row.registrationDeadlineAt,
     ),
     publishedAt: row.publishedAt?.toISOString() ?? null,
-    organizer: { displayName: row.organizer.name },
+    hostName: hostNameFromNickname(row.owner.nickname),
   };
   if (opts.includeRules) dto.rules = row.rules;
   return dto;

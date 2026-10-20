@@ -46,6 +46,7 @@ describe("PublicActivitiesService", () => {
         orderBy: { startAt: "asc" },
         skip: 0,
         take: 20,
+        include: { owner: { select: { nickname: true } } },
       }),
     );
   });
@@ -120,15 +121,85 @@ describe("PublicActivitiesService", () => {
       cancelReason: "secret",
       removeReason: "secret",
       platformFeeBps: 100,
-      organizer: { name: "探索社" },
+      owner: { nickname: "探索社" },
     });
     prisma.registration.count.mockResolvedValue(0);
 
     const dto = await service.getById("a1");
+    expect(prisma.activity.findUnique).toHaveBeenCalledWith({
+      where: { id: "a1" },
+      include: { owner: { select: { nickname: true } } },
+    });
     expect(dto.displayStatus).toBe("open");
-    expect(dto.organizer).toEqual({ displayName: "探索社" });
+    expect(dto.hostName).toBe("探索社");
+    expect(dto).not.toHaveProperty("organizer");
     expect(dto).not.toHaveProperty("cancelReason");
     expect(dto).not.toHaveProperty("removeReason");
+  });
+
+  it("get maps null nickname to 用户", async () => {
+    const start = new Date("2030-01-01T10:00:00.000Z");
+    const end = new Date("2030-01-01T12:00:00.000Z");
+    prisma.activity.findUnique.mockResolvedValue({
+      id: "a1",
+      title: "徒步",
+      coverUrl: "https://x/c.jpg",
+      category: "观赛",
+      description: null,
+      rules: "须知",
+      startAt: start,
+      endAt: end,
+      place: "滨江",
+      placeLat: 1,
+      placeLng: 2,
+      capacity: 10,
+      feeType: "free",
+      feeCents: 0,
+      feeNote: null,
+      lifecycle: ActivityLifecycle.published,
+      publishedAt: new Date("2026-10-01T00:00:00.000Z"),
+      cancelReason: null,
+      removeReason: null,
+      platformFeeBps: 100,
+      owner: { nickname: null },
+    });
+    prisma.registration.count.mockResolvedValue(0);
+
+    const dto = await service.getById("a1");
+    expect(dto.hostName).toBe("用户");
+    expect(dto).not.toHaveProperty("organizer");
+  });
+
+  it("get maps whitespace nickname to 用户", async () => {
+    const start = new Date("2030-01-01T10:00:00.000Z");
+    const end = new Date("2030-01-01T12:00:00.000Z");
+    prisma.activity.findUnique.mockResolvedValue({
+      id: "a1",
+      title: "徒步",
+      coverUrl: "https://x/c.jpg",
+      category: "观赛",
+      description: null,
+      rules: "须知",
+      startAt: start,
+      endAt: end,
+      place: "滨江",
+      placeLat: 1,
+      placeLng: 2,
+      capacity: 10,
+      feeType: "free",
+      feeCents: 0,
+      feeNote: null,
+      lifecycle: ActivityLifecycle.published,
+      publishedAt: new Date("2026-10-01T00:00:00.000Z"),
+      cancelReason: null,
+      removeReason: null,
+      platformFeeBps: 100,
+      owner: { nickname: "   " },
+    });
+    prisma.registration.count.mockResolvedValue(0);
+
+    const dto = await service.getById("a1");
+    expect(dto.hostName).toBe("用户");
   });
 
   it("get returns full when confirmedCount >= capacity", async () => {
@@ -155,7 +226,7 @@ describe("PublicActivitiesService", () => {
       cancelReason: null,
       removeReason: null,
       platformFeeBps: 100,
-      organizer: { name: "探索社" },
+      owner: { nickname: "探索社" },
     });
     prisma.registration.count.mockResolvedValue(2);
 
@@ -190,7 +261,7 @@ describe("PublicActivitiesService", () => {
       cancelReason: null,
       removeReason: null,
       platformFeeBps: 100,
-      organizer: { name: "探索社" },
+      owner: { nickname: "探索社" },
     });
     prisma.registration.count.mockResolvedValue(0);
 
@@ -202,7 +273,7 @@ describe("PublicActivitiesService", () => {
     prisma.activity.findUnique.mockResolvedValue({
       id: "a1",
       lifecycle: ActivityLifecycle.cancelled,
-      organizer: { name: "x" },
+      owner: { nickname: "x" },
     });
     try {
       await service.getById("a1");
@@ -221,7 +292,7 @@ describe("PublicActivitiesService", () => {
     prisma.activity.findUnique.mockResolvedValue({
       id: "a1",
       lifecycle: ActivityLifecycle.removed,
-      organizer: { name: "x" },
+      owner: { nickname: "x" },
     });
     try {
       await service.getById("a1");
@@ -237,7 +308,7 @@ describe("PublicActivitiesService", () => {
     prisma.activity.findUnique.mockResolvedValue({
       id: "a1",
       lifecycle: ActivityLifecycle.draft,
-      organizer: { name: "x" },
+      owner: { nickname: "x" },
     });
     try {
       await service.getById("a1");

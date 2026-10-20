@@ -19,7 +19,7 @@ export type LoginResult = {
 };
 
 export type MeResult = AuthUserView & {
-  organizer: { publishStatus: string } | null;
+  canPublish: boolean;
 };
 
 @Injectable()
@@ -58,7 +58,6 @@ export class AuthService {
   async getMe(userId: string): Promise<MeResult> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { organizer: true },
     });
     if (!user) {
       throw new HttpException("User not found", HttpStatus.NOT_FOUND);
@@ -67,9 +66,7 @@ export class AuthService {
       id: user.id,
       nickname: user.nickname,
       avatarUrl: user.avatarUrl,
-      organizer: user.organizer
-        ? { publishStatus: user.organizer.publishStatus }
-        : null,
+      canPublish: user.canPublish,
     };
   }
 

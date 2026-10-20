@@ -6,16 +6,6 @@ export const IdentityProvider = {
 export type IdentityProvider =
   (typeof IdentityProvider)[keyof typeof IdentityProvider];
 
-export const PublishStatus = {
-  None: "none",
-  Pending: "pending",
-  Approved: "approved",
-  Rejected: "rejected",
-  Frozen: "frozen",
-} as const;
-export type PublishStatus =
-  (typeof PublishStatus)[keyof typeof PublishStatus];
-
 export const AdminRole = {
   Operator: "operator",
   Admin: "admin",

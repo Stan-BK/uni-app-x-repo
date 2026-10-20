@@ -22,7 +22,7 @@ export type PublicActivity = {
   lifecycle: string;
   displayStatus: "upcoming" | "open" | "ended" | "full" | "closed";
   publishedAt?: string | null;
-  organizer: { displayName: string };
+  hostName: string;
 };
 
 export type ListPublicParams = {
