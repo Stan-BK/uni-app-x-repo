@@ -56,6 +56,12 @@
       "style": {
         "navigationBarTitleText": "活动详情"
       }
+    },
+    {
+      "path": "pages/organizer/registrations",
+      "style": {
+        "navigationBarTitleText": "报名名单"
+      }
     }
   ],
   "tabBar": {

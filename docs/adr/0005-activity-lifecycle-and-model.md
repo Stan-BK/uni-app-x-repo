@@ -29,6 +29,10 @@ P0-2 需落地活动创建、草稿、发布与组织者侧管理。原 PRD 默�
 
 5. **字段基线**（详见设计规格）：  
    `title`、`coverUrl`、`category`、`description`、`rules`、`startAt`、`endAt`、`place`、`capacity`、`feeType`（`free`|`paid`）、`feeCents`、`feeNote`；可选 `cancelReason` / `removeReason`；结算预留如 `platformFeeBps`（可空，P0 无业务逻辑）。  
+   - **报名策略字段（P0-4 增补）：**  
+     - `registrationDeadlineAt`：报名截止时间；发布时必填语义上等同于有值；**默认 = `startAt`**；须 `registrationDeadlineAt ≤ startAt`。  
+     - `allowUserCancel`：是否允许用户主动取消报名；默认 `true`。  
+     - `refundable`：是否可退款（付费预留）；默认 `false`；**P0 不开放支付/退款流水**，仅存字段与展示。  
    - 首期地点按线下；不做纯线上场次。  
    - 可创建 `paid` 活动并校验金额，**不开放支付/报名收款**。
 

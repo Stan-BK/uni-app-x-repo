@@ -9,6 +9,9 @@ export type PublicActivity = {
   rules?: string;
   startAt?: string | null;
   endAt?: string | null;
+  registrationDeadlineAt?: string | null;
+  allowUserCancel?: boolean;
+  refundable?: boolean;
   place: string;
   placeLat?: number | null;
   placeLng?: number | null;
@@ -17,7 +20,7 @@ export type PublicActivity = {
   feeCents: number;
   feeNote?: string | null;
   lifecycle: string;
-  displayStatus: "upcoming" | "open" | "ended";
+  displayStatus: "upcoming" | "open" | "ended" | "full" | "closed";
   publishedAt?: string | null;
   organizer: { displayName: string };
 };

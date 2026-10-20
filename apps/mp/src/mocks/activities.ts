@@ -41,7 +41,7 @@ export const ACTIVITY_STATUS_LABEL: Record<ActivityStatus, string> = {
   open: '报名中',
   full: '已满员',
   ended: '已结束',
-  upcoming: '未开始',
+  upcoming: '报名中',
 }
 
 export const REGISTRATION_STATUS_LABEL: Record<RegistrationStatus, string> = {

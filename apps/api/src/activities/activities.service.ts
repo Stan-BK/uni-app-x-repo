@@ -83,6 +83,10 @@ export class ActivitiesService {
     if (a.endAt! <= a.startAt!) {
       throw new BadRequestException("结束时间必须晚于开始时间");
     }
+    const deadline = a.registrationDeadlineAt ?? a.startAt!;
+    if (deadline > a.startAt!) {
+      throw new BadRequestException("报名截止时间不能晚于活动开始时间");
+    }
     if (a.feeType === FeeType.free && a.feeCents !== 0) {
       throw new BadRequestException("免费活动费用须为 0");
     }
@@ -102,6 +106,13 @@ export class ActivitiesService {
       ...(dto.rules !== undefined ? { rules: dto.rules } : {}),
       ...(dto.startAt !== undefined ? { startAt: new Date(dto.startAt) } : {}),
       ...(dto.endAt !== undefined ? { endAt: new Date(dto.endAt) } : {}),
+      ...(dto.registrationDeadlineAt !== undefined
+        ? { registrationDeadlineAt: new Date(dto.registrationDeadlineAt) }
+        : {}),
+      ...(dto.allowUserCancel !== undefined
+        ? { allowUserCancel: dto.allowUserCancel }
+        : {}),
+      ...(dto.refundable !== undefined ? { refundable: dto.refundable } : {}),
       ...(dto.place !== undefined ? { place: dto.place.trim() } : {}),
       ...(dto.placeLat !== undefined ? { placeLat: dto.placeLat } : {}),
       ...(dto.placeLng !== undefined ? { placeLng: dto.placeLng } : {}),
@@ -110,6 +121,12 @@ export class ActivitiesService {
       ...(dto.feeCents !== undefined ? { feeCents: dto.feeCents } : {}),
       ...(dto.feeNote !== undefined ? { feeNote: dto.feeNote } : {}),
     };
+  }
+
+  /** 发布时若未设截止，默认等于 startAt */
+  private withDefaultDeadline(activity: Activity): Partial<Activity> {
+    if (activity.registrationDeadlineAt || !activity.startAt) return {};
+    return { registrationDeadlineAt: activity.startAt };
   }
 
   async create(userId: string, dto: UpsertActivityDto): Promise<Activity> {
@@ -158,10 +175,13 @@ export class ActivitiesService {
     if (activity.lifecycle !== ActivityLifecycle.draft) {
       throw new ConflictException("Only draft can be published");
     }
-    this.assertPublishable(activity);
+    const defaults = this.withDefaultDeadline(activity);
+    const toPublish = { ...activity, ...defaults };
+    this.assertPublishable(toPublish);
     return this.prisma.activity.update({
       where: { id },
       data: {
+        ...defaults,
         lifecycle: ActivityLifecycle.published,
         publishedAt: new Date(),
       },

@@ -80,6 +80,33 @@
           />
         </uni-forms-item>
 
+        <uni-forms-item name="registrationDeadlineAt" label="报名截止时间">
+          <uni-datetime-picker
+            v-model="form.registrationDeadlineAt"
+            type="datetime"
+            return-type="string"
+            :clear-icon="true"
+          />
+          <text class="field-hint">不填则默认为活动开始时间</text>
+        </uni-forms-item>
+
+        <uni-forms-item name="allowUserCancel" label="用户取消报名">
+          <uni-data-checkbox
+            v-model="form.allowUserCancel"
+            :localdata="allowCancelOptions"
+            mode="tag"
+          />
+        </uni-forms-item>
+
+        <uni-forms-item name="refundable" label="退款政策">
+          <uni-data-checkbox
+            v-model="form.refundable"
+            :localdata="refundableOptions"
+            mode="tag"
+          />
+          <text class="field-hint">首期不开放在线退款，仅作活动说明预留</text>
+        </uni-forms-item>
+
         <uni-forms-item name="capacity" label="名额" required>
           <uni-number-box v-model="form.capacity" :min="1" :max="9999" />
         </uni-forms-item>
@@ -201,6 +228,14 @@ const feeTypeOptions = [
   { text: "免费", value: "free" },
   { text: "收费", value: "paid" },
 ];
+const allowCancelOptions = [
+  { text: "允许取消", value: true },
+  { text: "不允许取消", value: false },
+];
+const refundableOptions = [
+  { text: "不可退款", value: false },
+  { text: "可退款", value: true },
+];
 /** 与 packages/shared ActivityCategory 同步；页面内写死避免 vendor 增量缓存旧枚举 */
 const categoryOptions = [{ text: "观赛", value: "观赛" }];
 
@@ -213,6 +248,9 @@ const form = reactive({
   placeLng: null as number | null,
   startAt: "",
   endAt: "",
+  registrationDeadlineAt: "",
+  allowUserCancel: true as boolean,
+  refundable: false as boolean,
   capacity: 20,
   rules: "",
   feeType: "free" as "free" | "paid",
@@ -344,6 +382,30 @@ const rules = {
       },
     ],
   },
+  registrationDeadlineAt: {
+    rules: [
+      {
+        validateFunction: (
+          _rule: unknown,
+          value: string,
+          data: { startAt?: string },
+          callback: (err?: string) => void,
+        ) => {
+          if (!value?.trim()) {
+            callback();
+            return;
+          }
+          const deadline = parseLocalDateTime(value);
+          const start = parseLocalDateTime(data.startAt || "");
+          if (deadline && start && deadline > start) {
+            callback("报名截止不能晚于开始时间");
+            return;
+          }
+          callback();
+        },
+      },
+    ],
+  },
   capacity: {
     rules: [
       { required: true, errorMessage: "请填写名额" },
@@ -408,6 +470,11 @@ function buildBody(): UpsertBody {
     placeLng: form.placeLng,
     startAt: toIsoOrEmpty(form.startAt),
     endAt: toIsoOrEmpty(form.endAt),
+    registrationDeadlineAt:
+      toIsoOrEmpty(form.registrationDeadlineAt) ??
+      toIsoOrEmpty(form.startAt),
+    allowUserCancel: Boolean(form.allowUserCancel),
+    refundable: Boolean(form.refundable),
     capacity: Number(form.capacity) > 0 ? Number(form.capacity) : undefined,
     rules: form.rules.trim(),
     feeType: form.feeType,
@@ -426,6 +493,11 @@ function fillForm(a: Activity) {
   form.placeLng = a.placeLng ?? null;
   form.startAt = formatLocalDateTime(a.startAt);
   form.endAt = formatLocalDateTime(a.endAt);
+  form.registrationDeadlineAt = formatLocalDateTime(
+    a.registrationDeadlineAt ?? a.startAt,
+  );
+  form.allowUserCancel = a.allowUserCancel !== false;
+  form.refundable = Boolean(a.refundable);
   form.capacity = a.capacity ?? 20;
   form.rules = a.rules ?? "";
   form.feeType = a.feeType ?? "free";
@@ -755,6 +827,13 @@ button[disabled] {
 }
 .place-edit {
   margin-top: 12rpx;
+}
+.field-hint {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #9ca3af;
+  line-height: 1.4;
 }
 .place-coord {
   display: block;

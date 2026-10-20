@@ -9,6 +9,9 @@ export type Activity = {
   rules: string;
   startAt?: string | null;
   endAt?: string | null;
+  registrationDeadlineAt?: string | null;
+  allowUserCancel?: boolean;
+  refundable?: boolean;
   place: string;
   placeLat?: number | null;
   placeLng?: number | null;
@@ -29,6 +32,9 @@ export type UpsertBody = Partial<{
   rules: string;
   startAt: string;
   endAt: string;
+  registrationDeadlineAt: string;
+  allowUserCancel: boolean;
+  refundable: boolean;
   place: string;
   placeLat: number | null;
   placeLng: number | null;

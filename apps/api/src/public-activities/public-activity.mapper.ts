@@ -13,6 +13,9 @@ export type PublicActivityDto = {
   rules?: string;
   startAt: string | null;
   endAt: string | null;
+  registrationDeadlineAt: string | null;
+  allowUserCancel: boolean;
+  refundable: boolean;
   place: string;
   placeLat: number | null;
   placeLng: number | null;
@@ -29,10 +32,15 @@ export type PublicActivityDto = {
 export function computeDisplayStatus(
   startAt: Date | null,
   endAt: Date | null,
+  confirmedCount: number,
+  capacity: number,
   now = new Date(),
+  registrationDeadlineAt?: Date | null,
 ): DisplayStatus {
   if (endAt && now >= endAt) return ActivityDisplayStatus.Ended;
-  if (startAt && now < startAt) return ActivityDisplayStatus.Upcoming;
+  if (confirmedCount >= capacity) return ActivityDisplayStatus.Full;
+  const deadline = registrationDeadlineAt ?? startAt;
+  if (deadline && now >= deadline) return ActivityDisplayStatus.Closed;
   return ActivityDisplayStatus.Open;
 }
 
@@ -40,7 +48,7 @@ type ActivityWithOrg = Activity & { organizer: Pick<Organizer, "name"> };
 
 export function toPublicDto(
   row: ActivityWithOrg,
-  opts: { includeRules: boolean; now?: Date },
+  opts: { includeRules: boolean; confirmedCount: number; now?: Date },
 ): PublicActivityDto {
   const dto: PublicActivityDto = {
     id: row.id,
@@ -50,6 +58,10 @@ export function toPublicDto(
     description: row.description,
     startAt: row.startAt?.toISOString() ?? null,
     endAt: row.endAt?.toISOString() ?? null,
+    registrationDeadlineAt:
+      (row.registrationDeadlineAt ?? row.startAt)?.toISOString() ?? null,
+    allowUserCancel: row.allowUserCancel,
+    refundable: row.refundable,
     place: row.place,
     placeLat: row.placeLat,
     placeLng: row.placeLng,
@@ -58,7 +70,14 @@ export function toPublicDto(
     feeCents: row.feeCents,
     feeNote: row.feeNote,
     lifecycle: row.lifecycle,
-    displayStatus: computeDisplayStatus(row.startAt, row.endAt, opts.now),
+    displayStatus: computeDisplayStatus(
+      row.startAt,
+      row.endAt,
+      opts.confirmedCount,
+      row.capacity,
+      opts.now,
+      row.registrationDeadlineAt,
+    ),
     publishedAt: row.publishedAt?.toISOString() ?? null,
     organizer: { displayName: row.organizer.name },
   };

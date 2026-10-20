@@ -83,9 +83,11 @@ import {
 import { ApiError } from "@/utils/request";
 
 const DISPLAY_LABEL: Record<string, string> = {
-  upcoming: "未开始",
+  upcoming: "报名中",
   open: "报名中",
   ended: "已结束",
+  full: "已满员",
+  closed: "报名截止",
 };
 
 const items = ref<PublicActivity[]>([]);
@@ -377,7 +379,8 @@ onReachBottom(() => {
   background: #ecfdf5;
 }
 
-.status.open {
+.status.open,
+.status.upcoming {
   color: #0f766e;
   background: #ecfdf5;
 }
@@ -387,9 +390,10 @@ onReachBottom(() => {
   background: #f3f4f6;
 }
 
-.status.upcoming {
-  color: #1e3a5f;
-  background: #eff6ff;
+.status.full,
+.status.closed {
+  color: #9a3412;
+  background: #fff7ed;
 }
 
 .more {

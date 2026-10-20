@@ -34,7 +34,7 @@ P0-2 已落地组织者发布与运营下架；首页/详情仍接 mock。P0-3 �
 
 5. **展示态（计算字段 `displayStatus`）**  
    - P0-3：`upcoming` | `open` | `ended`（仅依 `startAt`/`endAt` 与当前时间）。  
-   - **满员 `full` → P0-4**（有有效报名数后再加）。  
+   - P0-4：启用 `full`、`closed`；展示态表示报名通道。活动未开场但报名未截止、未满员时为 `open`（报名中），**不再**计算 `upcoming`。  
    - 列表不返回已报名人数；可返回 `capacity` 上限。
 
 6. **公开 DTO 裁剪**  
