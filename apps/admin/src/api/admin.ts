@@ -10,17 +10,11 @@ export type AdminLoginResult = {
   };
 };
 
-export type OrganizerRow = {
+export type AdminUserRow = {
   id: string;
-  ownerUserId: string;
-  name: string;
-  type: string;
-  description: string | null;
-  publishStatus: string;
-  applyReason: string | null;
-  reviewNote: string | null;
+  nickname: string | null;
+  canPublish: boolean;
   createdAt: string;
-  updatedAt: string;
 };
 
 export function adminLogin(email: string, password: string) {
@@ -31,20 +25,24 @@ export function adminLogin(email: string, password: string) {
   });
 }
 
-export function listOrganizers(status = "pending") {
-  const q = new URLSearchParams({ status });
-  return apiRequest<OrganizerRow[]>(`/admin/organizers?${q}`);
+export function listUsers(page = 1) {
+  return apiRequest<{
+    items: AdminUserRow[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }>(`/admin/users?page=${page}`);
 }
 
-export function approveOrganizer(id: string, note?: string) {
-  return apiRequest<OrganizerRow>(`/admin/organizers/${id}/approve`, {
+export function freezePublish(id: string, reason: string) {
+  return apiRequest(`/admin/users/${id}/freeze-publish`, {
     method: "POST",
-    body: { note },
+    body: { reason },
   });
 }
 
-export function rejectOrganizer(id: string, reason: string) {
-  return apiRequest<OrganizerRow>(`/admin/organizers/${id}/reject`, {
+export function unfreezePublish(id: string, reason: string) {
+  return apiRequest(`/admin/users/${id}/unfreeze-publish`, {
     method: "POST",
     body: { reason },
   });
@@ -59,7 +57,7 @@ export type ActivityRow = {
   startAt: string | null;
   endAt: string | null;
   removeReason: string | null;
-  organizer: { id: string; name: string };
+  owner: { id: string; nickname: string | null };
 };
 
 export function listActivities(lifecycle?: string) {

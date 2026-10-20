@@ -1,12 +1,12 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { getAdminToken } from "./api/http";
 import LoginView from "./views/Login.vue";
-import OrganizerApplicationsView from "./views/OrganizerApplications.vue";
+import UsersView from "./views/Users.vue";
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: "/", redirect: "/organizers" },
+    { path: "/", redirect: "/users" },
     {
       path: "/login",
       name: "login",
@@ -14,9 +14,9 @@ export const router = createRouter({
       meta: { public: true },
     },
     {
-      path: "/organizers",
-      name: "organizers",
-      component: OrganizerApplicationsView,
+      path: "/users",
+      name: "users",
+      component: UsersView,
     },
     {
       path: "/activities",
