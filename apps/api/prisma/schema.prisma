@@ -128,6 +128,7 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   @@index([targetType, targetId])
+  @@index([createdAt])
 }
 
 model Registration {

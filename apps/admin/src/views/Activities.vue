@@ -7,7 +7,7 @@ import {
   removeActivity,
   type ActivityRow,
 } from "../api/admin";
-import { ApiError, setAdminToken } from "../api/http";
+import { ApiError, isAdminRole, setAdminToken } from "../api/http";
 
 const router = useRouter();
 const rows = ref<ActivityRow[]>([]);
@@ -78,6 +78,7 @@ onMounted(() => {
       <h1>活动列表</h1>
       <el-space>
         <router-link class="nav-link" to="/users">用户发布权</router-link>
+        <router-link v-if="isAdminRole()" class="nav-link" to="/audit-logs">审计日志</router-link>
         <el-select
           v-model="lifecycleFilter"
           placeholder="生命周期"
