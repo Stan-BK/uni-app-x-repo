@@ -71,3 +71,40 @@ export function removeActivity(id: string, reason: string) {
     body: { reason },
   });
 }
+
+export type AuditLogRow = {
+  id: string;
+  createdAt: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  reason: string | null;
+  actor: { id: string; displayName: string | null; email: string | null };
+  target: { id: string; label: string };
+};
+
+export type ListAuditLogsParams = {
+  action?: string;
+  targetType?: string;
+  targetId?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+};
+
+export function listAuditLogs(params: ListAuditLogsParams = {}) {
+  const q = new URLSearchParams();
+  if (params.action) q.set("action", params.action);
+  if (params.targetType) q.set("targetType", params.targetType);
+  if (params.targetId) q.set("targetId", params.targetId);
+  if (params.from) q.set("from", params.from);
+  if (params.to) q.set("to", params.to);
+  if (params.page) q.set("page", String(params.page));
+  const qs = q.toString();
+  return apiRequest<{
+    items: AuditLogRow[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }>(`/admin/audit-logs${qs ? `?${qs}` : ""}`);
+}

@@ -3,7 +3,7 @@ import { reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage, type FormInstance, type FormRules } from "element-plus";
 import { adminLogin } from "../api/admin";
-import { ApiError, setAdminToken } from "../api/http";
+import { ApiError, setAdminProfile, setAdminToken } from "../api/http";
 
 const router = useRouter();
 const route = useRoute();
@@ -30,6 +30,7 @@ async function onSubmit() {
   try {
     const result = await adminLogin(form.email.trim(), form.password);
     setAdminToken(result.accessToken);
+    setAdminProfile(result.admin);
     const redirect =
       typeof route.query.redirect === "string"
         ? route.query.redirect
