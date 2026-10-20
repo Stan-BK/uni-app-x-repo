@@ -58,7 +58,7 @@ export class ActivitiesController {
     @Param("id") id: string,
     @Query() query: ListMyRegistrationsQuery,
   ) {
-    return this.registrations.listForOrganizer(user.userId, id, query);
+    return this.registrations.listForOwner(user.userId, id, query);
   }
 
   @Get(":id")

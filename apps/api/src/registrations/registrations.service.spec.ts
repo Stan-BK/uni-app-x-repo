@@ -27,9 +27,6 @@ describe("RegistrationsService", () => {
     $transaction: vi.fn(async (fn: (t: typeof tx) => Promise<unknown>) =>
       fn(tx),
     ),
-    organizer: {
-      findUnique: vi.fn(),
-    },
     activity: {
       findUnique: vi.fn(),
     },
@@ -367,22 +364,20 @@ describe("RegistrationsService", () => {
     });
   });
 
-  it("listForOrganizer forbidden when not owner", async () => {
-    prisma.organizer.findUnique.mockResolvedValue({ id: "org1" });
+  it("listForOwner forbidden when not owner", async () => {
     prisma.activity.findUnique.mockResolvedValue({
       id: "act1",
-      organizerId: "org-other",
+      ownerUserId: "u-other",
     });
     await expect(
-      service.listForOrganizer("u1", "act1", {}),
+      service.listForOwner("u1", "act1", {}),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it("listForOrganizer success when owner", async () => {
-    prisma.organizer.findUnique.mockResolvedValue({ id: "org1" });
+  it("listForOwner success when owner", async () => {
     prisma.activity.findUnique.mockResolvedValue({
       id: "act1",
-      organizerId: "org1",
+      ownerUserId: "u1",
     });
     prisma.registration.findMany.mockResolvedValue([
       {
@@ -399,7 +394,7 @@ describe("RegistrationsService", () => {
     ]);
     prisma.registration.count.mockResolvedValue(1);
 
-    const res = await service.listForOrganizer("u1", "act1", {});
+    const res = await service.listForOwner("u1", "act1", {});
     expect(res).toEqual({
       items: [
         {

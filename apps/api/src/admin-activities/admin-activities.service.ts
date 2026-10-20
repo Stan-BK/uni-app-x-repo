@@ -25,7 +25,7 @@ export class AdminActivitiesService {
       where: lifecycle ? { lifecycle } : undefined,
       orderBy: { updatedAt: "desc" },
       take: 100,
-      include: { organizer: { select: { id: true, name: true } } },
+      include: { owner: { select: { id: true, nickname: true } } },
     });
   }
 
