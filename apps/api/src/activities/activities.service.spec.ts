@@ -81,8 +81,21 @@ describe("ActivitiesService", () => {
     );
   });
 
+  it("update with publish throws ForbiddenException when canPublish is false", async () => {
+    prisma.user.findUnique.mockResolvedValue({ canPublish: false });
+    prisma.activity.findFirst.mockResolvedValue({
+      id: "act-1",
+      ownerUserId: "user-1",
+      lifecycle: ActivityLifecycle.draft,
+    });
+
+    await expect(
+      service.update("user-1", "act-1", { publish: true }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.activity.update).not.toHaveBeenCalled();
+  });
+
   it("unpublish calls cancel hook and sets draft", async () => {
-    prisma.user.findUnique.mockResolvedValue({ canPublish: true });
     prisma.activity.findFirst.mockResolvedValue({
       id: "act-1",
       ownerUserId: "user-1",
