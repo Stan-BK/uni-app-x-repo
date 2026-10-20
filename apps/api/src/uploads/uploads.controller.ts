@@ -14,7 +14,7 @@ import { randomUUID } from "crypto";
 import type { Request } from "express";
 import { mkdirSync } from "fs";
 import { UserJwtGuard } from "../common/guards/user-jwt.guard";
-import { PublisherGuard } from "../common/guards/publisher.guard";
+import { CanPublishGuard } from "../common/guards/can-publish.guard";
 
 const ALLOWED_MIME = new Set([
   "image/jpeg",
@@ -27,7 +27,7 @@ const coversDir = join(process.cwd(), "uploads", "covers");
 mkdirSync(coversDir, { recursive: true });
 
 @Controller("organizer/uploads")
-@UseGuards(UserJwtGuard, PublisherGuard)
+@UseGuards(UserJwtGuard, CanPublishGuard)
 export class UploadsController {
   @Post("cover")
   @UseInterceptors(

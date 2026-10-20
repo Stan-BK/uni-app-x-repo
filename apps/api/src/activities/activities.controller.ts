@@ -13,7 +13,7 @@ import {
   CurrentUser,
   type CurrentUserPayload,
 } from "../common/decorators/current-user.decorator";
-import { PublisherGuard } from "../common/guards/publisher.guard";
+import { CanPublishGuard } from "../common/guards/can-publish.guard";
 import { UserJwtGuard } from "../common/guards/user-jwt.guard";
 import { ListMyRegistrationsQuery } from "../registrations/dto/list-my-registrations.query";
 import { RegistrationsService } from "../registrations/registrations.service";
@@ -22,7 +22,7 @@ import { CancelActivityDto } from "./dto/cancel-activity.dto";
 import { UpsertActivityDto } from "./dto/upsert-activity.dto";
 
 @Controller("organizer/activities")
-@UseGuards(UserJwtGuard, PublisherGuard)
+@UseGuards(UserJwtGuard, CanPublishGuard)
 export class ActivitiesController {
   constructor(
     private readonly activitiesService: ActivitiesService,
