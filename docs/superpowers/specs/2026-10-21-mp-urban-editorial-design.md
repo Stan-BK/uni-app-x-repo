@@ -3,6 +3,7 @@
 - **日期：** 2026-10-21  
 - **状态：** Accepted  
 - **视觉规范：** [docs/design/mp-urban-editorial.md](../../design/mp-urban-editorial.md)（v1.1）  
+- **实现计划：** [docs/superpowers/plans/2026-10-21-mp-urban-editorial.md](../plans/2026-10-21-mp-urban-editorial.md)  
 - **范围：** 仅 `apps/mp`；不改 API / Admin / 报名状态机
 
 ## 1. 目标
