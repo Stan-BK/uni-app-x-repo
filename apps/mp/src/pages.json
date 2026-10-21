@@ -65,10 +65,10 @@
     }
   ],
   "tabBar": {
-    "color": "#9CA3AF",
-    "selectedColor": "#0F766E",
-    "backgroundColor": "#FFFFFF",
-    "borderStyle": "black",
+    "color": "#77837A",
+    "selectedColor": "#1E9B88",
+    "backgroundColor": "#FFFEFB",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/home/index",
@@ -87,7 +87,7 @@
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "活动",
-    "navigationBarBackgroundColor": "#FFFFFF",
-    "backgroundColor": "#F4F5F7"
+    "navigationBarBackgroundColor": "#FFFEFB",
+    "backgroundColor": "#F6F3EC"
   }
 }
