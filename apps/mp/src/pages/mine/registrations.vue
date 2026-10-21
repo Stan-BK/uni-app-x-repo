@@ -14,17 +14,27 @@
         <button
           v-if="!user.isLoggedIn"
           class="ed-btn"
+          size="mini"
+          hover-class="none"
           :loading="busy"
           @click="onLogin"
         >
           登录
         </button>
         <template v-else>
-          <button class="ed-btn-secondary" :disabled="busy" @click="onLogout">
+          <button
+            class="ed-btn-secondary"
+            size="mini"
+            hover-class="none"
+            :disabled="busy"
+            @click="onLogout"
+          >
             退出
           </button>
           <button
             class="ed-btn-secondary"
+            size="mini"
+            hover-class="none"
             :disabled="busy"
             @click="onRefresh"
           >
@@ -33,11 +43,18 @@
           <button
             v-if="user.canPublish"
             class="ed-btn"
+            size="mini"
+            hover-class="none"
             @click="goOrganizer"
           >
             发布活动
           </button>
-          <button class="ed-btn-secondary" @click="goOrganizerMine">
+          <button
+            class="ed-btn-secondary"
+            size="mini"
+            hover-class="none"
+            @click="goOrganizerMine"
+          >
             我的活动
           </button>
         </template>
@@ -277,9 +294,16 @@ onShow(() => {
   margin-top: 16rpx;
 }
 
-.btn-row button {
+.btn-row button.ed-btn,
+.btn-row button.ed-btn-secondary {
+  display: inline-flex;
+  flex: none;
   width: auto;
   margin: 0;
+  height: 88rpx;
+  line-height: 88rpx;
+  padding: 0 32rpx;
+  border-radius: $ed-radius-pill;
 }
 
 .state {
