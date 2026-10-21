@@ -3,6 +3,7 @@
 - **日期：** 2026-10-21  
 - **状态：** Accepted  
 - **关联 ADR：** [0010](../../adr/0010-backend-ops-stack.md)（Accepted，选型不变，不新开 ADR）  
+- **实现计划：** [docs/superpowers/plans/2026-10-21-docker-nginx-single-host.md](../plans/2026-10-21-docker-nginx-single-host.md)  
 - **关联：** [backend-ops-roadmap.md](../../backend-ops-roadmap.md) 阶段 B、[ADR-0009](../../adr/0009-e2e-acceptance-and-observability.md)（health / 环境变量）
 
 ## 1. 目标
