@@ -1,4 +1,5 @@
-import { BadRequestException, ForbiddenException } from "@nestjs/common";
+import { BusinessEvent } from "@activity/shared";
+import { BadRequestException, ForbiddenException, Logger } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { ActivityLifecycle, FeeType } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -79,6 +80,42 @@ describe("ActivitiesService", () => {
     await expect(service.publish("user-1", "act-1")).rejects.toBeInstanceOf(
       BadRequestException,
     );
+  });
+
+  const publishableDraft = {
+    id: "act-1",
+    ownerUserId: "user-1",
+    title: "徒步",
+    coverUrl: "https://example.com/c.jpg",
+    category: "观赛",
+    rules: "规则",
+    place: "公园",
+    capacity: 10,
+    feeType: FeeType.free,
+    feeCents: 0,
+    startAt: new Date("2026-11-02T10:00:00Z"),
+    endAt: new Date("2026-11-02T12:00:00Z"),
+    registrationDeadlineAt: null,
+    lifecycle: ActivityLifecycle.draft,
+  };
+
+  it("publish logs activity.publish", async () => {
+    prisma.user.findUnique.mockResolvedValue({ canPublish: true });
+    prisma.activity.findFirst.mockResolvedValue(publishableDraft);
+    prisma.activity.update.mockResolvedValue({
+      ...publishableDraft,
+      lifecycle: ActivityLifecycle.published,
+    });
+    const spy = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+    try {
+      await service.publish("user-1", "act-1");
+      const payload = JSON.parse(String(spy.mock.calls.at(-1)?.[0]));
+      expect(payload.event).toBe(BusinessEvent.ActivityPublish);
+      expect(payload.actorId).toBe("user-1");
+      expect(payload.targetId).toBe("act-1");
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("update with publish throws ForbiddenException when canPublish is false", async () => {

@@ -1,6 +1,6 @@
-import { ForbiddenException } from "@nestjs/common";
+import { ForbiddenException, Logger } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { RegistrationErrorCode } from "@activity/shared";
+import { BusinessEvent, RegistrationErrorCode } from "@activity/shared";
 import {
   ActivityLifecycle,
   FeeType,
@@ -75,13 +75,21 @@ describe("RegistrationsService", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    const dto = await service.create("u1", {
-      activityId: "act1",
-      name: "张三",
-      phone: "13800138000",
-    });
-    expect(dto.status).toBe("confirmed");
-    expect(tx.registration.create).toHaveBeenCalled();
+    const spy = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+    try {
+      const dto = await service.create("u1", {
+        activityId: "act1",
+        name: "张三",
+        phone: "13800138000",
+      });
+      expect(dto.status).toBe("confirmed");
+      expect(tx.registration.create).toHaveBeenCalled();
+      const payload = JSON.parse(String(spy.mock.calls.at(-1)?.[0]));
+      expect(payload.event).toBe(BusinessEvent.RegistrationCreate);
+      expect(payload.targetId).toBe("r1");
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("create rejects paid", async () => {
@@ -175,14 +183,29 @@ describe("RegistrationsService", () => {
     };
     tx.$queryRaw.mockResolvedValue([publishedFree]);
     tx.registration.findUnique.mockResolvedValue(existing);
-    const dto = await service.create("u1", {
-      activityId: "act1",
-      name: "李四",
-      phone: "13900139000",
-    });
-    expect(dto.id).toBe("r1");
-    expect(tx.registration.create).not.toHaveBeenCalled();
-    expect(tx.registration.update).not.toHaveBeenCalled();
+    const spy = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+    try {
+      const dto = await service.create("u1", {
+        activityId: "act1",
+        name: "李四",
+        phone: "13900139000",
+      });
+      expect(dto.id).toBe("r1");
+      expect(tx.registration.create).not.toHaveBeenCalled();
+      expect(tx.registration.update).not.toHaveBeenCalled();
+      const events = spy.mock.calls
+        .map((c) => {
+          try {
+            return JSON.parse(String(c[0])).event;
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean);
+      expect(events).not.toContain(BusinessEvent.RegistrationCreate);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("create reactivates cancelled registration", async () => {
@@ -207,24 +230,39 @@ describe("RegistrationsService", () => {
       status: RegistrationStatus.confirmed,
       cancelledAt: null,
     });
-    const dto = await service.create("u1", {
-      activityId: "act1",
-      name: "张三",
-      phone: "13800138000",
-    });
-    expect(dto.status).toBe("confirmed");
-    expect(tx.registration.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: "r1" },
-        data: expect.objectContaining({
-          status: RegistrationStatus.confirmed,
-          name: "张三",
-          phone: "13800138000",
-          cancelledAt: null,
+    const spy = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+    try {
+      const dto = await service.create("u1", {
+        activityId: "act1",
+        name: "张三",
+        phone: "13800138000",
+      });
+      expect(dto.status).toBe("confirmed");
+      expect(tx.registration.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "r1" },
+          data: expect.objectContaining({
+            status: RegistrationStatus.confirmed,
+            name: "张三",
+            phone: "13800138000",
+            cancelledAt: null,
+          }),
         }),
-      }),
-    );
-    expect(tx.registration.create).not.toHaveBeenCalled();
+      );
+      expect(tx.registration.create).not.toHaveBeenCalled();
+      const events = spy.mock.calls
+        .map((c) => {
+          try {
+            return JSON.parse(String(c[0])).event;
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean);
+      expect(events).not.toContain(BusinessEvent.RegistrationCreate);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("cancel rejects when allowUserCancel is false", async () => {

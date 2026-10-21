@@ -1,6 +1,8 @@
+import { Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Test } from "@nestjs/testing";
+import { BusinessEvent } from "@activity/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuthService } from "./auth.service";
@@ -73,15 +75,24 @@ describe("AuthService", () => {
       avatarUrl: null,
     });
 
-    const result = await service.login({ code: "dev" });
+    const spy = vi.spyOn(Logger.prototype, "log").mockImplementation(() => undefined);
+    try {
+      const result = await service.login({ code: "dev" });
 
-    expect(result.accessToken).toBe("test-access-token");
-    expect(result.user.id).toBe("user-dev-1");
-    expect(weixin.code2Session).not.toHaveBeenCalled();
-    expect(jwt.sign).toHaveBeenCalledWith(
-      { sub: "user-dev-1", typ: "user" },
-      expect.objectContaining({ secret: "dev-user-secret" }),
-    );
+      expect(result.accessToken).toBe("test-access-token");
+      expect(result.user.id).toBe("user-dev-1");
+      expect(weixin.code2Session).not.toHaveBeenCalled();
+      expect(jwt.sign).toHaveBeenCalledWith(
+        { sub: "user-dev-1", typ: "user" },
+        expect.objectContaining({ secret: "dev-user-secret" }),
+      );
+      expect(spy).toHaveBeenCalled();
+      const payload = JSON.parse(String(spy.mock.calls.at(-1)?.[0]));
+      expect(payload.event).toBe(BusinessEvent.UserLogin);
+      expect(payload.actorId).toBe("user-dev-1");
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("dev bypass accepts real code when Weixin credentials are missing", async () => {

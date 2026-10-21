@@ -10,7 +10,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "test": "vitest run",
-    "type-check": "tsc -p tsconfig.build.json --noEmit"
+    "type-check": "tsc -p tsconfig.build.json --noEmit",
+    "smoke": "node scripts/p0-smoke.mjs"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"
