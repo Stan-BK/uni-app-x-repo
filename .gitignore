@@ -156,5 +156,8 @@ unpackage/
 # Git worktrees
 .worktrees/
 
+# Visual brainstorm companion (local preview)
+.superpowers/
+
 # API 运行时上传目录（勿忽略 apps/api/src/uploads 源码）
 apps/api/uploads/
