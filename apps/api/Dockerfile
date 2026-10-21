@@ -24,7 +24,8 @@ COPY --from=build /app/apps/api/package.json apps/api/package.json
 COPY --from=build /app/packages/shared packages/shared
 COPY --from=build /app/apps/api/dist apps/api/dist
 COPY --from=build /app/apps/api/prisma apps/api/prisma
-RUN pnpm install --frozen-lockfile --filter @activity/api... --filter @activity/shared... \
+# prisma CLI 在 api 的 devDependencies；NODE_ENV=production 等价于 --prod，会导致 migrate deploy 找不到命令。
+RUN pnpm install --frozen-lockfile --filter @activity/api... --filter @activity/shared... --prod=false \
     && pnpm --filter @activity/api exec prisma generate
 COPY deploy/api-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
