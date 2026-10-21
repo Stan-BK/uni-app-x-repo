@@ -1,3 +1,4 @@
+import { BusinessEvent } from "@activity/shared";
 import {
   BadRequestException,
   ConflictException,
@@ -7,6 +8,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ActivityLifecycle, FeeType, type Activity } from "@prisma/client";
+import { logBusinessEvent } from "../common/log-business-event";
 import { PrismaService } from "../prisma/prisma.service";
 import { isActivityCategory } from "./activity-categories";
 import type { UpsertActivityDto } from "./dto/upsert-activity.dto";
@@ -178,7 +180,7 @@ export class ActivitiesService {
     const defaults = this.withDefaultDeadline(activity);
     const toPublish = { ...activity, ...defaults };
     this.assertPublishable(toPublish);
-    return this.prisma.activity.update({
+    const published = await this.prisma.activity.update({
       where: { id },
       data: {
         ...defaults,
@@ -186,6 +188,12 @@ export class ActivitiesService {
         publishedAt: new Date(),
       },
     });
+    logBusinessEvent({
+      event: BusinessEvent.ActivityPublish,
+      actorId: userId,
+      targetId: published.id,
+    });
+    return published;
   }
 
   async unpublish(userId: string, id: string): Promise<Activity> {
