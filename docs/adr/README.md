@@ -21,7 +21,7 @@
 | [0006](./0006-activity-discovery-and-public-visibility.md) | 活动发现与公开展示规则 | Implemented |
 | [0007](./0007-registration-idempotency-and-capacity.md) | 报名幂等与名额并发 | Implemented |
 | [0008](./0008-operational-governance-audit-logs.md) | 运营治理（发布权冻结、下架与审计） | Implemented |
-| 0009 | 联调、验收与观测基线 | Proposed（待写） |
+| [0009](./0009-e2e-acceptance-and-observability.md) | 联调、验收与观测基线 | Implemented |
 | [0010](./0010-backend-ops-stack.md) | 后端基础设施与阶段升级选型 | Accepted |
 | [0011](./0011-default-publish-permission.md) | 用户默认可发布（取消 Organizer） | Implemented |
 
