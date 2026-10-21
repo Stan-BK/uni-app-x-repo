@@ -48,7 +48,7 @@
         </view>
         <view class="body">
           <view class="row-title">
-            <text class="title">{{ item.title }}</text>
+            <view class="title">{{ item.title }}</view>
             <text
               class="fee ed-tag"
               :class="isFree(item) ? 'ed-tag-open' : 'ed-tag-paid'"
@@ -329,6 +329,7 @@ onReachBottom(() => {
 
 .title {
   flex: 1;
+  min-width: 0;
   font-size: 28rpx;
   font-weight: 700;
   color: $ed-color-text;
