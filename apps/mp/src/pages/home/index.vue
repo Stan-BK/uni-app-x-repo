@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page page-l1">
     <view class="toolbar">
       <input
         class="search"
@@ -49,16 +49,18 @@
         <view class="body">
           <view class="row-title">
             <text class="title">{{ item.title }}</text>
-            <text class="fee" :class="{ free: isFree(item) }">{{
-              feeLabel(item)
-            }}</text>
+            <text
+              class="fee ed-tag"
+              :class="isFree(item) ? 'ed-tag-open' : 'ed-tag-paid'"
+            >{{ feeLabel(item) }}</text>
           </view>
           <text class="meta">{{ formatTime(item.startAt) }}</text>
           <view class="row-foot">
             <text class="place">{{ item.place || "—" }}</text>
-            <text class="status" :class="item.displayStatus">{{
-              displayLabel(item.displayStatus)
-            }}</text>
+            <text
+              class="status ed-tag"
+              :class="[item.displayStatus, statusTag(item.displayStatus)]"
+            >{{ displayLabel(item.displayStatus) }}</text>
           </view>
         </view>
       </view>
@@ -114,6 +116,12 @@ const publishedAtSortLabel = computed(() => {
 
 function displayLabel(status: string) {
   return DISPLAY_LABEL[status] ?? status;
+}
+
+function statusTag(status: string) {
+  if (status === "open") return "ed-tag-open";
+  if (status === "full") return "ed-tag-full";
+  return "ed-tag-muted";
 }
 
 function isFree(item: PublicActivity) {
@@ -224,14 +232,7 @@ onReachBottom(() => {
 });
 </script>
 
-<style scoped>
-.page {
-  min-height: 100vh;
-  background: #f4f5f7;
-  padding: 24rpx 24rpx 48rpx;
-  box-sizing: border-box;
-}
-
+<style scoped lang="scss">
 .toolbar {
   margin-bottom: 24rpx;
 }
@@ -241,10 +242,11 @@ onReachBottom(() => {
   height: 72rpx;
   padding: 0 24rpx;
   box-sizing: border-box;
-  background: #ffffff;
-  border-radius: 12rpx;
+  background: $ed-color-surface;
+  border: 1rpx solid $ed-color-border;
+  border-radius: $ed-radius-input;
   font-size: 28rpx;
-  color: #1a1d23;
+  color: $ed-color-text;
   margin-bottom: 16rpx;
 }
 
@@ -255,22 +257,22 @@ onReachBottom(() => {
 
 .sort-item {
   font-size: 26rpx;
-  color: #6b7280;
+  color: $ed-color-text-secondary;
   padding: 10rpx 20rpx;
-  border-radius: 999rpx;
-  background: #ffffff;
+  border-radius: $ed-radius-pill;
+  background: $ed-color-surface;
 }
 
 .sort-item.active {
-  color: #0f766e;
-  background: #ecfdf5;
+  color: $ed-color-brand-strong;
+  background: $ed-color-brand-soft;
   font-weight: 600;
 }
 
 .state {
   padding: 120rpx 0;
   text-align: center;
-  color: #8a9099;
+  color: $ed-color-text-muted;
   font-size: 28rpx;
 }
 
@@ -281,17 +283,18 @@ onReachBottom(() => {
 }
 
 .card {
-  background: #ffffff;
-  border-radius: 16rpx;
+  background: $ed-color-surface;
+  border-radius: $ed-radius-card;
+  border: 1rpx solid $ed-color-border;
   overflow: hidden;
-  box-shadow: 0 2rpx 12rpx rgba(15, 23, 42, 0.04);
+  box-shadow: 0 2rpx 8rpx rgba(36, 49, 45, 0.06);
 }
 
 .cover-img {
   width: 100%;
   height: 220rpx;
   display: block;
-  background: #e5e7eb;
+  background: $ed-color-border;
 }
 
 .cover {
@@ -303,7 +306,7 @@ onReachBottom(() => {
 }
 
 .cover-placeholder {
-  background: #0f766e;
+  background: $ed-color-brand;
 }
 
 .cover-label {
@@ -313,7 +316,7 @@ onReachBottom(() => {
 }
 
 .body {
-  padding: 24rpx 28rpx 28rpx;
+  padding: $ed-space-card;
 }
 
 .row-title {
@@ -326,31 +329,25 @@ onReachBottom(() => {
 
 .title {
   flex: 1;
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #1a1d23;
-  line-height: 1.35;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: $ed-color-text;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.fee {
+.fee,
+.status {
   flex-shrink: 0;
-  font-size: 26rpx;
-  font-weight: 600;
-  color: #c2410c;
-  padding: 4rpx 12rpx;
-  background: #fff7ed;
-  border-radius: 8rpx;
-}
-
-.fee.free {
-  color: #0f766e;
-  background: #ecfdf5;
 }
 
 .meta {
   display: block;
   font-size: 24rpx;
-  color: #6b7280;
+  color: $ed-color-text-secondary;
   margin-bottom: 16rpx;
 }
 
@@ -364,46 +361,20 @@ onReachBottom(() => {
 .place {
   flex: 1;
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $ed-color-text-secondary;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.status {
-  flex-shrink: 0;
-  font-size: 22rpx;
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx;
-  color: #0f766e;
-  background: #ecfdf5;
-}
-
-.status.open,
-.status.upcoming {
-  color: #0f766e;
-  background: #ecfdf5;
-}
-
-.status.ended {
-  color: #6b7280;
-  background: #f3f4f6;
-}
-
-.status.full,
-.status.closed {
-  color: #9a3412;
-  background: #fff7ed;
 }
 
 .more {
   padding: 24rpx 0 8rpx;
   text-align: center;
   font-size: 26rpx;
-  color: #0f766e;
+  color: $ed-color-brand;
 }
 
 .more.muted {
-  color: #9ca3af;
+  color: $ed-color-text-muted;
 }
 </style>
