@@ -1,12 +1,17 @@
 <template>
-  <view class="page">
+  <view class="page page-l2">
     <view v-if="loading && !items.length" class="empty card">
       <text class="empty-desc">加载中…</text>
     </view>
     <view v-else-if="!items.length" class="empty card">
       <text class="empty-title">暂无活动</text>
       <text class="empty-desc">创建活动后将显示在这里。</text>
-      <button v-if="user.canPublish" class="primary" @click="goCreate">
+      <button
+        v-if="user.canPublish"
+        class="ed-btn"
+        hover-class="none"
+        @click="goCreate"
+      >
         去发布
       </button>
     </view>
@@ -19,8 +24,9 @@
         <view class="ops">
           <button
             v-if="item.lifecycle === 'draft' && user.canPublish"
-            class="mini primary"
+            class="ed-btn"
             size="mini"
+            hover-class="none"
             :disabled="actingId === item.id"
             @click.stop="onPublish(item.id)"
           >
@@ -28,8 +34,9 @@
           </button>
           <button
             v-if="item.lifecycle === 'published'"
-            class="mini ghost"
+            class="ed-btn-secondary"
             size="mini"
+            hover-class="none"
             :disabled="actingId === item.id"
             @click.stop="onUnpublish(item.id)"
           >
@@ -37,8 +44,9 @@
           </button>
           <button
             v-if="item.lifecycle === 'published'"
-            class="mini danger"
+            class="danger"
             size="mini"
+            hover-class="none"
             :disabled="actingId === item.id"
             @click.stop="onCancel(item.id)"
           >
@@ -46,8 +54,9 @@
           </button>
           <button
             v-if="item.lifecycle === 'draft' || item.lifecycle === 'published'"
-            class="mini ghost"
+            class="ed-btn-secondary"
             size="mini"
+            hover-class="none"
             @click.stop="goEdit(item.id)"
           >
             编辑
@@ -173,78 +182,97 @@ onShow(() => {
 });
 </script>
 
-<style scoped>
-.page {
-  min-height: 100vh;
-  background: #f4f5f7;
-  padding: 24rpx;
-  box-sizing: border-box;
-}
-.card {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 28rpx;
-  margin-bottom: 16rpx;
-}
+<style scoped lang="scss">
+.list,
 .empty {
+  margin-top: 24rpx;
+}
+
+.card {
+  background: $ed-color-surface;
+  border-radius: $ed-radius-card;
+  border: 1rpx solid $ed-color-border;
+  padding: $ed-space-card;
+  margin-bottom: 20rpx;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
 }
+
 .empty-title {
   display: block;
-  font-size: 30rpx;
+  font-size: 32rpx;
   font-weight: 600;
+  color: $ed-color-text;
   margin-bottom: 8rpx;
 }
+
 .empty-desc {
   display: block;
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $ed-color-text-muted;
   margin-bottom: 24rpx;
 }
+
+.empty .ed-btn {
+  width: auto;
+  margin: 0;
+  padding: 0 48rpx;
+  font-weight: 600;
+}
+
 .row {
   margin-bottom: 16rpx;
 }
+
 .title {
   display: block;
   font-size: 30rpx;
   font-weight: 600;
+  color: $ed-color-text;
   margin-bottom: 8rpx;
 }
+
 .meta {
   font-size: 24rpx;
-  color: #6b7280;
+  color: $ed-color-text-secondary;
 }
+
 .ops {
   display: flex;
   flex-wrap: wrap;
   gap: 12rpx;
 }
-button.primary {
-  background: #0f766e;
-  color: #fff;
-}
-button.ghost {
-  background: #e5e7eb;
-  color: #111827;
-}
-button.danger {
-  background: #fee2e2;
-  color: #b91c1c;
-}
-button.mini {
-  margin: 0;
-  padding: 0 20rpx;
-}
-button.primary.mini {
+
+.ops button.ed-btn,
+.ops button.ed-btn-secondary,
+.ops button.danger {
+  display: inline-flex;
+  flex: none;
   width: auto;
+  margin: 0;
+  height: 64rpx;
+  line-height: 64rpx;
+  padding: 0 24rpx;
+  border-radius: $ed-radius-pill;
+  font-size: 24rpx;
 }
-button::after {
+
+.ops button.danger {
+  background: $ed-color-terracotta-soft;
+  color: $ed-color-terracotta;
   border: none;
 }
+
+button.danger::after {
+  border: none;
+}
+
 button[disabled] {
   opacity: 0.5;
-}
-.empty button.primary {
-  width: 280rpx;
 }
 </style>

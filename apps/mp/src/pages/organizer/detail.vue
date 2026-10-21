@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page page-l2">
     <view v-if="loading" class="state">加载中…</view>
     <view v-else-if="!activity" class="state">活动不存在或无权查看</view>
     <view v-else class="card">
@@ -10,7 +10,9 @@
         mode="aspectFill"
       />
       <text class="title">{{ activity.title || "未命名活动" }}</text>
-      <text class="badge">{{ lifecycleLabel(activity.lifecycle) }}</text>
+      <text class="badge ed-tag" :class="lifecycleTagClass(activity.lifecycle)">{{
+        lifecycleLabel(activity.lifecycle)
+      }}</text>
 
       <view class="block">
         <text class="label">分类</text>
@@ -53,14 +55,16 @@
 
       <button
         v-if="activityId"
-        class="ghost"
+        class="ed-btn-secondary"
+        hover-class="none"
         @click="goRegistrations"
       >
         报名名单
       </button>
       <button
         v-if="canEdit"
-        class="primary"
+        class="ed-btn-secondary"
+        hover-class="none"
         @click="goEdit"
       >
         编辑活动
@@ -94,6 +98,12 @@ const canEdit = computed(() => {
 
 function lifecycleLabel(lifecycle: string) {
   return LIFECYCLE_LABEL[lifecycle] ?? lifecycle;
+}
+
+function lifecycleTagClass(lifecycle: string) {
+  if (lifecycle === "published") return "ed-tag-confirmed";
+  if (lifecycle === "draft") return "ed-tag-pending";
+  return "ed-tag-muted";
 }
 
 function formatRange(start?: string | null, end?: string | null) {
@@ -154,82 +164,76 @@ onLoad((query) => {
 });
 </script>
 
-<style scoped>
-.page {
-  min-height: 100vh;
-  background: #f4f5f7;
-  padding: 24rpx;
-  box-sizing: border-box;
-}
+<style scoped lang="scss">
 .state {
+  margin-top: 24rpx;
   padding: 120rpx 0;
   text-align: center;
-  color: #9ca3af;
+  color: $ed-color-text-muted;
   font-size: 28rpx;
 }
+
 .card {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 28rpx;
+  margin-top: 24rpx;
+  background: $ed-color-surface;
+  border-radius: $ed-radius-card;
+  border: 1rpx solid $ed-color-border;
+  padding: $ed-space-card;
 }
+
 .cover {
   width: 100%;
   height: 280rpx;
-  border-radius: 12rpx;
+  border-radius: $ed-radius-card;
   margin-bottom: 20rpx;
-  background: #e5e7eb;
+  background: $ed-color-border;
 }
+
 .title {
   display: block;
-  font-size: 34rpx;
+  font-size: 38rpx;
   font-weight: 600;
+  color: $ed-color-text;
   margin-bottom: 12rpx;
 }
+
 .badge {
-  display: inline-block;
-  font-size: 22rpx;
-  color: #0f766e;
-  background: #ccfbf1;
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx;
   margin-bottom: 24rpx;
 }
+
 .block {
   margin-bottom: 20rpx;
 }
+
 .label {
   display: block;
   font-size: 22rpx;
-  color: #9ca3af;
+  color: $ed-color-text-muted;
   margin-bottom: 6rpx;
 }
+
 .value {
   display: block;
   font-size: 28rpx;
-  color: #111827;
+  color: $ed-color-text;
   line-height: 1.5;
   white-space: pre-wrap;
 }
+
 .coord {
   display: block;
   margin-top: 6rpx;
   font-size: 22rpx;
-  color: #9ca3af;
+  color: $ed-color-text-muted;
 }
+
 .rules {
   white-space: pre-wrap;
 }
-button.primary {
-  margin-top: 16rpx;
-  background: #0f766e;
-  color: #fff;
-}
-button.ghost {
-  margin-top: 16rpx;
-  background: #e5e7eb;
-  color: #111827;
-}
-button::after {
-  border: none;
+
+button.ed-btn,
+button.ed-btn-secondary {
+  margin: 16rpx 0 0;
+  font-weight: 600;
 }
 </style>

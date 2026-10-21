@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page page-l2">
     <view class="card">
       <text class="title">{{ pageTitle }}</text>
       <text class="desc">{{ pageDesc }}</text>
@@ -144,14 +144,20 @@
 
       <view v-if="canEditContent" class="actions">
         <template v-if="isPublishedEdit">
-          <button class="primary" :disabled="saving" @click="savePublished">
+          <button
+            class="ed-btn"
+            hover-class="none"
+            :disabled="saving"
+            @click="savePublished"
+          >
             保存
           </button>
         </template>
         <template v-else>
           <button
             v-if="!isNewActivity || user.canPublish"
-            class="ghost"
+            class="ed-btn-secondary"
+            hover-class="none"
             :disabled="saving"
             @click="saveDraft"
           >
@@ -159,7 +165,8 @@
           </button>
           <button
             v-if="user.canPublish"
-            class="primary"
+            class="ed-btn"
+            hover-class="none"
             :disabled="saving"
             @click="publish"
           >
@@ -741,71 +748,70 @@ onShow(() => {
 });
 </script>
 
-<style scoped>
-.page {
-  min-height: 100vh;
-  background: #f4f5f7;
-  padding: 24rpx;
-  box-sizing: border-box;
-}
+<style scoped lang="scss">
 .card {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 28rpx;
+  margin-top: 24rpx;
+  background: $ed-color-surface;
+  border-radius: $ed-radius-card;
+  border: 1rpx solid $ed-color-border;
+  padding: $ed-space-card;
 }
+
 .title {
   display: block;
-  font-size: 32rpx;
+  font-size: 38rpx;
   font-weight: 600;
+  color: $ed-color-text;
   margin-bottom: 12rpx;
 }
+
 .desc {
   display: block;
   font-size: 24rpx;
-  color: #6b7280;
+  color: $ed-color-text-secondary;
   line-height: 1.5;
   margin-bottom: 20rpx;
 }
+
 .actions {
   display: flex;
   flex-direction: column;
   gap: 16rpx;
   margin-top: 24rpx;
 }
-button.primary {
-  background: #0f766e;
-  color: #fff;
+
+.actions button {
+  margin: 0;
+  font-weight: 600;
 }
-button.ghost {
-  background: #e5e7eb;
-  color: #111827;
-}
-button::after {
-  border: none;
-}
+
 button[disabled] {
   opacity: 0.5;
 }
+
 .msg {
   display: block;
   margin-top: 16rpx;
-  color: #b45309;
+  color: $ed-color-terracotta;
   font-size: 24rpx;
   line-height: 1.5;
 }
+
 .cover-picker {
   position: relative;
   width: 100%;
   height: 280rpx;
-  border-radius: 12rpx;
+  border-radius: $ed-radius-input;
   overflow: hidden;
-  background: #f3f4f6;
-  border: 1rpx dashed #d1d5db;
+  background: $ed-color-brand-soft;
+  border: 1rpx solid $ed-color-border;
 }
+
 .cover-img {
   width: 100%;
   height: 100%;
 }
+
 .cover-placeholder {
   height: 100%;
   display: flex;
@@ -813,66 +819,99 @@ button[disabled] {
   align-items: center;
   justify-content: center;
   gap: 8rpx;
+  background: $ed-color-brand;
 }
+
 .cover-placeholder-title {
   font-size: 28rpx;
-  color: #374151;
+  color: rgba(255, 255, 255, 0.95);
 }
+
 .cover-placeholder-sub {
   font-size: 22rpx;
-  color: #9ca3af;
+  color: rgba(255, 255, 255, 0.78);
 }
+
 .cover-mask {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
-  color: #fff;
+  color: rgba(255, 255, 255, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 28rpx;
 }
+
 .place-picker {
   display: flex;
   align-items: center;
   gap: 16rpx;
   min-height: 72rpx;
   padding: 16rpx 20rpx;
-  border: 1rpx solid #e5e7eb;
-  border-radius: 12rpx;
-  background: #fafafa;
+  border: 1rpx solid $ed-color-border;
+  border-radius: $ed-radius-input;
+  background: $ed-color-surface;
   box-sizing: border-box;
 }
+
 .place-text {
   flex: 1;
   font-size: 28rpx;
-  color: #111827;
+  color: $ed-color-text;
   line-height: 1.4;
 }
+
 .place-placeholder {
   flex: 1;
   font-size: 28rpx;
-  color: #9ca3af;
+  color: $ed-color-text-muted;
 }
+
 .place-action {
   flex-shrink: 0;
   font-size: 24rpx;
-  color: #0f766e;
+  color: $ed-color-brand;
 }
+
 .place-edit {
   margin-top: 12rpx;
 }
-.field-hint {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  color: #9ca3af;
-  line-height: 1.4;
-}
+
+.field-hint,
 .place-coord {
   display: block;
   margin-top: 8rpx;
   font-size: 22rpx;
-  color: #9ca3af;
+  color: $ed-color-text-muted;
+  line-height: 1.4;
+}
+
+:deep(.uni-easyinput__content.is-input-border),
+:deep(.uni-select),
+:deep(.uni-date-x),
+:deep(.uni-date-x--border) {
+  border-radius: $ed-radius-input !important;
+  border-color: $ed-color-border !important;
+  background-color: $ed-color-surface !important;
+}
+
+:deep(.uni-data-checklist .checklist-group .checklist-box.is--tag) {
+  border-radius: $ed-radius-input !important;
+  border-color: $ed-color-border !important;
+  background-color: $ed-color-btn-secondary !important;
+}
+
+:deep(.uni-data-checklist .checklist-group .checklist-box.is--tag .checklist-text) {
+  color: $ed-color-text;
+}
+
+:deep(.uni-data-checklist .checklist-group .checklist-box.is--tag.is-checked) {
+  border-color: $ed-color-brand !important;
+  background-color: $ed-color-brand !important;
+}
+
+:deep(.uni-data-checklist .checklist-group .checklist-box.is--tag.is-checked .checklist-text) {
+  color: rgba(255, 255, 255, 0.95) !important;
 }
 </style>
