@@ -43,5 +43,5 @@
 
 ## 实现备注
 
-- 涉及目录：`apps/api`、后续部署清单（Docker/Compose）、OSS 配置（阶段 B）。  
-- 验收要点：阶段切换时核对 `backend-ops-roadmap.md` §3 表格；未开放阶段不得合并可收款代码。
+- 涉及目录：`deploy/`（compose / Nginx / `.env.example`）、`apps/api/Dockerfile`、手册 `docs/deploy-docker.md`。OSS / CDN / Sentry 仍属阶段 B 后续切片。  
+- 验收要点：阶段切换时核对 `backend-ops-roadmap.md` §3 表格；未开放阶段不得合并可收款代码。空机器按手册 `compose up` 后 `GET /api/health` 为 200。
