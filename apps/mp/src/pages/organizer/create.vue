@@ -15,6 +15,8 @@
           <uni-easyinput
             v-model="form.title"
             placeholder="例如：周末城市徒步"
+            primary-color="#1E9B88"
+            :styles="easyinputStyles"
             :clearable="true"
           />
         </uni-forms-item>
@@ -55,6 +57,8 @@
             v-model="form.place"
             class="place-edit"
             placeholder="可微调地址文案（集合点说明等）"
+            primary-color="#1E9B88"
+            :styles="easyinputStyles"
             :clearable="true"
           />
           <text v-if="form.placeLat != null && form.placeLng != null" class="place-coord">
@@ -117,6 +121,8 @@
             type="textarea"
             :autoHeight="true"
             placeholder="报名须知、装备要求等"
+            primary-color="#1E9B88"
+            :styles="easyinputStyles"
           />
         </uni-forms-item>
 
@@ -138,6 +144,8 @@
             v-model="form.feeYuan"
             type="digit"
             placeholder="例如 50"
+            primary-color="#1E9B88"
+            :styles="easyinputStyles"
           />
         </uni-forms-item>
       </uni-forms>
@@ -257,6 +265,14 @@ const refundableOptions = [
 ];
 /** 与 packages/shared ActivityCategory 同步；页面内写死避免 vendor 增量缓存旧枚举 */
 const categoryOptions = [{ text: "观赛", value: "观赛" }];
+
+/** 只改默认边框/底色。聚焦走 primaryColor，报错走组件内联色，样式里不要 !important 盖住。 */
+const easyinputStyles = {
+  color: "#24312d",
+  backgroundColor: "#fffefb",
+  disableColor: "#F7F6F6",
+  borderColor: "#e7e2d9",
+};
 
 const form = reactive({
   title: "",
@@ -887,7 +903,19 @@ button[disabled] {
   line-height: 1.4;
 }
 
-:deep(.uni-easyinput__content.is-input-border),
+:deep(.uni-easyinput__content.is-input-border) {
+  border-radius: $ed-radius-input !important;
+}
+
+:deep(
+  .uni-easyinput__content.is-input-border:not(.is-focused):not(
+      .is-input-error-border
+    )
+) {
+  border-color: $ed-color-border;
+  background-color: $ed-color-surface;
+}
+
 :deep(.uni-select),
 :deep(.uni-date-x),
 :deep(.uni-date-x--border) {
@@ -897,7 +925,7 @@ button[disabled] {
 }
 
 :deep(.uni-data-checklist .checklist-group .checklist-box.is--tag) {
-  border-radius: $ed-radius-input !important;
+  border-radius: $ed-radius-tag !important;
   border-color: $ed-color-border !important;
   background-color: $ed-color-btn-secondary !important;
 }
