@@ -1,7 +1,7 @@
 # Docker + Nginx 单机部署清单设计规格
 
 - **日期：** 2026-10-21  
-- **状态：** Accepted  
+- **状态：** Implemented  
 - **关联 ADR：** [0010](../../adr/0010-backend-ops-stack.md)（Accepted，选型不变，不新开 ADR）  
 - **实现计划：** [docs/superpowers/plans/2026-10-21-docker-nginx-single-host.md](../plans/2026-10-21-docker-nginx-single-host.md)  
 - **关联：** [backend-ops-roadmap.md](../../backend-ops-roadmap.md) 阶段 B、[ADR-0009](../../adr/0009-e2e-acceptance-and-observability.md)（health / 环境变量）
@@ -97,11 +97,11 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
 
 ## 7. 验收
 
-- [ ] `compose build` 成功  
-- [ ] `up` 后宿主机 `GET /api/health` 为 200  
-- [ ] 去掉 JWT 或 `DATABASE_URL` 时 API 容器退出且日志含缺失变量名  
-- [ ] 重启 compose 后 Postgres 数据与 `uploads` 仍在（volume）  
-- [ ] 无 443、无 Admin 镜像、无 OSS/Sentry/Redis/MQ、无支付  
+- [x] `compose build` 成功  
+- [x] `up` 后宿主机 `GET /api/health` 为 200  
+- [x] 去掉 JWT 或 `DATABASE_URL` 时 API 容器退出且日志含缺失变量名  
+- [x] 重启 compose 后 Postgres 数据与 `uploads` 仍在（volume）  
+- [x] 无 443、无 Admin 镜像、无 OSS/Sentry/Redis/MQ、无支付  
 
 ## 8. 非目标（重申）
 
