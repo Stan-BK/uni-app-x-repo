@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page page-l1">
     <view class="identity card">
       <text class="section-title">账号</text>
       <text class="line">状态：{{ user.isLoggedIn ? "已登录" : "未登录" }}</text>
@@ -13,20 +13,18 @@
       <view class="btn-row">
         <button
           v-if="!user.isLoggedIn"
-          class="primary"
-          size="mini"
+          class="ed-btn"
           :loading="busy"
           @click="onLogin"
         >
           登录
         </button>
         <template v-else>
-          <button class="ghost" size="mini" :disabled="busy" @click="onLogout">
+          <button class="ed-btn-secondary" :disabled="busy" @click="onLogout">
             退出
           </button>
           <button
-            class="ghost"
-            size="mini"
+            class="ed-btn-secondary"
             :disabled="busy"
             @click="onRefresh"
           >
@@ -34,17 +32,12 @@
           </button>
           <button
             v-if="user.canPublish"
-            class="primary"
-            size="mini"
+            class="ed-btn"
             @click="goOrganizer"
           >
             发布活动
           </button>
-          <button
-            class="ghost"
-            size="mini"
-            @click="goOrganizerMine"
-          >
+          <button class="ed-btn-secondary" @click="goOrganizerMine">
             我的活动
           </button>
         </template>
@@ -56,7 +49,7 @@
     <view v-else-if="!items.length" class="state empty">
       <text class="empty-title">还没有报名记录</text>
       <text class="empty-desc">去首页看看近期活动吧</text>
-      <button class="empty-btn" @click="goHome">浏览活动</button>
+      <button class="ed-btn" @click="goHome">浏览活动</button>
     </view>
     <view v-else class="list">
       <view
@@ -66,8 +59,8 @@
         @click="goDetail(item)"
       >
         <view class="card-top">
-          <text class="title">{{ item.activity?.title || "活动" }}</text>
-          <text class="status" :class="item.status">{{
+          <view class="title">{{ item.activity?.title || "活动" }}</view>
+          <text class="status ed-tag" :class="statusTagClass(item.status)">{{
             statusLabel(item.status)
           }}</text>
         </view>
@@ -79,7 +72,7 @@
           <text>提交时间：{{ formatTime(item.createdAt) }}</text>
         </view>
         <view v-if="canCancel(item)" class="actions">
-          <text class="link cancel" @click.stop="onCancel(item)">取消报名</text>
+          <text class="ed-btn-link" @click.stop="onCancel(item)">取消报名</text>
         </view>
       </view>
     </view>
@@ -112,6 +105,14 @@ const identityMsg = ref("");
 
 function statusLabel(status: string) {
   return STATUS_LABEL[status] ?? status;
+}
+
+function statusTagClass(status: string) {
+  if (status === "confirmed") return "ed-tag-confirmed";
+  if (status === "pending") return "ed-tag-pending";
+  if (status === "waitlist") return "ed-tag-waitlist";
+  if (status === "cancelled") return "ed-tag-muted";
+  return "ed-tag-muted";
 }
 
 function formatTime(iso?: string | null) {
@@ -242,18 +243,11 @@ onShow(() => {
 });
 </script>
 
-<style scoped>
-.page {
-  min-height: 100vh;
-  background: #f4f5f7;
-  padding: 24rpx 24rpx 48rpx;
-  box-sizing: border-box;
-}
-
+<style scoped lang="scss">
 .section-title {
   font-size: 28rpx;
-  font-weight: 600;
-  color: #1a1d23;
+  font-weight: 700;
+  color: $ed-color-text;
   margin-bottom: 12rpx;
 }
 
@@ -265,14 +259,14 @@ onShow(() => {
 .identity .line {
   display: block;
   font-size: 24rpx;
-  color: #4b5563;
+  color: $ed-color-text-secondary;
   margin-bottom: 8rpx;
 }
 
 .msg {
   display: block;
   font-size: 24rpx;
-  color: #b45309;
+  color: $ed-color-terracotta;
   margin: 8rpx 0;
 }
 
@@ -283,24 +277,15 @@ onShow(() => {
   margin-top: 16rpx;
 }
 
-button.primary {
-  background: #0f766e;
-  color: #fff;
-}
-
-button.ghost {
-  background: #e5e7eb;
-  color: #111827;
-}
-
-button::after {
-  border: none;
+.btn-row button {
+  width: auto;
+  margin: 0;
 }
 
 .state {
   padding: 80rpx 0;
   text-align: center;
-  color: #8a9099;
+  color: $ed-color-text-muted;
   font-size: 28rpx;
 }
 
@@ -313,30 +298,20 @@ button::after {
 
 .empty-title {
   font-size: 32rpx;
-  color: #1a1d23;
-  font-weight: 600;
+  color: $ed-color-text;
+  font-weight: 700;
   margin-bottom: 12rpx;
 }
 
 .empty-desc {
   font-size: 26rpx;
-  color: #9ca3af;
+  color: $ed-color-text-muted;
   margin-bottom: 40rpx;
 }
 
-.empty-btn {
-  width: 280rpx;
-  height: 80rpx;
-  line-height: 80rpx;
-  background: #0f766e;
-  color: #ffffff;
-  font-size: 28rpx;
-  border-radius: 12rpx;
-  border: none;
-}
-
-.empty-btn::after {
-  border: none;
+.empty .ed-btn {
+  width: auto;
+  margin: 0;
 }
 
 .list {
@@ -346,9 +321,13 @@ button::after {
 }
 
 .card {
-  background: #ffffff;
-  border-radius: 16rpx;
-  padding: 28rpx;
+  background: $ed-color-surface;
+  border-radius: $ed-radius-card;
+  border: 1rpx solid $ed-color-border;
+  padding: $ed-space-card;
+}
+
+.identity {
   margin-bottom: 20rpx;
 }
 
@@ -362,34 +341,19 @@ button::after {
 
 .title {
   flex: 1;
+  min-width: 0;
   font-size: 30rpx;
-  font-weight: 600;
-  color: #1a1d23;
+  font-weight: 700;
+  color: $ed-color-text;
   line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .status {
   flex-shrink: 0;
-  font-size: 22rpx;
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx;
-  color: #b45309;
-  background: #fffbeb;
-}
-
-.status.confirmed {
-  color: #0f766e;
-  background: #ecfdf5;
-}
-
-.status.cancelled {
-  color: #6b7280;
-  background: #f3f4f6;
-}
-
-.status.waitlist {
-  color: #1e3a5f;
-  background: #eff6ff;
 }
 
 .meta {
@@ -397,21 +361,12 @@ button::after {
   flex-direction: column;
   gap: 8rpx;
   font-size: 24rpx;
-  color: #6b7280;
+  color: $ed-color-text-secondary;
   margin-bottom: 20rpx;
 }
 
 .actions {
-  border-top: 1rpx solid #f0f1f3;
+  border-top: 1rpx solid $ed-color-border;
   padding-top: 20rpx;
-}
-
-.link {
-  font-size: 26rpx;
-  color: #0f766e;
-}
-
-.link.cancel {
-  color: #b45309;
 }
 </style>
