@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page page-l2">
     <view v-if="loading" class="state">加载中…</view>
     <view v-else-if="errorMessage" class="state">{{ errorMessage }}</view>
     <template v-else-if="activity">
@@ -15,10 +15,13 @@
 
       <view class="panel">
         <view class="title-row">
-          <text class="title">{{ activity.title }}</text>
-          <text class="fee" :class="{ free: isFree }">{{ feeLabel }}</text>
+          <view class="title">{{ activity.title }}</view>
+          <text
+            class="fee ed-tag"
+            :class="isFree ? 'ed-tag-open' : 'ed-tag-paid'"
+          >{{ feeLabel }}</text>
         </view>
-        <text class="status" :class="activity.displayStatus">{{
+        <text class="status ed-tag" :class="statusTagClass">{{
           displayLabel
         }}</text>
 
@@ -82,7 +85,8 @@
         <!-- #ifdef MP-WEIXIN -->
         <button
           v-if="canShare"
-          class="share"
+          class="share ed-btn-secondary"
+          hover-class="none"
           open-type="share"
         >
           分享
@@ -91,14 +95,16 @@
         <!-- #ifndef MP-WEIXIN -->
         <button
           v-if="canShare"
-          class="share"
+          class="share ed-btn-secondary"
+          hover-class="none"
           @click="onShare"
         >
           分享
         </button>
         <!-- #endif -->
         <button
-          class="cta"
+          class="cta ed-btn"
+          hover-class="none"
           :class="{ disabled: !canRegister, withShare: canShare }"
           :disabled="!canRegister"
           @click="onCta"
@@ -165,6 +171,13 @@ const feeLabel = computed(() => {
 const displayLabel = computed(() => {
   const status = activity.value?.displayStatus ?? "";
   return DISPLAY_LABEL[status] ?? status;
+});
+
+const statusTagClass = computed(() => {
+  const status = activity.value?.displayStatus ?? "";
+  if (status === "open") return "ed-tag-open";
+  if (status === "full") return "ed-tag-full";
+  return "ed-tag-muted";
 });
 
 const canRegister = computed(() => {
@@ -299,25 +312,25 @@ function onCta() {
 }
 </script>
 
-<style scoped>
-.page {
-  min-height: 100vh;
-  background: #f4f5f7;
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
+<style scoped lang="scss">
 .state {
   padding: 160rpx 0;
   text-align: center;
-  color: #8a9099;
+  color: $ed-color-text-muted;
   font-size: 28rpx;
 }
 
+.cover-img,
+.cover {
+  margin-left: -$ed-space-page-x;
+  margin-right: -$ed-space-page-x;
+  width: calc(100% + 88rpx);
+}
+
 .cover-img {
-  width: 100%;
   height: 360rpx;
   display: block;
-  background: #e5e7eb;
+  background: $ed-color-border;
 }
 
 .cover {
@@ -329,7 +342,7 @@ function onCta() {
 }
 
 .cover-placeholder {
-  background: #0f766e;
+  background: $ed-color-brand;
 }
 
 .cover-label {
@@ -339,10 +352,11 @@ function onCta() {
 }
 
 .panel {
-  margin: 24rpx;
-  padding: 32rpx;
-  background: #ffffff;
-  border-radius: 16rpx;
+  margin-top: $ed-space-section;
+  padding: $ed-space-card;
+  background: $ed-color-surface;
+  border: 1rpx solid $ed-color-border;
+  border-radius: $ed-radius-card;
 }
 
 .title-row {
@@ -355,55 +369,26 @@ function onCta() {
 
 .title {
   flex: 1;
-  font-size: 36rpx;
+  min-width: 0;
+  font-size: 38rpx;
   font-weight: 600;
-  color: #1a1d23;
-  line-height: 1.35;
+  color: $ed-color-text;
+  line-height: 1.4;
 }
 
 .fee {
   flex-shrink: 0;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #c2410c;
-}
-
-.fee.free {
-  color: #0f766e;
 }
 
 .status {
-  display: inline-block;
-  font-size: 22rpx;
-  padding: 6rpx 14rpx;
-  border-radius: 8rpx;
-  color: #0f766e;
-  background: #ecfdf5;
   margin-bottom: 28rpx;
-}
-
-.status.ended {
-  color: #6b7280;
-  background: #f3f4f6;
-}
-
-.status.open,
-.status.upcoming {
-  color: #0f766e;
-  background: #ecfdf5;
-}
-
-.status.full,
-.status.closed {
-  color: #b45309;
-  background: #fffbeb;
 }
 
 .info-row {
   display: flex;
   gap: 24rpx;
   padding: 14rpx 0;
-  border-top: 1rpx solid #f0f1f3;
+  border-top: 1rpx solid $ed-color-border;
 }
 
 .info-row:first-child {
@@ -412,32 +397,33 @@ function onCta() {
 }
 
 .label {
-  width: 72rpx;
+  width: 128rpx;
   flex-shrink: 0;
   font-size: 26rpx;
-  color: #9ca3af;
+  color: $ed-color-text-secondary;
 }
 
 .value {
   flex: 1;
+  min-width: 0;
   font-size: 26rpx;
-  color: #374151;
+  color: $ed-color-text;
   line-height: 1.45;
 }
 
 .section-title {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #1a1d23;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: $ed-color-text;
   margin-bottom: 16rpx;
 }
 
 .rules {
   display: block;
   font-size: 26rpx;
-  color: #4b5563;
-  line-height: 1.7;
+  color: $ed-color-text;
+  line-height: 1.6;
 }
 
 .bottom-space {
@@ -452,49 +438,38 @@ function onCta() {
   display: flex;
   align-items: center;
   gap: 16rpx;
-  padding: 16rpx 32rpx calc(16rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.96);
-  border-top: 1rpx solid #eef0f3;
+  padding: 16rpx $ed-space-page-x calc(16rpx + env(safe-area-inset-bottom));
+  background: $ed-color-surface;
+  border-top: 1rpx solid $ed-color-border;
+}
+
+.share,
+.cta {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-weight: 600;
 }
 
 .share {
   flex: 0 0 180rpx;
-  height: 88rpx;
-  line-height: 88rpx;
-  margin: 0;
-  padding: 0;
-  background: #ffffff;
-  color: #0f766e;
-  font-size: 28rpx;
-  font-weight: 600;
-  border-radius: 12rpx;
-  border: 2rpx solid #0f766e;
+  width: 180rpx;
 }
 
-.share::after {
+.share::after,
+.cta::after {
   border: none;
 }
 
 .cta {
   flex: 1;
-  height: 88rpx;
-  line-height: 88rpx;
-  margin: 0;
-  background: #0f766e;
-  color: #ffffff;
-  font-size: 30rpx;
-  font-weight: 600;
-  border-radius: 12rpx;
-  border: none;
+  width: auto;
 }
 
 .cta.disabled,
 .cta[disabled] {
-  background: #cbd5e1;
+  opacity: 0.45;
+  background: $ed-color-brand;
   color: #ffffff;
-}
-
-.cta::after {
-  border: none;
 }
 </style>
