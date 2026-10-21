@@ -108,11 +108,13 @@
 
 ## P0-6 端到端验收
 
-**ADR：** 0009
+**ADR：** [0009](./adr/0009-e2e-acceptance-and-observability.md)（Implemented）  
+**设计：** [docs/superpowers/specs/2026-10-21-p0-6-e2e-acceptance-design.md](./superpowers/specs/2026-10-21-p0-6-e2e-acceptance-design.md)  
+**计划：** [docs/superpowers/plans/2026-10-21-p0-6-e2e-acceptance.md](./superpowers/plans/2026-10-21-p0-6-e2e-acceptance.md)
 
-- [ ] mp ↔ api ↔ admin 冒烟脚本/清单  
-- [ ] 环境变量与错误码约定  
-- [ ] 基础埋点事件（可选最小集）  
+- [x] mp ↔ api ↔ admin 冒烟脚本/清单  
+- [x] 环境变量与错误码约定  
+- [x] 基础埋点事件（可选最小集）  
 
 **验收：** P0 用例无阻断缺陷，可试运营。
 

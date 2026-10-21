@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { RegistrationErrorCode } from "@activity/shared";
+import { BusinessEvent, RegistrationErrorCode } from "@activity/shared";
 import {
   ActivityLifecycle,
   FeeType,
@@ -13,6 +13,7 @@ import {
   RegistrationStatus,
   type Activity,
 } from "@prisma/client";
+import { logBusinessEvent } from "../common/log-business-event";
 import { computeDisplayStatus } from "../public-activities/public-activity.mapper";
 import { PrismaService } from "../prisma/prisma.service";
 import { toRegistrationDto } from "./registration.mapper";
@@ -102,6 +103,11 @@ export class RegistrationsService {
           phone,
           status: RegistrationStatus.confirmed,
         },
+      });
+      logBusinessEvent({
+        event: BusinessEvent.RegistrationCreate,
+        actorId: userId,
+        targetId: created.id,
       });
       return toRegistrationDto(created);
     });
