@@ -1,7 +1,7 @@
 # 小程序 Urban Editorial 视觉改版设计规格
 
 - **日期：** 2026-10-21  
-- **状态：** Accepted  
+- **状态：** Implemented  
 - **视觉规范：** [docs/design/mp-urban-editorial.md](../../design/mp-urban-editorial.md)（v1.1）  
 - **实现计划：** [docs/superpowers/plans/2026-10-21-mp-urban-editorial.md](../plans/2026-10-21-mp-urban-editorial.md)  
 - **范围：** 仅 `apps/mp`；不改 API / Admin / 报名状态机
@@ -67,11 +67,11 @@ canvas 底、列表卡片、底部 Tab。
 
 ## 7. 验收
 
-- [ ] tokens 只在 `uni.scss`（或单一 editorial 文件）定义，页面不散落另一套 HEX  
-- [ ] 一级两页、二级七页均使用对应页壳  
-- [ ] 主/次按钮全胶囊；输入框非胶囊  
-- [ ] 状态标签含文字  
-- [ ] 无新品牌色、无渐变主按钮、无 Admin 改动  
+- [x] tokens 只在 `uni.scss`（或单一 editorial 文件）定义，页面不散落另一套 HEX  
+- [x] 一级两页、二级七页均使用对应页壳  
+- [x] 主/次按钮全胶囊；输入框非胶囊  
+- [x] 状态标签含文字  
+- [x] 无新品牌色、无渐变主按钮、无 Admin 改动  
 
 ## 8. 非目标
 
