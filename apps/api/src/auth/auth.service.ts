@@ -2,6 +2,8 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService, type JwtSignOptions } from "@nestjs/jwt";
 import { IdentityProvider, type User } from "@prisma/client";
+import { BusinessEvent } from "@activity/shared";
+import { logBusinessEvent } from "../common/log-business-event";
 import { PrismaService } from "../prisma/prisma.service";
 import { WeixinClient } from "./weixin.client";
 
@@ -112,6 +114,7 @@ export class AuthService {
       { sub: user.id, typ: "user" },
       { secret, expiresIn },
     );
+    logBusinessEvent({ event: BusinessEvent.UserLogin, actorId: user.id });
     return {
       accessToken,
       user: {
