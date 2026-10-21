@@ -1,0 +1,11 @@
+.git
+.worktrees
+**/node_modules
+apps/mp
+apps/admin
+apps/api/uploads
+**/.env
+!**/.env.example
+**/dist
+unpackage
+coverage

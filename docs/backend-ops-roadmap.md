@@ -90,6 +90,8 @@
 | 平台 | 仍以微信为主；抖音/小红书接口保持预留 |
 | 观测 | 错误追踪（如 Sentry 类）+ 关键接口延迟 |
 
+**已进仓库：** `deploy/docker-compose.yml`（API + Postgres + Nginx 单机）；手册 `docs/deploy-docker.md`。HTTPS、OSS/CDN、Sentry、配置下发仍后置。
+
 **不做：** 在线收款、主从强制、容器多副本（可预研）。
 
 ### 阶段 C — 有交易再上（产品 P2，独立里程碑）
