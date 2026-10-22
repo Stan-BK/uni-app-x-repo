@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Patch, Post, UseGuards } from "@nestjs/common";
 import {
   CurrentUser,
   type CurrentUserPayload,
 } from "../common/decorators/current-user.decorator";
 import { UserJwtGuard } from "../common/guards/user-jwt.guard";
 import { AuthService } from "./auth.service";
+import { PatchMeDto } from "./dto/patch-me.dto";
 import { WeixinLoginDto } from "./dto/weixin-login.dto";
 
 @Controller()
@@ -20,5 +21,14 @@ export class AuthController {
   @UseGuards(UserJwtGuard)
   me(@CurrentUser() user: CurrentUserPayload) {
     return this.authService.getMe(user.userId);
+  }
+
+  @Patch("me")
+  @UseGuards(UserJwtGuard)
+  updateMe(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: PatchMeDto,
+  ) {
+    return this.authService.updateMe(user.userId, dto);
   }
 }
