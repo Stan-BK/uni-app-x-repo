@@ -71,6 +71,8 @@ const user = useUserStore();
 const draftNickname = ref("");
 const avatarPreview = ref("");
 const saving = ref(false);
+/** Bumped on each identity refresh so in-flight GET /me cannot clobber local state. */
+let loadGen = 0;
 
 const nicknameInputType = computed(() => {
   // #ifdef MP-WEIXIN
@@ -104,6 +106,7 @@ async function onNicknameCommit() {
   saving.value = true;
   try {
     await user.updateProfile({ nickname: next || null });
+    loadGen += 1;
     syncFromStore();
   } catch (e) {
     uni.showToast({ title: errMessage(e), icon: "none" });
@@ -119,7 +122,8 @@ async function saveAvatar(filePath: string) {
   try {
     const { url } = await uploadAvatar(filePath);
     await user.updateProfile({ avatarUrl: url });
-    syncFromStore();
+    loadGen += 1;
+    avatarPreview.value = user.me?.avatarUrl ?? "";
   } catch (e) {
     avatarPreview.value = user.me?.avatarUrl ?? "";
     uni.showToast({ title: errMessage(e), icon: "none" });
@@ -149,11 +153,14 @@ onShow(() => {
     uni.showToast({ title: "请先登录", icon: "none" });
     return;
   }
+  loadGen += 1;
+  const gen = loadGen;
   void user.refreshIdentity()
     .catch(() => {
       /* 网络失败时保留本地态 */
     })
     .finally(() => {
+      if (gen !== loadGen || saving.value) return;
       syncFromStore();
     });
 });
