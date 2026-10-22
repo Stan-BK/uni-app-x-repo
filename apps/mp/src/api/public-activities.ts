@@ -23,6 +23,8 @@ export type PublicActivity = {
   displayStatus: "upcoming" | "open" | "ended" | "full" | "closed";
   publishedAt?: string | null;
   hostName: string;
+  attendees?: { nickname: string; avatarUrl: string | null }[];
+  confirmedCount?: number;
 };
 
 export type ListPublicParams = {
@@ -65,4 +67,9 @@ export function getPublicActivity(id: string) {
   return request<PublicActivity>(`/public/activities/${encodeURIComponent(id)}`, {
     auth: false,
   });
+}
+
+/** 报名人数最多的在办活动，至多 3 条；端上满 3 条才展示 */
+export function listHotPublicActivities() {
+  return request<PublicActivity[]>("/public/activities/hot", { auth: false });
 }

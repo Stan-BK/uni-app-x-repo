@@ -11,6 +11,11 @@ export class PublicActivitiesController {
     return this.publicActivities.list(query);
   }
 
+  @Get("hot")
+  listHot() {
+    return this.publicActivities.listHot();
+  }
+
   @Get(":id")
   get(@Param("id") id: string) {
     return this.publicActivities.getById(id);

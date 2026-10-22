@@ -289,6 +289,7 @@ export class RegistrationsService {
         orderBy: { createdAt: "desc" },
         skip,
         take: pageSize,
+        include: { user: { select: { nickname: true, avatarUrl: true } } },
       }),
       this.prisma.registration.count({ where }),
     ]);
@@ -302,6 +303,8 @@ export class RegistrationsService {
         status: row.status,
         createdAt: row.createdAt.toISOString(),
         cancelledAt: row.cancelledAt?.toISOString() ?? null,
+        nickname: row.user.nickname?.trim() || row.name || "用户",
+        avatarUrl: row.user.avatarUrl,
       })),
       total,
       page,

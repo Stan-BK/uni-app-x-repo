@@ -154,6 +154,9 @@ export class ActivitiesService {
     if (dto.publish) {
       await this.requireCanPublish(userId);
     }
+    if (activity.lifecycle === ActivityLifecycle.published) {
+      throw new ConflictException("Cannot edit published activity");
+    }
     if (
       activity.lifecycle === ActivityLifecycle.cancelled ||
       activity.lifecycle === ActivityLifecycle.removed ||

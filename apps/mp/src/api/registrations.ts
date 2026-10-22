@@ -9,6 +9,8 @@ export type Registration = {
   status: string;
   cancelledAt?: string | null;
   createdAt: string;
+  nickname?: string | null;
+  avatarUrl?: string | null;
   activity?: {
     id: string;
     title: string;
@@ -67,7 +69,7 @@ export function listMyRegistrations(
 
 export function listOrganizerRegistrations(
   activityId: string,
-  params: { page?: number; pageSize?: number } = {},
+  params: { page?: number; pageSize?: number; status?: string } = {},
 ) {
   return request<{
     items: Registration[];

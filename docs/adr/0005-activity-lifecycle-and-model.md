@@ -2,7 +2,7 @@
 
 - **状态：** Implemented
 - **日期：** 2026-10-19
-- **修订：** 2026-10-20 起活动归属 `User`（`ownerUserId`），发布权见 [ADR-0011](./0011-default-publish-permission.md)；生命周期决策不变。
+- **修订：** 2026-10-20 起活动归属 `User`（`ownerUserId`），发布权见 [ADR-0011](./0011-default-publish-permission.md)；2026-10-22 明确已发布不可直接改内容，须先退回草稿。
 - **关联：** roadmap P0-2、PRD AT-ACT（修订）、ADR-0003（登录）、ADR-0011（发布权）、ADR-0004；支付另见未来支付 ADR / backend-ops 阶段 C
 - **设计规格：** [docs/superpowers/specs/2026-10-19-p0-2-activity-domain-design.md](../superpowers/specs/2026-10-19-p0-2-activity-domain-design.md)
 
@@ -17,7 +17,7 @@ P0-2 需落地活动创建、草稿、发布与组织者侧管理。原 PRD 默�
    - 从 `packages/shared` **废弃** `ActivityReviewStatus`（不再作为活动权威状态）。
 
 2. **所有者可直接发布**（须 `User.canPublish=true`，见 ADR-0011）。  
-   - 支持草稿保存与编辑。  
+   - 支持草稿保存与编辑。**已发布活动不可直接改内容**；须先退回草稿再编辑。  
    - `draft` → `published`：发布前做完整必填与时间校验。  
    - `published` → `draft`（退回草稿）或 → `cancelled`（取消活动）：由活动所有者选择。  
    - 退回草稿 / 取消 / 运营下架时：**取消该活动全部有效报名**（退费在支付 ADR；钩子见 ADR-0007）。

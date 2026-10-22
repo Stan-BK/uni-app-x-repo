@@ -2,7 +2,7 @@
 
 - **状态：** Implemented
 - **日期：** 2026-10-19
-- **修订：** 2026-10-20 公开 DTO 主办改为 `hostName`（[ADR-0011](./0011-default-publish-permission.md)）。
+- **修订：** 2026-10-20 公开 DTO 主办改为 `hostName`（[ADR-0011](./0011-default-publish-permission.md)）；2026-10-21 首页热门位 `GET /public/activities/hot`，按已确认报名人数取前 3，列表/详情仍不返回人数。
 - **关联：** roadmap P0-3、PRD AT-ACT-06（修订）、ADR-0005、ADR-0011；报名 → ADR-0007
 - **设计规格：** [docs/superpowers/specs/2026-10-19-p0-3-discovery-and-detail-design.md](../superpowers/specs/2026-10-19-p0-3-discovery-and-detail-design.md)
 
@@ -13,7 +13,7 @@ P0-2 已落地组织者发布与运营下架；首页/详情仍接 mock。P0-3 �
 ## 决策
 
 1. **独立公开模块**  
-   - 路由：`GET /public/activities`、`GET /public/activities/:id`。  
+   - 路由：`GET /public/activities`、`GET /public/activities/hot`、`GET /public/activities/:id`。  
    - 与组织者 `/organizer/activities`、Admin `/admin/activities` 分离；匿名可读，无需登录。
 
 2. **公开列表可见性**  
@@ -25,6 +25,7 @@ P0-2 已落地组织者发布与运营下架；首页/详情仍接 mock。P0-3 �
    - `sort`：`startAt`（默认）| `publishedAt`。  
    - `order`：`asc` | `desc`；省略时 `startAt` 默认 `asc`、`publishedAt` 默认 `desc`；端上可再点同一排序项切换方向。  
    - 分页：`page`/`pageSize`（默认 20，上限 50）；响应含 `items`、`total`、`page`、`pageSize`。  
+   - **热门位：** `GET /public/activities/hot` 返回可见列表中已确认报名人数最多的至多 3 条（人数相同则较新发布优先）；响应为公开 DTO 数组，**不返回人数**。端上仅在返回满 3 条时展示该区域，少于 3 条（含 2 条）不展示、不做占位。  
    - **分类等高级筛选 → P1**（同步修订 roadmap）。
 
 4. **公开详情与分享链**  
@@ -36,10 +37,11 @@ P0-2 已落地组织者发布与运营下架；首页/详情仍接 mock。P0-3 �
 5. **展示态（计算字段 `displayStatus`）**  
    - P0-3：`upcoming` | `open` | `ended`（仅依 `startAt`/`endAt` 与当前时间）。  
    - P0-4：启用 `full`、`closed`；展示态表示报名通道。活动未开场但报名未截止、未满员时为 `open`（报名中），**不再**计算 `upcoming`。  
-   - 列表不返回已报名人数；可返回 `capacity` 上限。
+   - 列表不返回已报名人数；可返回 `capacity` 上限，以及 `attendees` 预览（最多 3 条，仅 `nickname` + `avatarUrl`）。详情返回 `confirmedCount`（已确认报名数），供「已报名 n/上限」展示。
 
 6. **公开 DTO 裁剪**  
    - 含：`id`、`title`、`coverUrl`、`category`、`description`、`rules`（详情）、时间地点坐标、`capacity`、费用字段、`lifecycle`、`displayStatus`、`publishedAt`、`hostName`（用户昵称，见 ADR-0011）。  
+   - **列表另含** `attendees` 预览最多 3 条。**详情另含** `confirmedCount`，以及 `attendees` 最多 20 条。字段均为已确认报名者的 `nickname` + `avatarUrl`；无昵称时为「用户」。不含手机、报名表姓名、userId。  
    - 不含：`cancelReason`、`removeReason`、`platformFeeBps`、用户联系方式/内部状态、审计字段。
 
 7. **端上**  

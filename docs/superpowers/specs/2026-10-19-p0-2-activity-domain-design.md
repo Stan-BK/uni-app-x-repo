@@ -81,7 +81,7 @@ draft --cancel--> cancelled
 | Method | Path | 说明 |
 | --- | --- | --- |
 | POST | `/organizer/activities` | 创建；body 可含 `publish: true` 一步发布 |
-| PATCH | `/organizer/activities/:id` | 编辑（禁止终态） |
+| PATCH | `/organizer/activities/:id` | 编辑（仅草稿；已发布须先退回） |
 | POST | `/organizer/activities/:id/publish` | 发布 |
 | POST | `/organizer/activities/:id/unpublish` | 退回草稿 |
 | POST | `/organizer/activities/:id/cancel` | 取消 |

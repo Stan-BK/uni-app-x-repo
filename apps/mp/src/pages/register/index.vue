@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page page-l2">
     <view v-if="loading" class="state">加载中…</view>
     <view v-else-if="!activity" class="state">{{ errorMessage || "活动不存在" }}</view>
     <template v-else>
@@ -36,7 +36,12 @@
         <text class="hint">免费活动报名成功后可在「我的」查看</text>
       </view>
 
-      <button class="submit" :loading="submitting" @click="onSubmit">
+      <button
+        class="submit ed-btn"
+        hover-class="none"
+        :loading="submitting"
+        @click="onSubmit"
+      >
         提交报名
       </button>
     </template>
@@ -156,32 +161,26 @@ async function onSubmit() {
 }
 </script>
 
-<style scoped>
-.page {
-  min-height: 100vh;
-  background: #f4f5f7;
-  padding: 24rpx;
-  box-sizing: border-box;
-}
-
+<style scoped lang="scss">
 .state {
   padding: 160rpx 0;
   text-align: center;
-  color: #8a9099;
+  color: $ed-color-text-muted;
   font-size: 28rpx;
 }
 
 .banner {
-  background: #0f766e;
-  border-radius: 16rpx;
-  padding: 32rpx;
+  margin-top: 24rpx;
+  background: $ed-color-brand;
+  border-radius: $ed-radius-card;
+  padding: $ed-space-card;
   margin-bottom: 24rpx;
 }
 
 .banner-title {
   display: block;
-  color: #ffffff;
-  font-size: 32rpx;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 38rpx;
   font-weight: 600;
   margin-bottom: 12rpx;
   line-height: 1.35;
@@ -195,15 +194,16 @@ async function onSubmit() {
 }
 
 .form {
-  background: #ffffff;
-  border-radius: 16rpx;
-  padding: 8rpx 28rpx 28rpx;
-  margin-bottom: 40rpx;
+  background: $ed-color-surface;
+  border: 1rpx solid $ed-color-border;
+  border-radius: $ed-radius-card;
+  padding: $ed-space-card;
+  margin-bottom: $ed-space-section;
 }
 
 .field {
   padding: 28rpx 0;
-  border-bottom: 1rpx solid #f0f1f3;
+  border-bottom: 1rpx solid $ed-color-border;
 }
 
 .field:last-of-type {
@@ -213,38 +213,39 @@ async function onSubmit() {
 .label {
   display: block;
   font-size: 26rpx;
-  color: #6b7280;
+  color: $ed-color-text-secondary;
   margin-bottom: 16rpx;
 }
 
 .input {
   width: 100%;
+  height: 80rpx;
+  padding: 0 24rpx;
+  box-sizing: border-box;
   font-size: 30rpx;
-  color: #1a1d23;
-  height: 48rpx;
+  color: $ed-color-text;
+  background: $ed-color-surface;
+  border: 1rpx solid $ed-color-border;
+  border-radius: $ed-radius-input;
 }
 
 .placeholder {
-  color: #c4c9d1;
+  color: $ed-color-text-muted;
 }
 
 .hint {
   display: block;
   margin-top: 8rpx;
   font-size: 22rpx;
-  color: #9ca3af;
+  color: $ed-color-text-muted;
   line-height: 1.5;
 }
 
 .submit {
-  height: 88rpx;
-  line-height: 88rpx;
-  background: #0f766e;
-  color: #ffffff;
-  font-size: 30rpx;
+  width: 100%;
+  margin: 0;
   font-weight: 600;
-  border-radius: 12rpx;
-  border: none;
+  box-sizing: border-box;
 }
 
 .submit::after {

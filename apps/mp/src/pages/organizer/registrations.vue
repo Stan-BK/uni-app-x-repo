@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page page-l2">
     <view v-if="loading && !items.length" class="state">加载中…</view>
     <view v-else-if="!activityId" class="state">缺少活动 ID</view>
     <view v-else-if="!items.length" class="empty card">
@@ -9,14 +9,26 @@
     <view v-else class="list">
       <view v-for="item in items" :key="item.id" class="card">
         <view class="card-top">
-          <text class="name">{{ item.name || "—" }}</text>
-          <text class="status" :class="item.status">{{
-            statusLabel(item.status)
-          }}</text>
-        </view>
-        <view class="meta">
-          <text>手机：{{ item.phone || "—" }}</text>
-          <text>提交时间：{{ formatTime(item.createdAt) }}</text>
+          <image
+            v-if="personAvatar(item)"
+            class="avatar"
+            :src="personAvatar(item)"
+            mode="aspectFill"
+          />
+          <view v-else class="avatar avatar-fallback">
+            <view class="avatar-head" />
+            <view class="avatar-body" />
+          </view>
+          <view class="card-meta">
+            <view class="name-row">
+              <text class="name">{{ personName(item) }}</text>
+              <text class="status ed-tag" :class="statusTagClass(item.status)">{{
+                statusLabel(item.status)
+              }}</text>
+            </view>
+            <text class="meta">手机：{{ item.phone || "—" }}</text>
+            <text class="meta">提交时间：{{ formatTime(item.createdAt) }}</text>
+          </view>
         </view>
       </view>
 
@@ -55,8 +67,24 @@ const pageSize = 20;
 
 const hasMore = computed(() => items.value.length < total.value);
 
+function personName(item: Registration) {
+  return item.nickname?.trim() || item.name?.trim() || "用户";
+}
+
+function personAvatar(item: Registration) {
+  return item.avatarUrl?.trim() || "";
+}
+
 function statusLabel(status: string) {
   return STATUS_LABEL[status] ?? status;
+}
+
+function statusTagClass(status: string) {
+  if (status === "confirmed") return "ed-tag-confirmed";
+  if (status === "pending") return "ed-tag-pending";
+  if (status === "waitlist") return "ed-tag-waitlist";
+  if (status === "cancelled") return "ed-tag-muted";
+  return "ed-tag-muted";
 }
 
 function formatTime(iso?: string | null) {
@@ -116,86 +144,126 @@ onLoad((query) => {
 });
 </script>
 
-<style scoped>
-.page {
-  min-height: 100vh;
-  background: #f4f5f7;
-  padding: 24rpx;
-  box-sizing: border-box;
+<style scoped lang="scss">
+.state,
+.empty,
+.list {
+  margin-top: 24rpx;
 }
+
 .state {
   padding: 120rpx 0;
   text-align: center;
-  color: #9ca3af;
+  color: $ed-color-text-muted;
   font-size: 28rpx;
 }
+
 .card {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 28rpx;
-  margin-bottom: 16rpx;
+  background: $ed-color-surface;
+  border-radius: $ed-radius-card;
+  border: 1rpx solid $ed-color-border;
+  padding: $ed-space-card;
+  margin-bottom: 20rpx;
 }
+
 .empty {
   text-align: center;
 }
+
 .empty-title {
   display: block;
-  font-size: 30rpx;
+  font-size: 32rpx;
   font-weight: 600;
+  color: $ed-color-text;
   margin-bottom: 8rpx;
 }
+
 .empty-desc {
   display: block;
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $ed-color-text-muted;
 }
+
 .card-top {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 16rpx;
-  margin-bottom: 16rpx;
+  gap: 20rpx;
 }
-.name {
-  flex: 1;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #1a1d23;
-}
-.status {
+
+.avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
   flex-shrink: 0;
-  font-size: 22rpx;
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx;
-  color: #b45309;
-  background: #fffbeb;
+  background: $ed-color-brand-soft;
 }
-.status.confirmed {
-  color: #0f766e;
-  background: #ecfdf5;
-}
-.status.cancelled {
-  color: #6b7280;
-  background: #f3f4f6;
-}
-.status.waitlist {
-  color: #1e3a5f;
-  background: #eff6ff;
-}
-.meta {
+
+.avatar-fallback {
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
-  font-size: 24rpx;
-  color: #6b7280;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
 }
+
+.avatar-head {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  background: $ed-color-brand;
+  margin-bottom: 6rpx;
+}
+
+.avatar-body {
+  width: 52rpx;
+  height: 22rpx;
+  border-radius: 26rpx 26rpx 0 0;
+  background: $ed-color-brand;
+}
+
+.card-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-bottom: 8rpx;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: $ed-color-text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  flex-shrink: 0;
+}
+
+.meta {
+  display: block;
+  font-size: 24rpx;
+  color: $ed-color-text-secondary;
+  line-height: 1.5;
+}
+
 .more {
   padding: 24rpx 0 40rpx;
   text-align: center;
   font-size: 26rpx;
-  color: #0f766e;
+  color: $ed-color-brand;
 }
+
 .more.muted {
-  color: #9ca3af;
+  color: $ed-color-text-muted;
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view class="page page-l2">
     <view class="card">
       <text class="title">{{ pageTitle }}</text>
       <text class="desc">{{ pageDesc }}</text>
@@ -9,12 +9,15 @@
         :model="form"
         :rules="rules"
         label-position="top"
+        label-width="auto"
         err-show-type="undertext"
       >
         <uni-forms-item name="title" label="标题" required>
           <uni-easyinput
             v-model="form.title"
             placeholder="例如：周末城市徒步"
+            primary-color="#1E9B88"
+            :styles="easyinputStyles"
             :clearable="true"
           />
         </uni-forms-item>
@@ -55,6 +58,8 @@
             v-model="form.place"
             class="place-edit"
             placeholder="可微调地址文案（集合点说明等）"
+            primary-color="#1E9B88"
+            :styles="easyinputStyles"
             :clearable="true"
           />
           <text v-if="form.placeLat != null && form.placeLng != null" class="place-coord">
@@ -90,36 +95,6 @@
           <text class="field-hint">不填则默认为活动开始时间</text>
         </uni-forms-item>
 
-        <uni-forms-item name="allowUserCancel" label="用户取消报名">
-          <uni-data-checkbox
-            v-model="form.allowUserCancel"
-            :localdata="allowCancelOptions"
-            mode="tag"
-          />
-        </uni-forms-item>
-
-        <uni-forms-item name="refundable" label="退款政策">
-          <uni-data-checkbox
-            v-model="form.refundable"
-            :localdata="refundableOptions"
-            mode="tag"
-          />
-          <text class="field-hint">首期不开放在线退款，仅作活动说明预留</text>
-        </uni-forms-item>
-
-        <uni-forms-item name="capacity" label="名额" required>
-          <uni-number-box v-model="form.capacity" :min="1" :max="9999" />
-        </uni-forms-item>
-
-        <uni-forms-item name="rules" label="活动须知" required>
-          <uni-easyinput
-            v-model="form.rules"
-            type="textarea"
-            :autoHeight="true"
-            placeholder="报名须知、装备要求等"
-          />
-        </uni-forms-item>
-
         <uni-forms-item name="feeType" label="费用类型" required>
           <uni-data-checkbox
             v-model="form.feeType"
@@ -138,34 +113,62 @@
             v-model="form.feeYuan"
             type="digit"
             placeholder="例如 50"
+            primary-color="#1E9B88"
+            :styles="easyinputStyles"
+          />
+        </uni-forms-item>
+
+        <uni-forms-item
+          v-if="form.feeType === 'paid'"
+          name="refundable"
+          class="switch-item"
+        >
+          <view class="switch-field">
+            <text class="switch-label">可退款</text>
+            <switch
+              :checked="form.refundable"
+              color="#1E9B88"
+              @change="onRefundableChange"
+            />
+          </view>
+          <text class="field-hint">首期不开放在线退款，仅作活动说明预留</text>
+        </uni-forms-item>
+
+        <uni-forms-item name="capacity" label="名额" required>
+          <uni-number-box v-model="form.capacity" :min="1" :max="9999" />
+        </uni-forms-item>
+
+        <uni-forms-item name="rules" label="活动须知" required>
+          <uni-easyinput
+            v-model="form.rules"
+            type="textarea"
+            :autoHeight="true"
+            placeholder="报名须知、装备要求等"
+            primary-color="#1E9B88"
+            :styles="easyinputStyles"
           />
         </uni-forms-item>
       </uni-forms>
 
       <view v-if="canEditContent" class="actions">
-        <template v-if="isPublishedEdit">
-          <button class="primary" :disabled="saving" @click="savePublished">
-            保存
-          </button>
-        </template>
-        <template v-else>
-          <button
-            v-if="!isNewActivity || user.canPublish"
-            class="ghost"
-            :disabled="saving"
-            @click="saveDraft"
-          >
-            保存草稿
-          </button>
-          <button
-            v-if="user.canPublish"
-            class="primary"
-            :disabled="saving"
-            @click="publish"
-          >
-            发布
-          </button>
-        </template>
+        <button
+          v-if="!isNewActivity || user.canPublish"
+          class="ed-btn-secondary"
+          hover-class="none"
+          :disabled="saving"
+          @click="saveDraft"
+        >
+          保存草稿
+        </button>
+        <button
+          v-if="user.canPublish"
+          class="ed-btn"
+          hover-class="none"
+          :disabled="saving"
+          @click="publish"
+        >
+          发布
+        </button>
       </view>
       <text v-if="msg" class="msg">{{ msg }}</text>
     </view>
@@ -173,7 +176,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import UniDataCheckbox from "@dcloudio/uni-ui/lib/uni-data-checkbox/uni-data-checkbox.vue";
 import UniDataSelect from "@dcloudio/uni-ui/lib/uni-data-select/uni-data-select.vue";
@@ -213,22 +216,21 @@ const msg = ref("");
 
 const isPublishedEdit = computed(() => lifecycle.value === "published");
 
-/** 新建、草稿、已发布可改；取消/下架/结束不可改 */
+/** 仅新建与草稿可改；已发布须先退回草稿 */
 const canEditContent = computed(() => {
   if (!editingId.value) return true;
-  const life = lifecycle.value;
-  return life === "draft" || life === "published";
+  return lifecycle.value === "draft";
 });
 
 const pageTitle = computed(() => {
-  if (isPublishedEdit.value) return "编辑已发布活动";
+  if (isPublishedEdit.value) return "已发布活动";
   if (editingId.value) return "编辑活动";
   return "发布活动";
 });
 
 const pageDesc = computed(() => {
   if (isPublishedEdit.value) {
-    return "修改后点「保存」即可更新线上内容，无需再次发布。";
+    return "已发布活动不可直接修改，请先退回草稿。";
   }
   if (editingId.value && !canEditContent.value) {
     return "当前活动状态不可再编辑内容。";
@@ -240,16 +242,16 @@ const feeTypeOptions = [
   { text: "免费", value: "free" },
   { text: "收费", value: "paid" },
 ];
-const allowCancelOptions = [
-  { text: "允许取消", value: true },
-  { text: "不允许取消", value: false },
-];
-const refundableOptions = [
-  { text: "不可退款", value: false },
-  { text: "可退款", value: true },
-];
 /** 与 packages/shared ActivityCategory 同步；页面内写死避免 vendor 增量缓存旧枚举 */
 const categoryOptions = [{ text: "观赛", value: "观赛" }];
+
+/** 只改默认边框/底色。聚焦走 primaryColor，报错走组件内联色，样式里不要 !important 盖住。 */
+const easyinputStyles = {
+  color: "#24312d",
+  backgroundColor: "#fffefb",
+  disableColor: "#F7F6F6",
+  borderColor: "#e7e2d9",
+};
 
 const form = reactive({
   title: "",
@@ -261,13 +263,23 @@ const form = reactive({
   startAt: "",
   endAt: "",
   registrationDeadlineAt: "",
-  allowUserCancel: true as boolean,
   refundable: false as boolean,
   capacity: 20,
   rules: "",
   feeType: "free" as "free" | "paid",
   feeYuan: "",
 });
+
+function onRefundableChange(e: { detail: { value: boolean } }) {
+  form.refundable = Boolean(e.detail.value);
+}
+
+watch(
+  () => form.feeType,
+  (feeType) => {
+    if (feeType !== "paid") form.refundable = false;
+  },
+);
 
 function choosePlace() {
   uni.chooseLocation({
@@ -485,8 +497,8 @@ function buildBody(): UpsertBody {
     registrationDeadlineAt:
       toIsoOrEmpty(form.registrationDeadlineAt) ??
       toIsoOrEmpty(form.startAt),
-    allowUserCancel: Boolean(form.allowUserCancel),
-    refundable: Boolean(form.refundable),
+    allowUserCancel: true,
+    refundable: form.feeType === "paid" && Boolean(form.refundable),
     capacity: Number(form.capacity) > 0 ? Number(form.capacity) : undefined,
     rules: form.rules.trim(),
     feeType: form.feeType,
@@ -508,7 +520,6 @@ function fillForm(a: Activity) {
   form.registrationDeadlineAt = formatLocalDateTime(
     a.registrationDeadlineAt ?? a.startAt,
   );
-  form.allowUserCancel = a.allowUserCancel !== false;
   form.refundable = Boolean(a.refundable);
   form.capacity = a.capacity ?? 20;
   form.rules = a.rules ?? "";
@@ -562,6 +573,7 @@ const API_MESSAGE_ZH: Record<string, string> = {
   "Only published can unpublish to draft": "仅已发布活动可退回草稿",
   "Cannot cancel from current state": "当前状态不可取消",
   "Cannot edit activity in terminal state": "活动已结束/取消/下架，不可编辑",
+  "Cannot edit published activity": "已发布活动不可直接修改，请先退回草稿",
   "title is required": "请填写标题",
 };
 
@@ -650,7 +662,7 @@ async function saveDraft() {
 async function publish() {
   if (!(await ensureCanPublish())) return;
   if (isPublishedEdit.value) {
-    showError("活动已发布，请使用「保存」更新内容");
+    showError("已发布活动不可直接修改，请先退回草稿");
     return;
   }
   const ok = await validateForm();
@@ -677,39 +689,22 @@ async function publish() {
   }
 }
 
-/** 已发布活动：只 PATCH 更新，不再调 publish */
-async function savePublished() {
-  if (!ensureLoggedIn()) return;
-  if (!editingId.value || !isPublishedEdit.value) {
-    showError("当前不是已发布活动");
-    return;
-  }
-  const ok = await validateForm();
-  if (!ok) return;
-  saving.value = true;
-  msg.value = "";
-  try {
-    await updateActivity(editingId.value, buildBody());
-    msg.value = "已保存";
-    uni.showToast({ title: "已保存", icon: "success" });
-  } catch (e) {
-    showError(errMessage(e));
-  } finally {
-    saving.value = false;
-  }
-}
-
 async function loadActivity(id: string) {
   try {
     const a = await getActivity(id);
     editingId.value = a.id;
     fillForm(a);
     if (
+      a.lifecycle === "published" ||
       a.lifecycle === "cancelled" ||
       a.lifecycle === "removed" ||
       a.lifecycle === "ended"
     ) {
-      showError("该活动当前状态不可编辑");
+      showError(
+        a.lifecycle === "published"
+          ? "已发布活动不可直接修改，请先退回草稿"
+          : "该活动当前状态不可编辑",
+      );
     }
   } catch (e) {
     showError(errMessage(e));
@@ -741,71 +736,70 @@ onShow(() => {
 });
 </script>
 
-<style scoped>
-.page {
-  min-height: 100vh;
-  background: #f4f5f7;
-  padding: 24rpx;
-  box-sizing: border-box;
-}
+<style scoped lang="scss">
 .card {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 28rpx;
+  margin-top: 24rpx;
+  background: $ed-color-surface;
+  border-radius: $ed-radius-card;
+  border: 1rpx solid $ed-color-border;
+  padding: $ed-space-card;
 }
+
 .title {
   display: block;
-  font-size: 32rpx;
+  font-size: 38rpx;
   font-weight: 600;
+  color: $ed-color-text;
   margin-bottom: 12rpx;
 }
+
 .desc {
   display: block;
   font-size: 24rpx;
-  color: #6b7280;
+  color: $ed-color-text-secondary;
   line-height: 1.5;
   margin-bottom: 20rpx;
 }
+
 .actions {
   display: flex;
   flex-direction: column;
   gap: 16rpx;
   margin-top: 24rpx;
 }
-button.primary {
-  background: #0f766e;
-  color: #fff;
+
+.actions button {
+  margin: 0;
+  font-weight: 600;
 }
-button.ghost {
-  background: #e5e7eb;
-  color: #111827;
-}
-button::after {
-  border: none;
-}
+
 button[disabled] {
   opacity: 0.5;
 }
+
 .msg {
   display: block;
   margin-top: 16rpx;
-  color: #b45309;
+  color: $ed-color-terracotta;
   font-size: 24rpx;
   line-height: 1.5;
 }
+
 .cover-picker {
   position: relative;
   width: 100%;
   height: 280rpx;
-  border-radius: 12rpx;
+  border-radius: $ed-radius-input;
   overflow: hidden;
-  background: #f3f4f6;
-  border: 1rpx dashed #d1d5db;
+  background: $ed-color-brand-soft;
+  border: 1rpx solid $ed-color-border;
 }
+
 .cover-img {
   width: 100%;
   height: 100%;
 }
+
 .cover-placeholder {
   height: 100%;
   display: flex;
@@ -813,66 +807,136 @@ button[disabled] {
   align-items: center;
   justify-content: center;
   gap: 8rpx;
+  background: $ed-color-brand;
 }
+
 .cover-placeholder-title {
   font-size: 28rpx;
-  color: #374151;
+  color: rgba(255, 255, 255, 0.95);
 }
+
 .cover-placeholder-sub {
   font-size: 22rpx;
-  color: #9ca3af;
+  color: rgba(255, 255, 255, 0.78);
 }
+
 .cover-mask {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
-  color: #fff;
+  color: rgba(255, 255, 255, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 28rpx;
 }
+
 .place-picker {
   display: flex;
   align-items: center;
   gap: 16rpx;
   min-height: 72rpx;
   padding: 16rpx 20rpx;
-  border: 1rpx solid #e5e7eb;
-  border-radius: 12rpx;
-  background: #fafafa;
+  border: 1rpx solid $ed-color-border;
+  border-radius: $ed-radius-input;
+  background: $ed-color-surface;
   box-sizing: border-box;
 }
+
 .place-text {
   flex: 1;
   font-size: 28rpx;
-  color: #111827;
+  color: $ed-color-text;
   line-height: 1.4;
 }
+
 .place-placeholder {
   flex: 1;
   font-size: 28rpx;
-  color: #9ca3af;
+  color: $ed-color-text-muted;
 }
+
 .place-action {
   flex-shrink: 0;
   font-size: 24rpx;
-  color: #0f766e;
+  color: $ed-color-brand;
 }
+
 .place-edit {
   margin-top: 12rpx;
 }
-.field-hint {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  color: #9ca3af;
-  line-height: 1.4;
+
+:deep(.uni-forms-item.is-direction-top .uni-forms-item__label:not(.no-label)) {
+  width: auto !important;
+  white-space: nowrap;
 }
+
+:deep(.switch-item .uni-forms-item__label) {
+  display: none;
+  height: 0;
+  padding: 0;
+}
+
+.switch-field {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64rpx;
+}
+
+.switch-label {
+  font-size: 28rpx;
+  color: $ed-color-text;
+  line-height: 1.5;
+}
+
+.field-hint,
 .place-coord {
   display: block;
   margin-top: 8rpx;
   font-size: 22rpx;
-  color: #9ca3af;
+  color: $ed-color-text-muted;
+  line-height: 1.4;
+}
+
+:deep(.uni-easyinput__content.is-input-border) {
+  border-radius: $ed-radius-input !important;
+}
+
+:deep(
+  .uni-easyinput__content.is-input-border:not(.is-focused):not(
+      .is-input-error-border
+    )
+) {
+  border-color: $ed-color-border;
+  background-color: $ed-color-surface;
+}
+
+:deep(.uni-select),
+:deep(.uni-date-x),
+:deep(.uni-date-x--border) {
+  border-radius: $ed-radius-input !important;
+  border-color: $ed-color-border !important;
+  background-color: $ed-color-surface !important;
+}
+
+:deep(.uni-data-checklist .checklist-group .checklist-box.is--tag) {
+  border-radius: $ed-radius-tag !important;
+  border-color: $ed-color-border !important;
+  background-color: $ed-color-btn-secondary !important;
+}
+
+:deep(.uni-data-checklist .checklist-group .checklist-box.is--tag .checklist-text) {
+  color: $ed-color-text;
+}
+
+:deep(.uni-data-checklist .checklist-group .checklist-box.is--tag.is-checked) {
+  border-color: $ed-color-brand !important;
+  background-color: $ed-color-brand !important;
+}
+
+:deep(.uni-data-checklist .checklist-group .checklist-box.is--tag.is-checked .checklist-text) {
+  color: rgba(255, 255, 255, 0.95) !important;
 }
 </style>

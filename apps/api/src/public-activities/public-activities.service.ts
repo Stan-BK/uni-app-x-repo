@@ -10,7 +10,7 @@ import {
 } from "@activity/shared";
 import { ActivityLifecycle, RegistrationStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
-import { toPublicDto } from "./public-activity.mapper";
+import { hostNameFromNickname, toPublicDto } from "./public-activity.mapper";
 
 export type ListPublicQuery = {
   q?: string;
@@ -50,8 +50,7 @@ export class PublicActivitiesService {
     const q = query.q?.trim() ?? "";
     const now = new Date();
     const where = {
-      lifecycle: ActivityLifecycle.published,
-      endAt: { gt: now },
+      ...this.publicListWhere(now),
       ...(q
         ? { title: { contains: q, mode: "insensitive" as const } }
         : {}),
@@ -73,9 +72,11 @@ export class PublicActivitiesService {
       this.prisma.activity.count({ where }),
     ]);
 
-    const confirmedByActivity = await this.countConfirmedByActivityIds(
-      rows.map((row) => row.id),
-    );
+    const ids = rows.map((row) => row.id);
+    const [confirmedByActivity, attendeesByActivity] = await Promise.all([
+      this.countConfirmedByActivityIds(ids),
+      this.listConfirmedAttendeesByActivityIds(ids, 3),
+    ]);
 
     return {
       items: rows.map((row) =>
@@ -83,6 +84,7 @@ export class PublicActivitiesService {
           includeRules: false,
           now,
           confirmedCount: confirmedByActivity.get(row.id) ?? 0,
+          attendees: attendeesByActivity.get(row.id) ?? [],
         }),
       ),
       total,
@@ -114,10 +116,102 @@ export class PublicActivitiesService {
     if (row.lifecycle !== ActivityLifecycle.published) {
       throw new NotFoundException("活动不存在");
     }
-    const confirmedCount = await this.prisma.registration.count({
-      where: { activityId: row.id, status: RegistrationStatus.confirmed },
+    const [confirmedCount, attendeeRows] = await Promise.all([
+      this.prisma.registration.count({
+        where: { activityId: row.id, status: RegistrationStatus.confirmed },
+      }),
+      this.prisma.registration.findMany({
+        where: { activityId: row.id, status: RegistrationStatus.confirmed },
+        orderBy: { createdAt: "asc" },
+        take: 20,
+        select: {
+          user: { select: { nickname: true, avatarUrl: true } },
+        },
+      }),
+    ]);
+    return toPublicDto(row, {
+      includeRules: true,
+      confirmedCount,
+      attendees: attendeeRows.map((item) => this.mapAttendee(item.user)),
     });
-    return toPublicDto(row, { includeRules: true, confirmedCount });
+  }
+
+  async listHot(limit = 3) {
+    const now = new Date();
+    const rows = await this.prisma.activity.findMany({
+      where: this.publicListWhere(now),
+      include: { owner: { select: { nickname: true } } },
+    });
+    const ids = rows.map((row) => row.id);
+    const [confirmedByActivity, attendeesByActivity] = await Promise.all([
+      this.countConfirmedByActivityIds(ids),
+      this.listConfirmedAttendeesByActivityIds(ids, 3),
+    ]);
+    return [...rows]
+      .sort((a, b) => {
+        const countDiff =
+          (confirmedByActivity.get(b.id) ?? 0) -
+          (confirmedByActivity.get(a.id) ?? 0);
+        if (countDiff !== 0) return countDiff;
+        return (
+          (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0)
+        );
+      })
+      .slice(0, limit)
+      .map((row) =>
+        toPublicDto(row, {
+          includeRules: false,
+          now,
+          confirmedCount: confirmedByActivity.get(row.id) ?? 0,
+          attendees: attendeesByActivity.get(row.id) ?? [],
+        }),
+      );
+  }
+
+  private publicListWhere(now: Date) {
+    return {
+      lifecycle: ActivityLifecycle.published,
+      endAt: { gt: now },
+    };
+  }
+
+  private mapAttendee(user: {
+    nickname: string | null;
+    avatarUrl: string | null;
+  }) {
+    return {
+      nickname: hostNameFromNickname(user.nickname),
+      avatarUrl: user.avatarUrl ?? null,
+    };
+  }
+
+  private async listConfirmedAttendeesByActivityIds(
+    activityIds: string[],
+    takePerActivity: number,
+  ) {
+    const grouped = new Map<
+      string,
+      { nickname: string; avatarUrl: string | null }[]
+    >();
+    if (activityIds.length === 0) return grouped;
+    const rows = await this.prisma.registration.findMany({
+      where: {
+        activityId: { in: activityIds },
+        status: RegistrationStatus.confirmed,
+      },
+      orderBy: { createdAt: "asc" },
+      select: {
+        activityId: true,
+        user: { select: { nickname: true, avatarUrl: true } },
+      },
+    });
+    for (const row of rows) {
+      const list = grouped.get(row.activityId) ?? [];
+      if (list.length >= takePerActivity) continue;
+      list.push(this.mapAttendee(row.user));
+      grouped.set(row.activityId, list);
+    }
+    return grouped;
   }
 
   private async countConfirmedByActivityIds(activityIds: string[]) {

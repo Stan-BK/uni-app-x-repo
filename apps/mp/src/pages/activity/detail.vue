@@ -1,109 +1,181 @@
 <template>
-  <view class="page">
+  <view class="page page-l2 page-detail">
     <view v-if="loading" class="state">加载中…</view>
     <view v-else-if="errorMessage" class="state">{{ errorMessage }}</view>
     <template v-else-if="activity">
-      <image
-        v-if="activity.coverUrl"
-        class="cover-img"
-        :src="activity.coverUrl"
-        mode="aspectFill"
-      />
-      <view v-else class="cover cover-placeholder">
-        <text class="cover-label">活动</text>
+      <view class="hero">
+        <image
+          v-if="activity.coverUrl"
+          class="hero-img"
+          :src="activity.coverUrl"
+          mode="aspectFill"
+        />
+        <view v-else class="hero-img hero-placeholder" />
+        <view class="hero-scrim" />
+        <view class="hero-body">
+          <text class="hero-title">{{ activity.title }}</text>
+          <view class="hero-tags">
+            <text class="hero-tag">{{ displayLabel }}</text>
+            <text class="hero-tag">{{ feeLabel }}</text>
+            <text v-if="showQuotaHint" class="hero-tag hero-tag-accent">名额有限</text>
+          </view>
+        </view>
       </view>
 
       <view class="panel">
-        <view class="title-row">
-          <text class="title">{{ activity.title }}</text>
-          <text class="fee" :class="{ free: isFree }">{{ feeLabel }}</text>
+        <view class="meta-row">
+          <view class="ed-ico ed-ico-calendar" />
+          <text class="meta-label">时间</text>
+          <text class="meta-value">{{
+            formatTimeRange(activity.startAt, activity.endAt)
+          }}</text>
         </view>
-        <text class="status" :class="activity.displayStatus">{{
-          displayLabel
-        }}</text>
-
-        <view class="info">
-          <view class="info-row">
-            <text class="label">时间</text>
-            <text class="value"
-              >{{ formatTime(activity.startAt) }} —
-              {{ formatTime(activity.endAt) }}</text
-            >
-          </view>
-          <view class="info-row">
-            <text class="label">报名截止</text>
-            <text class="value">{{
-              formatTime(
-                activity.registrationDeadlineAt ?? activity.startAt,
-              )
-            }}</text>
-          </view>
-          <view class="info-row">
-            <text class="label">地点</text>
-            <text class="value">{{ activity.place || "—" }}</text>
-          </view>
-          <view class="info-row">
-            <text class="label">费用</text>
-            <text class="value">{{ feeLabel }}（首期线下结算）</text>
-          </view>
-          <view class="info-row">
-            <text class="label">取消政策</text>
-            <text class="value">{{
-              activity.allowUserCancel === false
-                ? "报名后不可取消"
-                : "允许用户取消报名"
-            }}</text>
-          </view>
-          <view class="info-row">
-            <text class="label">退款政策</text>
-            <text class="value">{{
-              activity.refundable ? "可退款（支付上线后生效）" : "不可退款"
-            }}</text>
-          </view>
-          <view class="info-row">
-            <text class="label">主办</text>
-            <text class="value">{{ activity.hostName }}</text>
-          </view>
-          <view class="info-row">
-            <text class="label">名额</text>
-            <text class="value">上限 {{ activity.capacity }} 人</text>
-          </view>
+        <view class="meta-row">
+          <view class="ed-ico ed-ico-pin" />
+          <text class="meta-label">地点</text>
+          <text class="meta-value">{{ activity.place || "—" }}</text>
         </view>
       </view>
 
-      <view v-if="activity.rules" class="panel">
-        <text class="section-title">活动须知</text>
-        <text class="rules">{{ activity.rules }}</text>
+      <view class="panel">
+        <view class="section-head">
+          <image
+            class="section-ico"
+            src="/static/ico/people-title.png"
+            mode="aspectFit"
+          />
+          <text class="section-title">活动人员</text>
+          <text class="attendees-quota"
+            >{{ confirmedCount }}/{{ activity.capacity }}</text
+          >
+        </view>
+        <view class="people-row">
+          <scroll-view
+            class="attendees-scroll"
+            scroll-x
+            :show-scrollbar="false"
+            enable-flex
+            @scroll="onAttendeesScroll"
+          >
+            <view class="attendees">
+              <view
+                v-for="(person, index) in attendees"
+                :key="`${person.nickname}-${index}`"
+                class="attendee"
+              >
+                <image
+                  v-if="person.avatarUrl"
+                  class="attendee-avatar"
+                  :src="person.avatarUrl"
+                  mode="aspectFill"
+                />
+                <view v-else class="attendee-avatar attendee-fallback">
+                  <view class="attendee-head" />
+                  <view class="attendee-body" />
+                </view>
+                <text class="attendee-name">{{ person.nickname }}</text>
+              </view>
+              <view
+                v-if="showRegisterSlot"
+                class="attendee"
+                hover-class="none"
+                @click.stop="onCta"
+              >
+                <view class="attendee-plus">+</view>
+              </view>
+            </view>
+          </scroll-view>
+          <view
+            v-if="attendeesFadeStart"
+            class="attendees-fade attendees-fade-start"
+          />
+          <view
+            v-if="attendeesFadeEnd && attendees.length > 3"
+            class="attendees-fade attendees-fade-end"
+          />
+          <image
+            v-if="remainingSeats > 0"
+            class="people-invite"
+            src="/static/invite-more.png"
+            mode="aspectFit"
+          />
+        </view>
       </view>
 
-      <view class="bottom-space" />
+      <view class="panel panel-details">
+        <image
+          class="panel-deco"
+          src="/static/deco-leaves-pair.svg"
+          mode="aspectFit"
+        />
+        <view class="section-head">
+          <view class="ed-ico ed-ico-doc" />
+          <text class="section-title">活动详情</text>
+        </view>
+        <text v-if="activity.rules" class="rules">{{ activity.rules }}</text>
+        <view class="meta-row">
+          <view class="ed-ico ed-ico-clock" />
+          <text class="meta-label">报名截止</text>
+          <text class="meta-value">{{
+            formatDateTime(activity.registrationDeadlineAt ?? activity.startAt)
+          }}</text>
+        </view>
+        <view class="meta-row">
+          <view class="ed-ico ed-ico-person" />
+          <text class="meta-label">主办</text>
+          <text class="meta-value">{{ activity.hostName }}</text>
+        </view>
+        <view class="meta-row">
+          <view class="ed-ico ed-ico-shield" />
+          <text class="meta-label">取消政策</text>
+          <text class="meta-value">{{
+            activity.allowUserCancel === false
+              ? "报名后不可取消"
+              : "允许用户取消报名"
+          }}</text>
+        </view>
+        <view class="meta-row">
+          <view class="ed-ico ed-ico-yen" />
+          <text class="meta-label">退款政策</text>
+          <text class="meta-value">{{
+            activity.refundable ? "可退款（支付上线后生效）" : "不可退款"
+          }}</text>
+        </view>
+      </view>
+
       <view class="cta-bar">
         <!-- 微信：open-type=share；H5：走适配层 Web Share / 复制链接 -->
         <!-- #ifdef MP-WEIXIN -->
         <button
           v-if="canShare"
-          class="share"
+          class="share ed-btn-secondary"
+          hover-class="none"
           open-type="share"
         >
-          分享
+          <view class="ed-ico ed-ico-share" />
+          <text>分享</text>
         </button>
         <!-- #endif -->
         <!-- #ifndef MP-WEIXIN -->
         <button
           v-if="canShare"
-          class="share"
+          class="share ed-btn-secondary"
+          hover-class="none"
           @click="onShare"
         >
-          分享
+          <view class="ed-ico ed-ico-share" />
+          <text>分享</text>
         </button>
         <!-- #endif -->
         <button
-          class="cta"
+          class="cta ed-btn"
+          hover-class="none"
           :class="{ disabled: !canRegister, withShare: canShare }"
           :disabled="!canRegister"
           @click="onCta"
         >
-          {{ ctaText }}
+          <view v-if="alreadyRegistered" class="ed-ico ed-ico-check ed-ico-on-cta" />
+          <text>{{ ctaText }}</text>
         </button>
       </view>
     </template>
@@ -111,7 +183,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import {
   onLoad,
   onShow,
@@ -146,6 +218,76 @@ const myRegistration = ref<Registration | null>(null);
 const loading = ref(true);
 const errorMessage = ref("");
 
+const attendees = computed(() => activity.value?.attendees ?? []);
+
+const confirmedCount = computed(() => activity.value?.confirmedCount ?? 0);
+
+const remainingSeats = computed(() => {
+  const cap = activity.value?.capacity ?? 0;
+  return Math.max(0, cap - confirmedCount.value);
+});
+
+const showQuotaHint = computed(
+  () => remainingSeats.value > 0 && (activity.value?.capacity ?? 0) > 0,
+);
+
+const attendeesFadeStart = ref(false);
+const attendeesFadeEnd = ref(true);
+let attendeesNativeEl: HTMLElement | null = null;
+
+function syncAttendeesFade(
+  scrollLeft: number,
+  clientWidth?: number,
+  scrollWidth?: number,
+) {
+  attendeesFadeStart.value = scrollLeft > 12;
+  if (clientWidth && scrollWidth) {
+    attendeesFadeEnd.value = scrollLeft + clientWidth < scrollWidth - 8;
+  } else {
+    attendeesFadeEnd.value = true;
+  }
+}
+
+function onAttendeesScroll(e: {
+  detail?: { scrollLeft?: number; scrollWidth?: number };
+}) {
+  syncAttendeesFade(Number(e.detail?.scrollLeft ?? 0), undefined, e.detail?.scrollWidth);
+}
+
+function onAttendeesNativeScroll() {
+  if (!attendeesNativeEl) return;
+  syncAttendeesFade(
+    attendeesNativeEl.scrollLeft,
+    attendeesNativeEl.clientWidth,
+    attendeesNativeEl.scrollWidth,
+  );
+}
+
+function bindAttendeesNativeScroll() {
+  unbindAttendeesNativeScroll();
+  // #ifdef H5
+  const root = document.querySelector(".attendees-scroll");
+  const scroller = (root?.querySelector(".uni-scroll-view") ??
+    root) as HTMLElement | null;
+  if (!scroller) return;
+  attendeesNativeEl = scroller;
+  scroller.addEventListener("scroll", onAttendeesNativeScroll, {
+    passive: true,
+  });
+  onAttendeesNativeScroll();
+  // #endif
+}
+
+function unbindAttendeesNativeScroll() {
+  attendeesNativeEl?.removeEventListener("scroll", onAttendeesNativeScroll);
+  attendeesNativeEl = null;
+}
+
+onMounted(() => {
+  nextTick(() => bindAttendeesNativeScroll());
+});
+onBeforeUnmount(unbindAttendeesNativeScroll);
+
 const alreadyRegistered = computed(
   () => myRegistration.value?.status === "confirmed",
 );
@@ -175,6 +317,10 @@ const canRegister = computed(() => {
   return a.displayStatus === "open" || a.displayStatus === "upcoming";
 });
 
+const showRegisterSlot = computed(
+  () => canRegister.value && remainingSeats.value > 0,
+);
+
 const canShare = computed(() => canShareActivity(activity.value));
 
 const ctaText = computed(() => {
@@ -188,11 +334,36 @@ const ctaText = computed(() => {
   return "立即报名";
 });
 
-function formatTime(iso?: string | null) {
-  if (!iso) return "时间待定";
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function toDate(iso?: string | null) {
+  if (!iso) return null;
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString();
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatDateTime(iso?: string | null) {
+  const d = toDate(iso);
+  if (!d) return iso || "时间待定";
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+function formatTimeRange(start?: string | null, end?: string | null) {
+  const s = toDate(start);
+  const e = toDate(end);
+  if (!s) return "时间待定";
+  const date = `${s.getFullYear()}/${s.getMonth() + 1}/${s.getDate()}`;
+  const startClock = `${pad2(s.getHours())}:${pad2(s.getMinutes())}`;
+  if (!e) return `${date} ${startClock}`;
+  const endClock = `${pad2(e.getHours())}:${pad2(e.getMinutes())}`;
+  const sameDay =
+    s.getFullYear() === e.getFullYear() &&
+    s.getMonth() === e.getMonth() &&
+    s.getDate() === e.getDate();
+  if (sameDay) return `${date} ${startClock} — ${endClock}`;
+  return `${formatDateTime(start)} — ${formatDateTime(end)}`;
 }
 
 function resolveErrorMessage(err: unknown): string {
@@ -236,6 +407,7 @@ async function load(id: string) {
     errorMessage.value = resolveErrorMessage(err);
   } finally {
     loading.value = false;
+    nextTick(() => bindAttendeesNativeScroll());
   }
 }
 
@@ -252,10 +424,19 @@ onLoad((query) => {
   void load(id);
 });
 
+async function refreshActivity(id: string) {
+  try {
+    activity.value = await getPublicActivity(id);
+  } catch {
+    // 保持已展示详情，避免返回页时整页闪错
+  }
+}
+
 onShow(() => {
-  // 从报名/取消返回时刷新「是否已报名」
+  // 从报名/取消返回时刷新「是否已报名」与已报名名单
   if (loadedActivityId.value && activity.value) {
     void loadMyRegistration(loadedActivityId.value);
+    void refreshActivity(loadedActivityId.value);
   }
 });
 
@@ -299,149 +480,384 @@ function onCta() {
 }
 </script>
 
-<style scoped>
-.page {
-  min-height: 100vh;
-  background: #f4f5f7;
-  padding-bottom: env(safe-area-inset-bottom);
-}
+<style scoped lang="scss">
+$ed-color-canvas: #f6f3ec !default;
+$ed-color-surface: #fffefb !default;
+$ed-color-text: #24312d !default;
+$ed-color-text-secondary: #77837a !default;
+$ed-color-text-muted: #929b92 !default;
+$ed-color-brand: #1e9b88 !default;
+$ed-color-brand-soft: #d4f3ec !default;
+$ed-color-border: #e7e2d9 !default;
+$ed-color-accent: #e56f3e !default;
+$ed-space-page-x: 44rpx !default;
+$ed-space-card: 32rpx !default;
+$ed-radius-card: 32rpx !default;
+$ed-radius-pill: 999rpx !default;
 
 .state {
   padding: 160rpx 0;
   text-align: center;
-  color: #8a9099;
+  color: $ed-color-text-muted;
   font-size: 28rpx;
 }
 
-.cover-img {
+.page-detail {
+  min-height: calc(100vh - var(--window-top, 0px));
+  padding-top: 24rpx;
+  padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+}
+
+.hero {
+  position: relative;
+  height: 360rpx;
+  border-radius: $ed-radius-card;
+  overflow: hidden;
+  background: $ed-color-brand;
+}
+
+.hero-img {
   width: 100%;
   height: 360rpx;
   display: block;
-  background: #e5e7eb;
+  background: $ed-color-border;
 }
 
-.cover {
-  height: 360rpx;
+.hero-placeholder {
+  background: $ed-color-brand;
+}
+
+.hero-scrim {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(36, 49, 45, 0.08) 20%,
+    rgba(36, 49, 45, 0.62) 100%
+  );
+}
+
+.hero-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 28rpx 28rpx 24rpx;
+}
+
+.hero-title {
+  display: block;
+  max-width: 72%;
+  color: #ffffff;
+  font-size: 40rpx;
+  font-weight: 700;
+  line-height: 1.28;
+  text-shadow: 0 2rpx 12rpx rgba(36, 49, 45, 0.35);
+}
+
+.hero-tags {
   display: flex;
-  align-items: flex-end;
-  padding: 32rpx;
-  box-sizing: border-box;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 16rpx;
 }
 
-.cover-placeholder {
-  background: #0f766e;
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 40rpx;
+  padding: 0 16rpx;
+  border-radius: $ed-radius-pill;
+  background: rgba(30, 155, 136, 0.92);
+  color: #ffffff;
+  font-size: 20rpx;
+  font-weight: 500;
 }
 
-.cover-label {
-  color: rgba(255, 255, 255, 0.95);
-  font-size: 28rpx;
-  letter-spacing: 2rpx;
+.hero-tag-accent {
+  background: rgba(255, 254, 251, 0.92);
+  color: $ed-color-accent;
+  box-shadow: inset 0 0 0 1rpx rgba(229, 111, 62, 0.4);
 }
 
 .panel {
-  margin: 24rpx;
-  padding: 32rpx;
-  background: #ffffff;
-  border-radius: 16rpx;
+  margin-top: 24rpx;
+  padding: $ed-space-card;
+  background: $ed-color-surface;
+  border: 1rpx solid $ed-color-border;
+  border-radius: $ed-radius-card;
 }
 
-.title-row {
+.panel-details {
+  position: relative;
+  overflow: hidden;
+}
+
+.panel-deco {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  width: 35px;
+  height: 35px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ed-ico {
+  width: 32rpx;
+  height: 32rpx;
+  flex-shrink: 0;
+  background-color: $ed-color-brand;
+  -webkit-mask-image: var(--ico);
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  mask-image: var(--ico);
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
+.ed-ico-calendar {
+  --ico: url("/static/ico/calendar.svg");
+}
+
+.ed-ico-pin {
+  --ico: url("/static/ico/pin.svg");
+}
+
+.ed-ico-person {
+  --ico: url("/static/ico/person.svg");
+}
+
+.ed-ico-doc {
+  --ico: url("/static/ico/doc.svg");
+}
+
+.ed-ico-clock {
+  --ico: url("/static/ico/clock.svg");
+}
+
+.ed-ico-shield {
+  --ico: url("/static/ico/shield.svg");
+}
+
+.ed-ico-yen {
+  --ico: url("/static/ico/yen.svg");
+}
+
+.ed-ico-share {
+  --ico: url("/static/ico/share.svg");
+}
+
+.ed-ico-check {
+  --ico: url("/static/ico/check.svg");
+}
+
+.ed-ico-on-cta {
+  color: #ffffff;
+}
+
+.meta-row {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 16rpx;
-  margin-bottom: 16rpx;
+  gap: 12rpx;
+  padding: 16rpx 0;
 }
 
-.title {
-  flex: 1;
-  font-size: 36rpx;
-  font-weight: 600;
-  color: #1a1d23;
-  line-height: 1.35;
+.meta-row + .meta-row {
+  border-top: 1rpx solid $ed-color-border;
 }
 
-.fee {
-  flex-shrink: 0;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #c2410c;
-}
-
-.fee.free {
-  color: #0f766e;
-}
-
-.status {
-  display: inline-block;
-  font-size: 22rpx;
-  padding: 6rpx 14rpx;
-  border-radius: 8rpx;
-  color: #0f766e;
-  background: #ecfdf5;
-  margin-bottom: 28rpx;
-}
-
-.status.ended {
-  color: #6b7280;
-  background: #f3f4f6;
-}
-
-.status.open,
-.status.upcoming {
-  color: #0f766e;
-  background: #ecfdf5;
-}
-
-.status.full,
-.status.closed {
-  color: #b45309;
-  background: #fffbeb;
-}
-
-.info-row {
-  display: flex;
-  gap: 24rpx;
-  padding: 14rpx 0;
-  border-top: 1rpx solid #f0f1f3;
-}
-
-.info-row:first-child {
-  border-top: none;
+.panel > .meta-row:first-child {
   padding-top: 0;
 }
 
-.label {
-  width: 72rpx;
-  flex-shrink: 0;
-  font-size: 26rpx;
-  color: #9ca3af;
+.panel > .meta-row:last-child {
+  padding-bottom: 0;
 }
 
-.value {
-  flex: 1;
+.meta-label {
+  width: 128rpx;
+  flex-shrink: 0;
   font-size: 26rpx;
-  color: #374151;
+  color: $ed-color-text-secondary;
+  line-height: 32rpx;
+}
+
+.meta-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 26rpx;
+  color: $ed-color-text;
   line-height: 1.45;
 }
 
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 18rpx;
+}
+
+.section-ico {
+  width: 56rpx;
+  height: 44rpx;
+  flex-shrink: 0;
+}
+
 .section-title {
-  display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #1a1d23;
-  margin-bottom: 16rpx;
+  flex: 1;
+  min-width: 0;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $ed-color-text;
+  line-height: 1.3;
+}
+
+.attendees-quota {
+  font-size: 24rpx;
+  color: $ed-color-text-muted;
+}
+
+.people-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.attendees-scroll {
+  flex: 1;
+  min-width: 0;
+  height: 140rpx;
+  white-space: nowrap;
+}
+
+.attendees-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.attendees {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20rpx;
+  height: 140rpx;
+}
+
+.attendee {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 132rpx;
+  height: 140rpx;
+  flex-shrink: 0;
+}
+
+.attendee-avatar,
+.attendee-plus {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.attendee-avatar {
+  background: $ed-color-brand-soft;
+}
+
+.attendee-plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx dashed $ed-color-border;
+  color: $ed-color-text-muted;
+  font-size: 36rpx;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.attendee-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.attendee-head {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  background: $ed-color-brand;
+  margin-bottom: 6rpx;
+}
+
+.attendee-body {
+  width: 52rpx;
+  height: 22rpx;
+  border-radius: 26rpx 26rpx 0 0;
+  background: $ed-color-brand;
+}
+
+.attendee-name {
+  margin-top: 8rpx;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 26rpx;
+  color: $ed-color-text;
+  line-height: 1.3;
+}
+
+.attendees-fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 48rpx;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.attendees-fade-start {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    $ed-color-surface 0%,
+    rgba(255, 254, 251, 0) 100%
+  );
+}
+
+.attendees-fade-end {
+  right: 168rpx;
+  background: linear-gradient(
+    to left,
+    $ed-color-surface 0%,
+    rgba(255, 254, 251, 0) 100%
+  );
+}
+
+.people-invite {
+  width: 160rpx;
+  height: 140rpx;
+  flex-shrink: 0;
 }
 
 .rules {
   display: block;
   font-size: 26rpx;
-  color: #4b5563;
-  line-height: 1.7;
-}
-
-.bottom-space {
-  height: 160rpx;
+  color: $ed-color-text;
+  line-height: 1.6;
+  margin-bottom: 8rpx;
 }
 
 .cta-bar {
@@ -449,52 +865,43 @@ function onCta() {
   left: 0;
   right: 0;
   bottom: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 16rpx;
-  padding: 16rpx 32rpx calc(16rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.96);
-  border-top: 1rpx solid #eef0f3;
+  padding: 16rpx $ed-space-page-x calc(16rpx + env(safe-area-inset-bottom));
+  background: $ed-color-surface;
+  border-top: 1rpx solid $ed-color-border;
+}
+
+.share,
+.cta {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-weight: 600;
+  gap: 8rpx;
 }
 
 .share {
-  flex: 0 0 180rpx;
-  height: 88rpx;
-  line-height: 88rpx;
-  margin: 0;
-  padding: 0;
-  background: #ffffff;
-  color: #0f766e;
-  font-size: 28rpx;
-  font-weight: 600;
-  border-radius: 12rpx;
-  border: 2rpx solid #0f766e;
+  flex: 0 0 200rpx;
+  width: 200rpx;
 }
 
-.share::after {
+.share::after,
+.cta::after {
   border: none;
 }
 
 .cta {
   flex: 1;
-  height: 88rpx;
-  line-height: 88rpx;
-  margin: 0;
-  background: #0f766e;
-  color: #ffffff;
-  font-size: 30rpx;
-  font-weight: 600;
-  border-radius: 12rpx;
-  border: none;
+  width: auto;
 }
 
 .cta.disabled,
 .cta[disabled] {
-  background: #cbd5e1;
+  opacity: 0.45;
+  background: $ed-color-brand;
   color: #ffffff;
-}
-
-.cta::after {
-  border: none;
 }
 </style>
