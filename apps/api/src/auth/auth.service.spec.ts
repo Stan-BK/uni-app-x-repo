@@ -18,6 +18,7 @@ describe("AuthService", () => {
     user: {
       create: vi.fn(),
       findUnique: vi.fn(),
+      update: vi.fn(),
     },
   };
 
@@ -130,6 +131,74 @@ describe("AuthService", () => {
       canPublish: true,
     });
     expect(result).not.toHaveProperty("organizer");
+  });
+
+  it("updateMe rejects empty patch", async () => {
+    await expect(service.updateMe("user-1", {})).rejects.toMatchObject({
+      status: 400,
+    });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("updateMe trims nickname and maps blank to null", async () => {
+    prisma.user.update.mockResolvedValue({
+      id: "user-1",
+      nickname: null,
+      avatarUrl: "http://x/api/uploads/avatars/a.jpg",
+      canPublish: false,
+    });
+
+    const result = await service.updateMe("user-1", { nickname: "  " });
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      data: { nickname: null },
+    });
+    expect(result).toEqual({
+      id: "user-1",
+      nickname: null,
+      avatarUrl: "http://x/api/uploads/avatars/a.jpg",
+      canPublish: false,
+    });
+  });
+
+  it("updateMe rejects too-long nickname", async () => {
+    await expect(
+      service.updateMe("user-1", { nickname: "啊".repeat(33) }),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("updateMe rejects non-avatar url", async () => {
+    await expect(
+      service.updateMe("user-1", {
+        avatarUrl: "wxfile://tmp.png",
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("updateMe writes nickname and avatarUrl and keeps canPublish", async () => {
+    prisma.user.update.mockResolvedValue({
+      id: "user-1",
+      nickname: "小陈",
+      avatarUrl: "http://x/api/uploads/avatars/a.jpg",
+      canPublish: false,
+    });
+
+    const result = await service.updateMe("user-1", {
+      nickname: " 小陈 ",
+      avatarUrl: "http://x/api/uploads/avatars/a.jpg",
+    });
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      data: {
+        nickname: "小陈",
+        avatarUrl: "http://x/api/uploads/avatars/a.jpg",
+      },
+    });
+    expect(result.canPublish).toBe(false);
+    expect(result.nickname).toBe("小陈");
   });
 });
 
