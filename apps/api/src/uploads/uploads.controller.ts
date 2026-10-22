@@ -24,31 +24,43 @@ const ALLOWED_MIME = new Set([
 ]);
 
 const coversDir = join(process.cwd(), "uploads", "covers");
+const avatarsDir = join(process.cwd(), "uploads", "avatars");
 mkdirSync(coversDir, { recursive: true });
+mkdirSync(avatarsDir, { recursive: true });
 
-@Controller("me/uploads")
-@UseGuards(UserJwtGuard, CanPublishGuard)
-export class UploadsController {
-  @Post("cover")
-  @UseInterceptors(
-    FileInterceptor("file", {
-      limits: { fileSize: 5 * 1024 * 1024 },
-      storage: diskStorage({
-        destination: coversDir,
-        filename: (_req, file, cb) => {
-          const ext = extname(file.originalname || "").toLowerCase() || ".jpg";
-          cb(null, `${randomUUID()}${ext}`);
-        },
-      }),
-      fileFilter: (_req, file, cb) => {
-        if (!ALLOWED_MIME.has(file.mimetype)) {
-          cb(new Error("仅支持 jpg / png / webp / gif 图片"), false);
-          return;
-        }
-        cb(null, true);
+function publicApiBase(req: Request): string {
+  return (
+    process.env.PUBLIC_API_BASE?.replace(/\/$/, "") ||
+    `${req.protocol}://${req.get("host")}/api`
+  );
+}
+
+function imageInterceptor(dir: string, maxBytes: number) {
+  return FileInterceptor("file", {
+    limits: { fileSize: maxBytes },
+    storage: diskStorage({
+      destination: dir,
+      filename: (_req, file, cb) => {
+        const ext = extname(file.originalname || "").toLowerCase() || ".jpg";
+        cb(null, `${randomUUID()}${ext}`);
       },
     }),
-  )
+    fileFilter: (_req, file, cb) => {
+      if (!ALLOWED_MIME.has(file.mimetype)) {
+        cb(new Error("仅支持 jpg / png / webp / gif 图片"), false);
+        return;
+      }
+      cb(null, true);
+    },
+  });
+}
+
+@Controller("me/uploads")
+@UseGuards(UserJwtGuard)
+export class UploadsController {
+  @Post("cover")
+  @UseGuards(CanPublishGuard)
+  @UseInterceptors(imageInterceptor(coversDir, 5 * 1024 * 1024))
   uploadCover(
     @UploadedFile() file: Express.Multer.File | undefined,
     @Req() req: Request,
@@ -56,11 +68,18 @@ export class UploadsController {
     if (!file) {
       throw new BadRequestException("请选择封面图片");
     }
-    const publicBase =
-      process.env.PUBLIC_API_BASE?.replace(/\/$/, "") ||
-      `${req.protocol}://${req.get("host")}/api`;
-    return {
-      url: `${publicBase}/uploads/covers/${file.filename}`,
-    };
+    return { url: `${publicApiBase(req)}/uploads/covers/${file.filename}` };
+  }
+
+  @Post("avatar")
+  @UseInterceptors(imageInterceptor(avatarsDir, 2 * 1024 * 1024))
+  uploadAvatar(
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() req: Request,
+  ) {
+    if (!file) {
+      throw new BadRequestException("请选择头像图片");
+    }
+    return { url: `${publicApiBase(req)}/uploads/avatars/${file.filename}` };
   }
 }
