@@ -120,10 +120,24 @@
 
 ---
 
+## P1-1 个人展示资料（昵称 / 头像）
+
+**ADR：** [0012](./adr/0012-user-profile-display.md)（Implemented）  
+**设计：** [docs/superpowers/specs/2026-10-22-user-profile-display-design.md](./superpowers/specs/2026-10-22-user-profile-display-design.md)  
+**计划：** [docs/superpowers/plans/2026-10-22-user-profile-display.md](./superpowers/plans/2026-10-22-user-profile-display.md)
+
+- [x] `PATCH /me` + `POST /me/uploads/avatar`（不要求发布权）  
+- [x] 小程序「我的信息」可改昵称 / 头像（微信 chooseAvatar + nickname 输入）  
+- [x] 公开主办名随昵称更新；不强制完善资料  
+
+**验收：** 见规格 §9。手机号预填、L1 信息架构不在本期。
+
+---
+
 ## P1（后置）
 
 分类等高级筛选、订阅消息、举报、统计看板、活动开始提醒。  
-（标题搜索与开始/发布时间排序已纳入 P0-3；用户取消报名已纳入 P0-4。）
+（标题搜索与开始/发布时间排序已纳入 P0-3；用户取消报名已纳入 P0-4；展示资料见 P1-1。）
 
 ## P2 / 独立里程碑
 
