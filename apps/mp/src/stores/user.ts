@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { loginWithWeixin } from "../adapters/auth";
+import { patchMe } from "../api/me";
 import { getUserToken, request, setUserToken } from "../utils/request";
 
 export type MeResult = {
@@ -44,6 +45,14 @@ export const useUserStore = defineStore("user", {
       }
       await this.fetchMe();
       this.canPublishFlag = this.me?.canPublish ?? false;
+    },
+    async updateProfile(patch: {
+      nickname?: string | null;
+      avatarUrl?: string | null;
+    }) {
+      this.me = await patchMe(patch);
+      this.canPublishFlag = this.me?.canPublish ?? false;
+      return this.me;
     },
   },
 });
