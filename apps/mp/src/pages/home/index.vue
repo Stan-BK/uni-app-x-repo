@@ -1,5 +1,21 @@
 <template>
   <view class="page page-l1">
+    <EdLeafDeco />
+    <EdHotDeck
+      v-if="hotItems.length >= 3"
+      :items="hotItems"
+      @select="goDetail"
+    />
+    <view class="entry-row">
+      <view class="entry entry-primary" hover-class="none" @click="onPublish">
+        <view class="ico ico-plus" />
+        <text>发布活动</text>
+      </view>
+      <view class="entry entry-secondary" hover-class="none" @click="onMine">
+        <view class="ico ico-list" />
+        <text>我的活动</text>
+      </view>
+    </view>
     <view class="toolbar">
       <input
         class="search"
@@ -11,56 +27,101 @@
         @confirm="onSearch"
       />
       <view class="sort">
-        <text
+        <view
           class="sort-item"
           :class="{ active: sort === 'startAt' }"
+          hover-class="none"
           @click="setSort('startAt')"
         >
-          {{ startAtSortLabel }}
-        </text>
-        <text
+          <text>开始时间</text>
+          <view
+            v-if="sort === 'startAt'"
+            class="sort-dir"
+            :class="{ 'is-desc': order === 'desc' }"
+          />
+        </view>
+        <view
           class="sort-item"
           :class="{ active: sort === 'publishedAt' }"
+          hover-class="none"
           @click="setSort('publishedAt')"
         >
-          {{ publishedAtSortLabel }}
-        </text>
+          <text>发布时间</text>
+          <view
+            v-if="sort === 'publishedAt'"
+            class="sort-dir"
+            :class="{ 'is-desc': order === 'desc' }"
+          />
+        </view>
       </view>
     </view>
 
     <view v-if="loading && !items.length" class="state">加载中…</view>
     <view v-else-if="!items.length" class="state">暂无活动</view>
     <view v-else class="list">
-      <view
-        v-for="item in items"
-        :key="item.id"
-        class="card"
-        @click="goDetail(item.id)"
-      >
-        <image
-          v-if="item.coverUrl"
-          class="cover-img"
-          :src="item.coverUrl"
-          mode="aspectFill"
-        />
-        <view v-else class="cover cover-placeholder">
-          <text class="cover-label">活动</text>
-        </view>
-        <view class="body">
-          <view class="row-title">
-            <view class="title">{{ item.title }}</view>
-            <text
-              class="fee ed-tag"
-              :class="isFree(item) ? 'ed-tag-open' : 'ed-tag-paid'"
-            >{{ feeLabel(item) }}</text>
-          </view>
-          <text class="meta">{{ formatTime(item.startAt) }}</text>
-          <view class="row-foot">
-            <text class="place">{{ item.place || "—" }}</text>
-            <text
-              class="status ed-tag"
-              :class="[item.displayStatus, statusTag(item.displayStatus)]"
-            >{{ displayLabel(item.displayStatus) }}</text>
+      <view class="masonry">
+        <view
+          v-for="(col, colIndex) in masonryCols"
+          :key="colIndex"
+          class="masonry-col"
+        >
+          <view
+            v-for="item in col"
+            :key="item.id"
+            class="card"
+            @click="goDetail(item.id)"
+          >
+            <image
+              v-if="item.coverUrl"
+              class="cover-img"
+              :src="item.coverUrl"
+              mode="aspectFill"
+            />
+            <view v-else class="cover cover-placeholder">
+              <text class="cover-label">活动</text>
+            </view>
+            <view class="body">
+              <view class="row-title">
+                <view class="title">{{ item.title }}</view>
+              </view>
+              <view class="row-tags">
+                <text
+                  class="fee ed-tag"
+                  :class="isFree(item) ? 'ed-tag-open' : 'ed-tag-paid'"
+                >{{ feeLabel(item) }}</text>
+                <text
+                  class="status ed-tag"
+                  :class="[item.displayStatus, statusTag(item.displayStatus)]"
+                >{{ displayLabel(item.displayStatus) }}</text>
+              </view>
+              <text class="meta">{{ formatTime(item.startAt) }}</text>
+              <view class="row-foot">
+                <text class="place">{{ item.place || "—" }}</text>
+                <view
+                  v-if="cardFaces(item).length"
+                  class="faces"
+                  :class="{ 'is-overflow': cardFaces(item).length >= 3 }"
+                >
+                  <view
+                    v-for="(person, index) in cardFaces(item)"
+                    :key="`${item.id}-${person.nickname}-${index}`"
+                    class="face"
+                    :style="{ zIndex: index + 1 }"
+                  >
+                    <image
+                      v-if="person.avatarUrl"
+                      class="face-img"
+                      :src="person.avatarUrl"
+                      mode="aspectFill"
+                    />
+                    <view v-else class="face-img face-fallback">
+                      <view class="face-head" />
+                      <view class="face-body" />
+                    </view>
+                  </view>
+                </view>
+              </view>
+            </view>
           </view>
         </view>
       </view>
@@ -72,16 +133,38 @@
         <text>没有更多了</text>
       </view>
     </view>
+    <view class="entry-fab" :class="{ 'is-on': showEntryFab }">
+      <view
+        class="entry-fab-btn entry-primary"
+        hover-class="none"
+        @click="onPublish"
+      >
+        <view class="ico ico-plus" />
+      </view>
+      <view
+        class="entry-fab-btn entry-secondary"
+        hover-class="none"
+        @click="onMine"
+      >
+        <view class="ico ico-list" />
+      </view>
+    </view>
+    <EdTabBar />
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import { onReachBottom, onShow } from "@dcloudio/uni-app";
+import { computed, onMounted, onUnmounted, ref } from "vue";
+import { onPageScroll, onReachBottom, onShow } from "@dcloudio/uni-app";
+import EdTabBar from "@/components/ed-tab-bar/ed-tab-bar.vue";
+import EdHotDeck from "@/components/ed-hot-deck/ed-hot-deck.vue";
+import EdLeafDeco from "@/components/ed-leaf-deco/ed-leaf-deco.vue";
 import {
+  listHotPublicActivities,
   listPublicActivities,
   type PublicActivity,
 } from "@/api/public-activities";
+import { useUserStore } from "@/stores/user";
 import { ApiError } from "@/utils/request";
 
 const DISPLAY_LABEL: Record<string, string> = {
@@ -92,8 +175,11 @@ const DISPLAY_LABEL: Record<string, string> = {
   closed: "报名截止",
 };
 
+const user = useUserStore();
 const items = ref<PublicActivity[]>([]);
+const hotItems = ref<PublicActivity[]>([]);
 const loading = ref(false);
+const acting = ref(false);
 const q = ref("");
 const sort = ref<"startAt" | "publishedAt">("startAt");
 /** startAt 默认升序；publishedAt 默认降序；再点同一项切换方向 */
@@ -103,16 +189,42 @@ const total = ref(0);
 const pageSize = 20;
 
 const hasMore = computed(() => items.value.length < total.value);
+const masonryCols = computed(() => {
+  const cols: [PublicActivity[], PublicActivity[]] = [[], []];
+  items.value.forEach((item, index) => {
+    cols[index % 2].push(item);
+  });
+  return cols;
+});
+const showEntryFab = ref(false);
 
-/** 选中项展示方向；再点同一项切换正/倒序 */
-const startAtSortLabel = computed(() => {
-  if (sort.value !== "startAt") return "开始时间";
-  return order.value === "asc" ? "开始时间 · 早→晚" : "开始时间 · 晚→早";
-});
-const publishedAtSortLabel = computed(() => {
-  if (sort.value !== "publishedAt") return "发布时间";
-  return order.value === "asc" ? "发布时间 · 旧→新" : "发布时间 · 新→旧";
-});
+function syncEntryFab() {
+  uni
+    .createSelectorQuery()
+    .select(".entry-row")
+    .boundingClientRect((rect) => {
+      if (!rect || Array.isArray(rect) || rect.height <= 0) return;
+      showEntryFab.value = rect.bottom <= 8;
+    })
+    .exec();
+}
+
+function bindH5EntryFab() {
+  // #ifdef H5
+  const el = document.querySelector(".entry-row");
+  const root = document.querySelector("uni-page-wrapper");
+  if (!el) return;
+  const io = new IntersectionObserver(
+    ([entry]) => {
+      if (!entry) return;
+      showEntryFab.value = !entry.isIntersecting;
+    },
+    { root: root instanceof Element ? root : null, threshold: 0 },
+  );
+  io.observe(el);
+  onUnmounted(() => io.disconnect());
+  // #endif
+}
 
 function displayLabel(status: string) {
   return DISPLAY_LABEL[status] ?? status;
@@ -131,6 +243,10 @@ function isFree(item: PublicActivity) {
 function feeLabel(item: PublicActivity) {
   if (isFree(item)) return "免费";
   return `¥${(item.feeCents / 100).toFixed(2)}`;
+}
+
+function cardFaces(item: PublicActivity) {
+  return (item.attendees ?? []).slice(0, 3);
 }
 
 function formatTime(iso?: string | null) {
@@ -219,13 +335,68 @@ function goDetail(id: string) {
   uni.navigateTo({ url: `/pages/activity/detail?id=${encodeURIComponent(id)}` });
 }
 
+async function ensureLogin() {
+  if (user.isLoggedIn) return true;
+  if (acting.value) return false;
+  acting.value = true;
+  try {
+    await user.login();
+    return true;
+  } catch (e) {
+    uni.showToast({
+      title: e instanceof Error ? e.message : "登录失败",
+      icon: "none",
+    });
+    return false;
+  } finally {
+    acting.value = false;
+  }
+}
+
+async function onPublish() {
+  if (!(await ensureLogin())) return;
+  if (!user.canPublish) {
+    uni.showToast({ title: "发布权限已关闭", icon: "none" });
+    return;
+  }
+  uni.navigateTo({ url: "/pages/organizer/create" });
+}
+
+async function onMine() {
+  if (!(await ensureLogin())) return;
+  uni.navigateTo({ url: "/pages/organizer/list" });
+}
+
+async function loadHot() {
+  try {
+    const res = await listHotPublicActivities();
+    hotItems.value = Array.isArray(res) ? res.slice(0, 3) : [];
+  } catch {
+    hotItems.value = [];
+  }
+}
+
 onMounted(() => {
+  void loadHot();
   void load({ reset: true });
+  bindH5EntryFab();
 });
 onShow(() => {
   // H5 first paint sometimes misses onShow; mount covers that path.
   // Refresh list when returning to tab.
+  if (user.isLoggedIn) {
+    void user.refreshIdentity().catch(() => {
+      /* 网络失败时保留本地态 */
+    });
+  }
+  void loadHot();
   void load({ reset: true });
+  syncEntryFab();
+  setTimeout(syncEntryFab, 50);
+  setTimeout(syncEntryFab, 240);
+});
+onPageScroll(() => {
+  syncEntryFab();
 });
 onReachBottom(() => {
   loadMore();
@@ -233,6 +404,9 @@ onReachBottom(() => {
 </script>
 
 <style scoped lang="scss">
+$ed-motion-duration: 0.2s !default;
+$ed-motion-ease: cubic-bezier(0.32, 0.72, 0, 1) !default;
+
 .toolbar {
   margin-bottom: 24rpx;
 }
@@ -256,6 +430,9 @@ onReachBottom(() => {
 }
 
 .sort-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
   font-size: 26rpx;
   color: $ed-color-text-secondary;
   padding: 10rpx 20rpx;
@@ -269,6 +446,116 @@ onReachBottom(() => {
   font-weight: 600;
 }
 
+.sort-dir {
+  width: 28rpx;
+  height: 28rpx;
+  flex-shrink: 0;
+  background-color: currentColor;
+  -webkit-mask: url("/static/sort.svg") center / contain no-repeat;
+  mask: url("/static/sort.svg") center / contain no-repeat;
+}
+
+.sort-dir.is-desc {
+  transform: scaleY(-1);
+}
+
+.entry-row {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.entry {
+  flex: 1;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  border-radius: $ed-radius-input;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+$ed-color-accent: #e56f3e !default;
+
+.entry-primary {
+  background: $ed-color-accent;
+  color: #ffffff;
+  box-shadow: 0 8rpx 20rpx rgba(229, 111, 62, 0.3);
+}
+
+.entry-secondary {
+  background: $ed-color-brand;
+  color: #ffffff;
+  box-shadow: 0 8rpx 20rpx rgba(30, 155, 136, 0.28);
+}
+
+.entry-fab {
+  position: fixed;
+  right: $ed-space-page-x;
+  bottom: calc(136rpx + env(safe-area-inset-bottom));
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(16rpx) scale(0.92);
+  transition:
+    opacity $ed-motion-duration $ed-motion-ease,
+    transform $ed-motion-duration $ed-motion-ease;
+}
+
+.entry-fab.is-on {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+.entry-fab-btn {
+  width: 96rpx;
+  height: 96rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.ico {
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.ico-plus {
+  width: 32rpx;
+  height: 32rpx;
+  background-color: currentColor;
+  -webkit-mask-image: url("/static/ico/send.svg");
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  mask-image: url("/static/ico/send.svg");
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
+.ico-list {
+  width: 32rpx;
+  height: 32rpx;
+  background-color: currentColor;
+  -webkit-mask-image: url("/static/ico/person-list.png");
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  mask-image: url("/static/ico/person-list.png");
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
 .state {
   padding: 120rpx 0;
   text-align: center;
@@ -279,7 +566,20 @@ onReachBottom(() => {
 .list {
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
+}
+
+.masonry {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+}
+
+.masonry-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
 }
 
 .card {
@@ -292,16 +592,16 @@ onReachBottom(() => {
 
 .cover-img {
   width: 100%;
-  height: 220rpx;
+  height: 260rpx;
   display: block;
   background: $ed-color-border;
 }
 
 .cover {
-  height: 220rpx;
+  height: 260rpx;
   display: flex;
   align-items: flex-end;
-  padding: 24rpx;
+  padding: 20rpx;
   box-sizing: border-box;
 }
 
@@ -316,21 +616,22 @@ onReachBottom(() => {
 }
 
 .body {
-  padding: $ed-space-card;
+  padding: 20rpx;
 }
 
 .row-title {
+  margin-bottom: 10rpx;
+}
+
+.row-tags {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16rpx;
-  margin-bottom: 12rpx;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-bottom: 10rpx;
 }
 
 .title {
-  flex: 1;
-  min-width: 0;
-  font-size: 28rpx;
+  font-size: 26rpx;
   font-weight: 700;
   color: $ed-color-text;
   line-height: 1.4;
@@ -361,11 +662,80 @@ onReachBottom(() => {
 
 .place {
   flex: 1;
+  min-width: 0;
   font-size: 24rpx;
   color: $ed-color-text-secondary;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.faces {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-shrink: 0;
+  padding-left: 20rpx;
+}
+
+.face {
+  position: relative;
+  width: 44rpx;
+  height: 44rpx;
+  margin-left: -22rpx;
+  flex-shrink: 0;
+}
+
+.face:first-child {
+  margin-left: 0;
+}
+
+.faces.is-overflow .face:last-child {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 40%,
+    rgba(0, 0, 0, 0.35) 70%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    #000 40%,
+    rgba(0, 0, 0, 0.35) 70%,
+    transparent 100%
+  );
+}
+
+.face-img {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  display: block;
+  background: $ed-color-brand-soft;
+  border: 3rpx solid $ed-color-surface;
+  box-sizing: border-box;
+}
+
+.face-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.face-head {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  background: $ed-color-brand;
+  margin-bottom: 2rpx;
+}
+
+.face-body {
+  width: 24rpx;
+  height: 10rpx;
+  border-radius: 12rpx 12rpx 0 0;
+  background: $ed-color-brand;
 }
 
 .more {

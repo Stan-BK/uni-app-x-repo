@@ -53,14 +53,51 @@
         <text class="value">{{ activity.removeReason }}</text>
       </view>
 
-      <button
+      <view
         v-if="activityId"
-        class="ed-btn-secondary"
+        class="people-block"
         hover-class="none"
         @click="goRegistrations"
       >
-        报名名单
-      </button>
+        <view class="section-head">
+          <image
+            class="section-ico"
+            src="/static/ico/people-title.png"
+            mode="aspectFit"
+          />
+          <text class="section-title">报名名单</text>
+          <text class="attendees-quota">{{ confirmedCount }}/{{ activity.capacity }}</text>
+        </view>
+        <view v-if="people.length" class="people-row">
+          <scroll-view
+            class="attendees-scroll"
+            scroll-x
+            :show-scrollbar="false"
+            enable-flex
+          >
+            <view class="attendees">
+              <view
+                v-for="person in people"
+                :key="person.id"
+                class="attendee"
+              >
+                <image
+                  v-if="personAvatar(person)"
+                  class="attendee-avatar"
+                  :src="personAvatar(person)"
+                  mode="aspectFill"
+                />
+                <view v-else class="attendee-avatar attendee-fallback">
+                  <view class="attendee-head" />
+                  <view class="attendee-body" />
+                </view>
+                <text class="attendee-name">{{ personName(person) }}</text>
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+        <text v-else class="people-empty">暂无报名，点此查看名单</text>
+      </view>
       <button
         v-if="canEdit"
         class="ed-btn-secondary"
@@ -77,11 +114,17 @@
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { getActivity, type Activity } from "@/api/activities";
+import {
+  listOrganizerRegistrations,
+  type Registration,
+} from "@/api/registrations";
 import { ApiError } from "@/utils/request";
 
 const loading = ref(true);
 const activity = ref<Activity | null>(null);
 const activityId = ref("");
+const people = ref<Registration[]>([]);
+const confirmedCount = ref(0);
 
 const LIFECYCLE_LABEL: Record<string, string> = {
   draft: "草稿",
@@ -91,10 +134,7 @@ const LIFECYCLE_LABEL: Record<string, string> = {
   ended: "已结束",
 };
 
-const canEdit = computed(() => {
-  const life = activity.value?.lifecycle;
-  return life === "draft" || life === "published";
-});
+const canEdit = computed(() => activity.value?.lifecycle === "draft");
 
 function lifecycleLabel(lifecycle: string) {
   return LIFECYCLE_LABEL[lifecycle] ?? lifecycle;
@@ -128,6 +168,14 @@ function goEdit() {
   });
 }
 
+function personName(person: Registration) {
+  return person.nickname?.trim() || person.name?.trim() || "用户";
+}
+
+function personAvatar(person: Registration) {
+  return person.avatarUrl?.trim() || "";
+}
+
 function goRegistrations() {
   if (!activityId.value) return;
   uni.navigateTo({
@@ -135,10 +183,28 @@ function goRegistrations() {
   });
 }
 
+async function loadPeople(id: string) {
+  try {
+    const res = await listOrganizerRegistrations(id, {
+      page: 1,
+      pageSize: 20,
+      status: "confirmed",
+    });
+    people.value = res.items ?? [];
+    confirmedCount.value = res.total ?? people.value.length;
+  } catch {
+    people.value = [];
+    confirmedCount.value = 0;
+  }
+}
+
 async function load(id: string) {
   loading.value = true;
+  people.value = [];
+  confirmedCount.value = 0;
   try {
     activity.value = await getActivity(id);
+    await loadPeople(id);
   } catch (e) {
     activity.value = null;
     const msg =
@@ -229,6 +295,125 @@ onLoad((query) => {
 
 .rules {
   white-space: pre-wrap;
+}
+
+.people-block {
+  margin: 8rpx 0 16rpx;
+  padding-top: 8rpx;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 18rpx;
+}
+
+.section-ico {
+  width: 56rpx;
+  height: 44rpx;
+  flex-shrink: 0;
+}
+
+.section-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $ed-color-text;
+  line-height: 1.3;
+}
+
+.attendees-quota {
+  font-size: 24rpx;
+  color: $ed-color-text-muted;
+}
+
+.people-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.attendees-scroll {
+  flex: 1;
+  min-width: 0;
+  height: 140rpx;
+  white-space: nowrap;
+}
+
+.attendees-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.attendees {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20rpx;
+  height: 140rpx;
+}
+
+.attendee {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 132rpx;
+  height: 140rpx;
+  flex-shrink: 0;
+}
+
+.attendee-avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: $ed-color-brand-soft;
+}
+
+.attendee-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.attendee-head {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  background: $ed-color-brand;
+  margin-bottom: 6rpx;
+}
+
+.attendee-body {
+  width: 52rpx;
+  height: 22rpx;
+  border-radius: 26rpx 26rpx 0 0;
+  background: $ed-color-brand;
+}
+
+.attendee-name {
+  margin-top: 8rpx;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 26rpx;
+  color: $ed-color-text;
+  line-height: 1.3;
+}
+
+.people-empty {
+  display: block;
+  font-size: 24rpx;
+  color: $ed-color-text-muted;
+  padding: 8rpx 0 12rpx;
 }
 
 button.ed-btn,

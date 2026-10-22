@@ -1,5 +1,10 @@
 import { BusinessEvent } from "@activity/shared";
-import { BadRequestException, ForbiddenException, Logger } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Logger,
+} from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { ActivityLifecycle, FeeType } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -116,6 +121,22 @@ describe("ActivitiesService", () => {
     } finally {
       spy.mockRestore();
     }
+  });
+
+  it("update rejects when activity is published", async () => {
+    prisma.activity.findFirst.mockResolvedValue({
+      id: "act-1",
+      ownerUserId: "user-1",
+      lifecycle: ActivityLifecycle.published,
+    });
+
+    await expect(
+      service.update("user-1", "act-1", { title: "改标题" }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      service.update("user-1", "act-1", { title: "改标题" }),
+    ).rejects.toThrow("Cannot edit published activity");
+    expect(prisma.activity.update).not.toHaveBeenCalled();
   });
 
   it("update with publish throws ForbiddenException when canPublish is false", async () => {

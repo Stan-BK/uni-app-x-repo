@@ -9,14 +9,26 @@
     <view v-else class="list">
       <view v-for="item in items" :key="item.id" class="card">
         <view class="card-top">
-          <text class="name">{{ item.name || "—" }}</text>
-          <text class="status ed-tag" :class="statusTagClass(item.status)">{{
-            statusLabel(item.status)
-          }}</text>
-        </view>
-        <view class="meta">
-          <text>手机：{{ item.phone || "—" }}</text>
-          <text>提交时间：{{ formatTime(item.createdAt) }}</text>
+          <image
+            v-if="personAvatar(item)"
+            class="avatar"
+            :src="personAvatar(item)"
+            mode="aspectFill"
+          />
+          <view v-else class="avatar avatar-fallback">
+            <view class="avatar-head" />
+            <view class="avatar-body" />
+          </view>
+          <view class="card-meta">
+            <view class="name-row">
+              <text class="name">{{ personName(item) }}</text>
+              <text class="status ed-tag" :class="statusTagClass(item.status)">{{
+                statusLabel(item.status)
+              }}</text>
+            </view>
+            <text class="meta">手机：{{ item.phone || "—" }}</text>
+            <text class="meta">提交时间：{{ formatTime(item.createdAt) }}</text>
+          </view>
         </view>
       </view>
 
@@ -54,6 +66,14 @@ const total = ref(0);
 const pageSize = 20;
 
 const hasMore = computed(() => items.value.length < total.value);
+
+function personName(item: Registration) {
+  return item.nickname?.trim() || item.name?.trim() || "用户";
+}
+
+function personAvatar(item: Registration) {
+  return item.avatarUrl?.trim() || "";
+}
 
 function statusLabel(status: string) {
   return STATUS_LABEL[status] ?? status;
@@ -167,16 +187,62 @@ onLoad((query) => {
 .card-top {
   display: flex;
   align-items: flex-start;
+  gap: 20rpx;
+}
+
+.avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: $ed-color-brand-soft;
+}
+
+.avatar-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.avatar-head {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  background: $ed-color-brand;
+  margin-bottom: 6rpx;
+}
+
+.avatar-body {
+  width: 52rpx;
+  height: 22rpx;
+  border-radius: 26rpx 26rpx 0 0;
+  background: $ed-color-brand;
+}
+
+.card-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.name-row {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 16rpx;
-  margin-bottom: 16rpx;
+  gap: 12rpx;
+  margin-bottom: 8rpx;
 }
 
 .name {
   flex: 1;
+  min-width: 0;
   font-size: 30rpx;
   font-weight: 600;
   color: $ed-color-text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .status {
@@ -184,11 +250,10 @@ onLoad((query) => {
 }
 
 .meta {
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
+  display: block;
   font-size: 24rpx;
   color: $ed-color-text-secondary;
+  line-height: 1.5;
 }
 
 .more {

@@ -428,11 +428,17 @@ describe("RegistrationsService", () => {
         cancelledAt: null,
         createdAt: new Date("2026-10-01T00:00:00.000Z"),
         updatedAt: new Date("2026-10-01T00:00:00.000Z"),
+        user: { nickname: "阿三", avatarUrl: "https://cdn.example/a.png" },
       },
     ]);
     prisma.registration.count.mockResolvedValue(1);
 
     const res = await service.listForOwner("u1", "act1", {});
+    expect(prisma.registration.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: { user: { select: { nickname: true, avatarUrl: true } } },
+      }),
+    );
     expect(res).toEqual({
       items: [
         {
@@ -443,6 +449,8 @@ describe("RegistrationsService", () => {
           status: RegistrationStatus.confirmed,
           createdAt: "2026-10-01T00:00:00.000Z",
           cancelledAt: null,
+          nickname: "阿三",
+          avatarUrl: "https://cdn.example/a.png",
         },
       ],
       total: 1,

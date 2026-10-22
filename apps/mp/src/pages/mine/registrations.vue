@@ -1,104 +1,106 @@
 <template>
   <view class="page page-l1">
-    <view class="identity card">
-      <text class="section-title">账号</text>
-      <text class="line">状态：{{ user.isLoggedIn ? "已登录" : "未登录" }}</text>
-      <text class="line">昵称：{{ user.me?.nickname || "-" }}</text>
-      <text
-        v-if="user.isLoggedIn && user.me && !user.canPublish"
-        class="msg"
-      >发布权限已关闭</text>
-      <text v-if="identityMsg" class="msg">{{ identityMsg }}</text>
-
-      <view class="btn-row">
-        <button
-          v-if="!user.isLoggedIn"
-          class="ed-btn"
-          size="mini"
-          hover-class="none"
-          :loading="busy"
-          @click="onLogin"
-        >
-          登录
-        </button>
-        <template v-else>
-          <button
-            class="ed-btn-secondary"
-            size="mini"
-            hover-class="none"
-            :disabled="busy"
-            @click="onLogout"
-          >
-            退出
-          </button>
-          <button
-            class="ed-btn-secondary"
-            size="mini"
-            hover-class="none"
-            :disabled="busy"
-            @click="onRefresh"
-          >
-            刷新状态
-          </button>
-          <button
-            v-if="user.canPublish"
-            class="ed-btn"
-            size="mini"
-            hover-class="none"
-            @click="goOrganizer"
-          >
-            发布活动
-          </button>
-          <button
-            class="ed-btn-secondary"
-            size="mini"
-            hover-class="none"
-            @click="goOrganizerMine"
-          >
-            我的活动
-          </button>
-        </template>
+    <EdLeafDeco />
+    <view
+      class="profile card"
+      hover-class="none"
+      @click="onProfileTap"
+    >
+      <image
+        v-if="user.me?.avatarUrl"
+        class="avatar"
+        :src="user.me.avatarUrl"
+        mode="aspectFill"
+      />
+      <view v-else class="avatar avatar-fallback">
+        <view class="avatar-head" />
+        <view class="avatar-body" />
+      </view>
+      <view class="profile-meta">
+        <text class="nickname">{{
+          user.isLoggedIn ? user.me?.nickname || "微信用户" : "未登录"
+        }}</text>
+        <text class="profile-sub">{{
+          user.isLoggedIn ? "微信账号" : "点击登录微信账号"
+        }}</text>
+        <text
+          v-if="user.isLoggedIn && user.me && !user.canPublish"
+          class="msg"
+        >发布权限已关闭</text>
+      </view>
+    </view>
+    <view v-if="user.isLoggedIn" class="entry-row">
+      <view class="entry entry-secondary" hover-class="none" @click="goOrganizerMine">
+        <view class="ico ico-list" />
+        <text>我的活动</text>
+      </view>
+      <view class="entry entry-primary" hover-class="none" @click="goProfile">
+        <view class="ico ico-person" />
+        <text>我的信息</text>
       </view>
     </view>
 
     <text class="section-title block">我的报名</text>
     <view v-if="loading" class="state">加载中…</view>
+    <view v-else-if="!user.isLoggedIn" class="state empty">
+      <text class="empty-title">登录后查看报名</text>
+      <text class="empty-desc">点击上方头像区域，使用微信账号登录</text>
+    </view>
     <view v-else-if="!items.length" class="state empty">
       <text class="empty-title">还没有报名记录</text>
       <text class="empty-desc">去首页看看近期活动吧</text>
       <button class="ed-btn" @click="goHome">浏览活动</button>
     </view>
     <view v-else class="list">
-      <view
-        v-for="item in items"
-        :key="item.id"
-        class="card"
-        @click="goDetail(item)"
-      >
-        <view class="card-top">
-          <view class="title">{{ item.activity?.title || "活动" }}</view>
-          <text class="status ed-tag" :class="statusTagClass(item.status)">{{
-            statusLabel(item.status)
-          }}</text>
-        </view>
-        <view class="meta">
-          <text>地点：{{ item.activity?.place || "—" }}</text>
-          <text>时间：{{ formatTime(item.activity?.startAt) }}</text>
-          <text>报名人：{{ item.name }}</text>
-          <text>手机：{{ item.phone }}</text>
-          <text>提交时间：{{ formatTime(item.createdAt) }}</text>
-        </view>
-        <view v-if="canCancel(item)" class="actions">
-          <text class="ed-btn-link" @click.stop="onCancel(item)">取消报名</text>
+      <view class="masonry">
+        <view
+          v-for="(col, colIndex) in masonryCols"
+          :key="colIndex"
+          class="masonry-col"
+        >
+          <view
+            v-for="item in col"
+            :key="item.id"
+            class="card reg-card"
+            @click="goDetail(item)"
+          >
+            <image
+              v-if="coverSrc(item)"
+              class="cover-img"
+              :src="coverSrc(item)"
+              mode="aspectFill"
+              @error="onCoverError(item.id)"
+            />
+            <view v-else class="cover cover-placeholder">
+              <text class="cover-label">活动</text>
+            </view>
+            <view class="body">
+              <view class="title">{{ item.activity?.title || "活动" }}</view>
+              <view class="row-tags">
+                <text
+                  class="status ed-tag"
+                  :class="statusTagClass(item.status)"
+                >{{ statusLabel(item.status) }}</text>
+              </view>
+              <text class="meta">{{ item.activity?.place || "—" }}</text>
+              <text class="meta last">{{ formatTime(item.activity?.startAt) }}</text>
+              <view v-if="canCancel(item)" class="actions">
+                <text class="ed-btn-link" @click.stop="onCancel(item)">取消报名</text>
+              </view>
+            </view>
+          </view>
         </view>
       </view>
     </view>
+    <EdTabBar />
   </view>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
+import EdTabBar from "@/components/ed-tab-bar/ed-tab-bar.vue";
+import EdLeafDeco from "@/components/ed-leaf-deco/ed-leaf-deco.vue";
 import {
   cancelRegistration,
   listMyRegistrations,
@@ -118,7 +120,24 @@ const user = useUserStore();
 const loading = ref(true);
 const items = ref<Registration[]>([]);
 const busy = ref(false);
-const identityMsg = ref("");
+const brokenCovers = ref<Record<string, boolean>>({});
+const masonryCols = computed(() => {
+  const cols: [Registration[], Registration[]] = [[], []];
+  items.value.forEach((item, index) => {
+    cols[index % 2].push(item);
+  });
+  return cols;
+});
+
+function coverSrc(item: Registration) {
+  const url = item.activity?.coverUrl?.trim() ?? "";
+  if (!url || brokenCovers.value[item.id]) return "";
+  return url;
+}
+
+function onCoverError(id: string) {
+  brokenCovers.value = { ...brokenCovers.value, [id]: true };
+}
 
 function statusLabel(status: string) {
   return STATUS_LABEL[status] ?? status;
@@ -158,11 +177,13 @@ function errMessage(err: unknown): string {
 }
 
 async function loadRegistrations() {
+  if (!user.isLoggedIn) {
+    items.value = [];
+    loading.value = false;
+    return;
+  }
   loading.value = true;
   try {
-    if (!user.isLoggedIn) {
-      await user.login();
-    }
     const res = await listMyRegistrations({ pageSize: 50 });
     items.value = res.items ?? [];
   } catch (e) {
@@ -188,47 +209,33 @@ async function onCancel(item: Registration) {
   }
 }
 
-async function withBusy(fn: () => Promise<void>) {
+async function onLogin() {
+  if (busy.value) return;
   busy.value = true;
-  identityMsg.value = "";
   try {
-    await fn();
+    await user.login();
+    uni.showToast({ title: "登录成功", icon: "none" });
+    await loadRegistrations();
   } catch (e) {
-    identityMsg.value = e instanceof Error ? e.message : String(e);
+    uni.showToast({
+      title: e instanceof Error ? e.message : "登录失败",
+      icon: "none",
+    });
   } finally {
     busy.value = false;
   }
 }
 
-async function onLogin() {
-  await withBusy(async () => {
-    await user.login();
-    identityMsg.value = user.canPublish
-      ? "登录成功，已具备发布权限"
-      : "登录成功";
-    await loadRegistrations();
-  });
-}
-
-async function onRefresh() {
-  await withBusy(async () => {
-    await user.refreshIdentity();
-    identityMsg.value = "已刷新";
-  });
-}
-
-function onLogout() {
-  user.logout();
-  items.value = [];
-  identityMsg.value = "已退出";
-}
-
-function goOrganizer() {
-  uni.navigateTo({ url: "/pages/organizer/create" });
+function onProfileTap() {
+  if (!user.isLoggedIn) void onLogin();
 }
 
 function goOrganizerMine() {
   uni.navigateTo({ url: "/pages/organizer/list" });
+}
+
+function goProfile() {
+  uni.navigateTo({ url: "/pages/mine/profile" });
 }
 
 function goHome() {
@@ -273,37 +280,133 @@ onShow(() => {
   margin: 8rpx 0 16rpx;
 }
 
-.identity .line {
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.avatar {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: $ed-color-brand-soft;
+}
+
+.avatar-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.avatar-head {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: $ed-color-brand;
+  margin-bottom: 8rpx;
+}
+
+.avatar-body {
+  width: 64rpx;
+  height: 28rpx;
+  border-radius: 32rpx 32rpx 0 0;
+  background: $ed-color-brand;
+}
+
+.profile-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.nickname {
   display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: $ed-color-text;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-sub {
+  display: block;
+  margin-top: 8rpx;
   font-size: 24rpx;
   color: $ed-color-text-secondary;
-  margin-bottom: 8rpx;
 }
 
 .msg {
   display: block;
   font-size: 24rpx;
   color: $ed-color-terracotta;
-  margin: 8rpx 0;
+  margin-top: 8rpx;
 }
 
-.btn-row {
+.entry-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 16rpx;
+  gap: 16rpx;
+  margin: 0 0 24rpx;
 }
 
-.btn-row button.ed-btn,
-.btn-row button.ed-btn-secondary {
-  display: inline-flex;
-  flex: none;
-  width: auto;
-  margin: 0;
-  height: 88rpx;
-  line-height: 88rpx;
-  padding: 0 32rpx;
-  border-radius: $ed-radius-pill;
+.entry {
+  flex: 1;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  border-radius: $ed-radius-input;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+$ed-color-accent: #e56f3e !default;
+
+.entry-primary {
+  background: $ed-color-accent;
+  color: #ffffff;
+  box-shadow: 0 8rpx 20rpx rgba(229, 111, 62, 0.3);
+}
+
+.entry-secondary {
+  background: $ed-color-brand;
+  color: #ffffff;
+  box-shadow: 0 8rpx 20rpx rgba(30, 155, 136, 0.28);
+}
+
+.ico {
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.ico-list,
+.ico-person {
+  width: 32rpx;
+  height: 32rpx;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
+.ico-list {
+  -webkit-mask-image: url("/static/ico/person-list.png");
+  mask-image: url("/static/ico/person-list.png");
+}
+
+.ico-person {
+  -webkit-mask-image: url("/static/ico/person.svg");
+  mask-image: url("/static/ico/person.svg");
 }
 
 .state {
@@ -341,39 +444,83 @@ onShow(() => {
 .list {
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+}
+
+.masonry {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+}
+
+.masonry-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
 }
 
 .card {
   background: $ed-color-surface;
   border-radius: $ed-radius-card;
   border: 1rpx solid $ed-color-border;
+}
+
+.profile.card {
   padding: $ed-space-card;
 }
 
-.identity {
-  margin-bottom: 20rpx;
+.reg-card {
+  overflow: hidden;
+  box-shadow: 0 2rpx 8rpx rgba(36, 49, 45, 0.06);
 }
 
-.card-top {
+.cover-img {
+  width: 100%;
+  height: 260rpx;
+  display: block;
+  background: $ed-color-border;
+}
+
+.cover {
+  height: 260rpx;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16rpx;
-  margin-bottom: 20rpx;
+  align-items: flex-end;
+  padding: 20rpx;
+  box-sizing: border-box;
+}
+
+.cover-placeholder {
+  background: $ed-color-brand;
+}
+
+.cover-label {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 26rpx;
+  letter-spacing: 2rpx;
+}
+
+.body {
+  padding: 20rpx;
 }
 
 .title {
-  flex: 1;
-  min-width: 0;
-  font-size: 30rpx;
+  font-size: 26rpx;
   font-weight: 700;
   color: $ed-color-text;
-  line-height: 1.35;
+  line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  margin-bottom: 10rpx;
+}
+
+.row-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-bottom: 10rpx;
 }
 
 .status {
@@ -381,16 +528,22 @@ onShow(() => {
 }
 
 .meta {
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-  font-size: 24rpx;
+  display: block;
+  font-size: 22rpx;
   color: $ed-color-text-secondary;
-  margin-bottom: 20rpx;
+  margin-bottom: 8rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta.last {
+  margin-bottom: 0;
 }
 
 .actions {
   border-top: 1rpx solid $ed-color-border;
-  padding-top: 20rpx;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
 }
 </style>

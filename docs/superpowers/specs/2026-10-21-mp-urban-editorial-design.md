@@ -42,7 +42,8 @@
 canvas 底、列表卡片、底部 Tab。
 
 **二级** `pages/activity/detail`、`pages/register/index`、`pages/organizer/{home,create,list,detail,registrations}`  
-同一左右边距；详情封面可通栏；主标题约 38rpx Semibold；无 Tab。
+同一左右边距；详情封面可通栏；主标题约 38rpx Semibold；无 Tab。  
+进入：自右侧滑入，200ms；返回：自右侧滑出，200ms（见视觉规范 §6）。一级 Tab 切换不滑。
 
 ## 5. 组件映射（现有结构，不新建组件文件）
 

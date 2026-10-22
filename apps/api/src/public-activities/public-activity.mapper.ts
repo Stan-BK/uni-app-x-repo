@@ -27,6 +27,8 @@ export type PublicActivityDto = {
   displayStatus: DisplayStatus;
   publishedAt: string | null;
   hostName: string;
+  attendees?: { nickname: string; avatarUrl: string | null }[];
+  confirmedCount?: number;
 };
 
 export function hostNameFromNickname(
@@ -55,7 +57,12 @@ type ActivityWithOwner = Activity & { owner: { nickname: string | null } };
 
 export function toPublicDto(
   row: ActivityWithOwner,
-  opts: { includeRules: boolean; confirmedCount: number; now?: Date },
+  opts: {
+    includeRules: boolean;
+    confirmedCount: number;
+    now?: Date;
+    attendees?: { nickname: string; avatarUrl: string | null }[];
+  },
 ): PublicActivityDto {
   const dto: PublicActivityDto = {
     id: row.id,
@@ -88,6 +95,10 @@ export function toPublicDto(
     publishedAt: row.publishedAt?.toISOString() ?? null,
     hostName: hostNameFromNickname(row.owner.nickname),
   };
-  if (opts.includeRules) dto.rules = row.rules;
+  if (opts.includeRules) {
+    dto.rules = row.rules;
+    dto.confirmedCount = opts.confirmedCount;
+  }
+  if (opts.attendees) dto.attendees = opts.attendees;
   return dto;
 }
