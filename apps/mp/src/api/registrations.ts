@@ -6,6 +6,7 @@ export type Registration = {
   userId: string;
   name: string;
   phone: string;
+  alreadyRegistered?: boolean;
   status: string;
   cancelledAt?: string | null;
   createdAt: string;

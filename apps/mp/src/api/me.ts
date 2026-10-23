@@ -4,12 +4,16 @@ export type MeResult = {
   id: string;
   nickname: string | null;
   avatarUrl: string | null;
+  realName: string | null;
+  phone: string | null;
   canPublish: boolean;
 };
 
 export function patchMe(body: {
   nickname?: string | null;
   avatarUrl?: string | null;
+  realName?: string | null;
+  phone?: string | null;
 }) {
   return request<MeResult>("/me", { method: "PATCH", data: body });
 }

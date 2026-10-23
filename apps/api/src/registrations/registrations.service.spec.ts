@@ -15,6 +15,7 @@ describe("RegistrationsService", () => {
   const tx = {
     $queryRaw: vi.fn(),
     activity: { findUnique: vi.fn() },
+    user: { update: vi.fn() },
     registration: {
       findUnique: vi.fn(),
       count: vi.fn(),
@@ -83,6 +84,7 @@ describe("RegistrationsService", () => {
         phone: "13800138000",
       });
       expect(dto.status).toBe("confirmed");
+      expect(dto.alreadyRegistered).toBe(false);
       expect(tx.registration.create).toHaveBeenCalled();
       const payload = JSON.parse(String(spy.mock.calls.at(-1)?.[0]));
       expect(payload.event).toBe(BusinessEvent.RegistrationCreate);
@@ -265,6 +267,109 @@ describe("RegistrationsService", () => {
     }
   });
 
+  it("create does not write contact back on new registration", async () => {
+    tx.$queryRaw.mockResolvedValue([publishedFree]);
+    tx.registration.findUnique.mockResolvedValue(null);
+    tx.registration.count.mockResolvedValue(0);
+    tx.registration.create.mockResolvedValue({
+      id: "r1",
+      activityId: "act1",
+      userId: "u1",
+      name: "张三",
+      phone: "13800138000",
+      status: RegistrationStatus.confirmed,
+      cancelledAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const dto = await service.create("u1", {
+      activityId: "act1",
+      name: " 张三 ",
+      phone: "13800138000",
+    });
+
+    expect(tx.user.update).not.toHaveBeenCalled();
+    expect(dto.alreadyRegistered).toBe(false);
+  });
+
+  it("create does not write contact back when reactivating cancelled registration", async () => {
+    const existing = {
+      id: "r1",
+      activityId: "act1",
+      userId: "u1",
+      name: "旧名",
+      phone: "13700137000",
+      status: RegistrationStatus.cancelled,
+      cancelledAt: new Date("2026-01-01"),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    tx.$queryRaw.mockResolvedValue([publishedFree]);
+    tx.registration.findUnique.mockResolvedValue(existing);
+    tx.registration.count.mockResolvedValue(0);
+    tx.registration.update.mockResolvedValue({
+      ...existing,
+      name: "张三",
+      phone: "13800138000",
+      status: RegistrationStatus.confirmed,
+      cancelledAt: null,
+    });
+
+    const dto = await service.create("u1", {
+      activityId: "act1",
+      name: "张三",
+      phone: "13800138000",
+    });
+
+    expect(tx.user.update).not.toHaveBeenCalled();
+    expect(dto.alreadyRegistered).toBe(false);
+  });
+
+  it("create does not write contact back when already confirmed", async () => {
+    const existing = {
+      id: "r1",
+      activityId: "act1",
+      userId: "u1",
+      name: "张三",
+      phone: "13800138000",
+      status: RegistrationStatus.confirmed,
+      cancelledAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    tx.$queryRaw.mockResolvedValue([publishedFree]);
+    tx.registration.findUnique.mockResolvedValue(existing);
+
+    const dto = await service.create("u1", {
+      activityId: "act1",
+      name: "李四",
+      phone: "13900139000",
+    });
+
+    expect(tx.user.update).not.toHaveBeenCalled();
+    expect(dto.alreadyRegistered).toBe(true);
+  });
+
+  it("create does not write contact back when activity is full", async () => {
+    tx.$queryRaw.mockResolvedValue([publishedFree]);
+    tx.registration.findUnique.mockResolvedValue(null);
+    tx.registration.count.mockResolvedValue(2);
+
+    await expect(
+      service.create("u1", {
+        activityId: "act1",
+        name: "张三",
+        phone: "13800138000",
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: RegistrationErrorCode.ActivityFull,
+      }),
+    });
+    expect(tx.user.update).not.toHaveBeenCalled();
+  });
+
   it("cancel rejects when allowUserCancel is false", async () => {
     prisma.registration.findUnique.mockResolvedValue({
       id: "r1",
@@ -300,6 +405,7 @@ describe("RegistrationsService", () => {
     });
     const dto = await service.cancel("u1", "r1");
     expect(dto.status).toBe("cancelled");
+    expect(tx.user.update).not.toHaveBeenCalled();
   });
 
   it("cancel forbidden for other user", async () => {

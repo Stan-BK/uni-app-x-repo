@@ -17,7 +17,7 @@
             v-model="name"
             class="input"
             type="text"
-            maxlength="20"
+            maxlength="32"
             placeholder="请输入真实姓名"
             placeholder-class="placeholder"
           />
@@ -51,12 +51,14 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
+import { PHONE_PATTERN } from "@activity/shared";
 import {
   getPublicActivity,
   type PublicActivity,
 } from "@/api/public-activities";
 import { createRegistration } from "@/api/registrations";
 import { useUserStore } from "@/stores/user";
+import { contactDiffersFromPrefill } from "@/utils/contact-prefill";
 import { ApiError } from "@/utils/request";
 
 const user = useUserStore();
@@ -67,6 +69,7 @@ const phone = ref("");
 const loading = ref(true);
 const submitting = ref(false);
 const errorMessage = ref("");
+let didPrefill = false;
 
 function formatTime(iso?: string | null) {
   if (!iso) return "时间待定";
@@ -79,7 +82,7 @@ function validate(): string | null {
   const n = name.value.trim();
   const p = phone.value.trim();
   if (!n) return "请填写姓名";
-  if (!/^1\d{10}$/.test(p)) return "请填写 11 位手机号";
+  if (!PHONE_PATTERN.test(p)) return "请填写 11 位手机号";
   return null;
 }
 
@@ -131,10 +134,29 @@ onLoad((query) => {
   void load(id);
 });
 
+async function applyPrefill() {
+  if (didPrefill || !user.isLoggedIn) return;
+  try {
+    await user.refreshIdentity();
+  } catch {
+    return;
+  }
+  if (!name.value.trim() && user.me?.realName) name.value = user.me.realName;
+  if (!phone.value.trim() && user.me?.phone) phone.value = user.me.phone;
+  didPrefill = true;
+}
+
 onShow(() => {
-  if (user.isLoggedIn) return;
+  if (user.isLoggedIn) {
+    void applyPrefill();
+    return;
+  }
   void user.promptLogin("登录后才能报名").then((ok) => {
-    if (!ok) uni.navigateBack();
+    if (!ok) {
+      uni.navigateBack();
+      return;
+    }
+    void applyPrefill();
   });
 });
 
@@ -148,17 +170,42 @@ async function onSubmit() {
 
   if (!(await user.promptLogin("登录后才能报名"))) return;
 
+  const submitted = {
+    name: name.value.trim(),
+    phone: phone.value.trim(),
+  };
+
   submitting.value = true;
   try {
-    await createRegistration({
+    const result = await createRegistration({
       activityId: activityId.value,
-      name: name.value.trim(),
-      phone: phone.value.trim(),
+      ...submitted,
     });
-    uni.showToast({ title: "报名已提交", icon: "success" });
-    setTimeout(() => {
-      uni.switchTab({ url: "/pages/mine/registrations" });
-    }, 600);
+    if (
+      !result.alreadyRegistered &&
+      contactDiffersFromPrefill(user.me, submitted)
+    ) {
+      const res = await uni.showModal({
+        title: "报名成功",
+        content: "是否将本次填写的姓名和手机号保存为下次预填？",
+        confirmText: "保存",
+        cancelText: "不了",
+      });
+      if (res.confirm) {
+        try {
+          await user.updateProfile({
+            realName: submitted.name,
+            phone: submitted.phone,
+          });
+        } catch (e) {
+          uni.showToast({ title: toastForError(e), icon: "none" });
+        }
+      }
+    } else {
+      uni.showToast({ title: "报名已提交", icon: "success" });
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    }
+    uni.switchTab({ url: "/pages/mine/registrations" });
   } catch (e) {
     uni.showToast({ title: toastForError(e), icon: "none" });
   } finally {

@@ -82,6 +82,8 @@ describe("AuthService", () => {
 
       expect(result.accessToken).toBe("test-access-token");
       expect(result.user.id).toBe("user-dev-1");
+      expect(result.user).not.toHaveProperty("phone");
+      expect(result.user).not.toHaveProperty("realName");
       expect(weixin.code2Session).not.toHaveBeenCalled();
       expect(jwt.sign).toHaveBeenCalledWith(
         { sub: "user-dev-1", typ: "user" },
@@ -116,6 +118,8 @@ describe("AuthService", () => {
       id: "user-1",
       nickname: "Alice",
       avatarUrl: "https://example.com/a.png",
+      realName: null,
+      phone: null,
       canPublish: true,
     });
 
@@ -128,6 +132,8 @@ describe("AuthService", () => {
       id: "user-1",
       nickname: "Alice",
       avatarUrl: "https://example.com/a.png",
+      realName: null,
+      phone: null,
       canPublish: true,
     });
     expect(result).not.toHaveProperty("organizer");
@@ -145,6 +151,8 @@ describe("AuthService", () => {
       id: "user-1",
       nickname: null,
       avatarUrl: "http://x/api/uploads/avatars/a.jpg",
+      realName: null,
+      phone: null,
       canPublish: false,
     });
 
@@ -158,6 +166,8 @@ describe("AuthService", () => {
       id: "user-1",
       nickname: null,
       avatarUrl: "http://x/api/uploads/avatars/a.jpg",
+      realName: null,
+      phone: null,
       canPublish: false,
     });
   });
@@ -182,6 +192,8 @@ describe("AuthService", () => {
       id: "user-1",
       nickname: "小陈",
       avatarUrl: "http://x/api/uploads/avatars/a.jpg",
+      realName: null,
+      phone: null,
       canPublish: false,
     });
 
@@ -199,6 +211,94 @@ describe("AuthService", () => {
     });
     expect(result.canPublish).toBe(false);
     expect(result.nickname).toBe("小陈");
+  });
+
+  it("getMe returns realName and phone for the owner", async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: "user-1",
+      nickname: "Alice",
+      avatarUrl: null,
+      realName: "张三",
+      phone: "13800138000",
+      canPublish: true,
+    });
+
+    const result = await service.getMe("user-1");
+
+    expect(result).toEqual({
+      id: "user-1",
+      nickname: "Alice",
+      avatarUrl: null,
+      realName: "张三",
+      phone: "13800138000",
+      canPublish: true,
+    });
+  });
+
+  it("updateMe writes realName and phone", async () => {
+    prisma.user.update.mockResolvedValue({
+      id: "user-1",
+      nickname: "Alice",
+      avatarUrl: null,
+      realName: "张三",
+      phone: "13800138000",
+      canPublish: true,
+    });
+
+    const result = await service.updateMe("user-1", {
+      realName: " 张三 ",
+      phone: "13800138000",
+    });
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      data: { realName: "张三", phone: "13800138000" },
+    });
+    expect(result.realName).toBe("张三");
+    expect(result.phone).toBe("13800138000");
+  });
+
+  it("updateMe clears realName and phone with blank or null", async () => {
+    prisma.user.update.mockResolvedValue({
+      id: "user-1",
+      nickname: "Alice",
+      avatarUrl: null,
+      realName: null,
+      phone: null,
+      canPublish: true,
+    });
+
+    const result = await service.updateMe("user-1", {
+      realName: "  ",
+      phone: null,
+    });
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      data: { realName: null, phone: null },
+    });
+    expect(result.realName).toBeNull();
+    expect(result.phone).toBeNull();
+  });
+
+  it("updateMe rejects invalid phone", async () => {
+    await expect(
+      service.updateMe("user-1", { phone: "12345" }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "手机号格式不正确",
+    });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("updateMe rejects too-long realName", async () => {
+    await expect(
+      service.updateMe("user-1", { realName: "啊".repeat(33) }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "报名姓名过长",
+    });
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 });
 

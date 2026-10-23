@@ -16,6 +16,8 @@ export type MeResult = {
   id: string;
   nickname: string | null;
   avatarUrl: string | null;
+  realName: string | null;
+  phone: string | null;
   canPublish: boolean;
 };
 
@@ -79,6 +81,8 @@ export const useUserStore = defineStore("user", {
     async updateProfile(patch: {
       nickname?: string | null;
       avatarUrl?: string | null;
+      realName?: string | null;
+      phone?: string | null;
     }) {
       this.me = await patchMe(patch);
       this.canPublishFlag = this.me?.canPublish ?? false;

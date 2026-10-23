@@ -2,7 +2,12 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService, type JwtSignOptions } from "@nestjs/jwt";
 import { IdentityProvider, type User } from "@prisma/client";
-import { BusinessEvent, NICKNAME_MAX_LENGTH } from "@activity/shared";
+import {
+  BusinessEvent,
+  NICKNAME_MAX_LENGTH,
+  PHONE_PATTERN,
+  REAL_NAME_MAX_LENGTH,
+} from "@activity/shared";
 import { logBusinessEvent } from "../common/log-business-event";
 import { PrismaService } from "../prisma/prisma.service";
 import { isAllowedAvatarUrl } from "./avatar-url";
@@ -22,8 +27,21 @@ export type LoginResult = {
 };
 
 export type MeResult = AuthUserView & {
+  realName: string | null;
+  phone: string | null;
   canPublish: boolean;
 };
+
+function toMeResult(user: User): MeResult {
+  return {
+    id: user.id,
+    nickname: user.nickname,
+    avatarUrl: user.avatarUrl,
+    realName: user.realName,
+    phone: user.phone,
+    canPublish: user.canPublish,
+  };
+}
 
 @Injectable()
 export class AuthService {
@@ -65,25 +83,32 @@ export class AuthService {
     if (!user) {
       throw new HttpException("User not found", HttpStatus.NOT_FOUND);
     }
-    return {
-      id: user.id,
-      nickname: user.nickname,
-      avatarUrl: user.avatarUrl,
-      canPublish: user.canPublish,
-    };
+    return toMeResult(user);
   }
 
   async updateMe(
     userId: string,
-    input: { nickname?: string | null; avatarUrl?: string | null },
+    input: {
+      nickname?: string | null;
+      avatarUrl?: string | null;
+      realName?: string | null;
+      phone?: string | null;
+    },
   ): Promise<MeResult> {
     const hasNickname = Object.prototype.hasOwnProperty.call(input, "nickname");
     const hasAvatar = Object.prototype.hasOwnProperty.call(input, "avatarUrl");
-    if (!hasNickname && !hasAvatar) {
+    const hasRealName = Object.prototype.hasOwnProperty.call(input, "realName");
+    const hasPhone = Object.prototype.hasOwnProperty.call(input, "phone");
+    if (!hasNickname && !hasAvatar && !hasRealName && !hasPhone) {
       throw new HttpException("请提供要更新的字段", HttpStatus.BAD_REQUEST);
     }
 
-    const data: { nickname?: string | null; avatarUrl?: string | null } = {};
+    const data: {
+      nickname?: string | null;
+      avatarUrl?: string | null;
+      realName?: string | null;
+      phone?: string | null;
+    } = {};
 
     if (hasNickname) {
       if (input.nickname == null) {
@@ -107,17 +132,39 @@ export class AuthService {
       }
     }
 
+    if (hasRealName) {
+      if (input.realName == null) {
+        data.realName = null;
+      } else {
+        const realName = input.realName.trim();
+        if (realName.length > REAL_NAME_MAX_LENGTH) {
+          throw new HttpException("报名姓名过长", HttpStatus.BAD_REQUEST);
+        }
+        data.realName = realName.length ? realName : null;
+      }
+    }
+
+    if (hasPhone) {
+      if (input.phone == null) {
+        data.phone = null;
+      } else {
+        const phone = input.phone.trim();
+        if (!phone.length) {
+          data.phone = null;
+        } else if (!PHONE_PATTERN.test(phone)) {
+          throw new HttpException("手机号格式不正确", HttpStatus.BAD_REQUEST);
+        } else {
+          data.phone = phone;
+        }
+      }
+    }
+
     try {
       const user = await this.prisma.user.update({
         where: { id: userId },
         data,
       });
-      return {
-        id: user.id,
-        nickname: user.nickname,
-        avatarUrl: user.avatarUrl,
-        canPublish: user.canPublish,
-      };
+      return toMeResult(user);
     } catch {
       throw new HttpException("User not found", HttpStatus.NOT_FOUND);
     }

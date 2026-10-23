@@ -12,6 +12,10 @@ export type RegistrationDto = {
   updatedAt: string;
 };
 
+export type CreateRegistrationDto = RegistrationDto & {
+  alreadyRegistered: boolean;
+};
+
 export function toRegistrationDto(row: Registration): RegistrationDto {
   return {
     id: row.id,

@@ -5,7 +5,12 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { BusinessEvent, RegistrationErrorCode } from "@activity/shared";
+import {
+  BusinessEvent,
+  PHONE_PATTERN,
+  REAL_NAME_MAX_LENGTH,
+  RegistrationErrorCode,
+} from "@activity/shared";
 import {
   ActivityLifecycle,
   FeeType,
@@ -16,7 +21,10 @@ import {
 import { logBusinessEvent } from "../common/log-business-event";
 import { computeDisplayStatus } from "../public-activities/public-activity.mapper";
 import { PrismaService } from "../prisma/prisma.service";
-import { toRegistrationDto } from "./registration.mapper";
+import {
+  toRegistrationDto,
+  type CreateRegistrationDto,
+} from "./registration.mapper";
 
 export type CreateRegistrationInput = {
   activityId: string;
@@ -49,11 +57,11 @@ export class RegistrationsService {
 
   async create(userId: string, input: CreateRegistrationInput) {
     const name = input.name?.trim() ?? "";
-    if (name.length < 1 || name.length > 32) {
+    if (name.length < 1 || name.length > REAL_NAME_MAX_LENGTH) {
       throw new BadRequestException("姓名长度须为 1～32");
     }
     const phone = input.phone?.trim() ?? "";
-    if (!/^1\d{10}$/.test(phone)) {
+    if (!PHONE_PATTERN.test(phone)) {
       throw new BadRequestException("手机号格式不正确");
     }
     const { activityId } = input;
@@ -69,7 +77,10 @@ export class RegistrationsService {
         where: { userId_activityId: { userId, activityId } },
       });
       if (existing?.status === RegistrationStatus.confirmed) {
-        return toRegistrationDto(existing);
+        return {
+          ...toRegistrationDto(existing),
+          alreadyRegistered: true,
+        } satisfies CreateRegistrationDto;
       }
 
       const confirmedCount = await tx.registration.count({
@@ -92,7 +103,10 @@ export class RegistrationsService {
             cancelledAt: null,
           },
         });
-        return toRegistrationDto(updated);
+        return {
+          ...toRegistrationDto(updated),
+          alreadyRegistered: false,
+        } satisfies CreateRegistrationDto;
       }
 
       const created = await tx.registration.create({
@@ -109,7 +123,10 @@ export class RegistrationsService {
         actorId: userId,
         targetId: created.id,
       });
-      return toRegistrationDto(created);
+      return {
+        ...toRegistrationDto(created),
+        alreadyRegistered: false,
+      } satisfies CreateRegistrationDto;
     });
   }
 
