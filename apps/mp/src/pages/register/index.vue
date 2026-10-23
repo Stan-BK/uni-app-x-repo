@@ -50,7 +50,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { onLoad } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import {
   getPublicActivity,
   type PublicActivity,
@@ -131,6 +131,13 @@ onLoad((query) => {
   void load(id);
 });
 
+onShow(() => {
+  if (user.isLoggedIn) return;
+  void user.promptLogin("登录后才能报名").then((ok) => {
+    if (!ok) uni.navigateBack();
+  });
+});
+
 async function onSubmit() {
   if (!activity.value || !activityId.value || submitting.value) return;
   const err = validate();
@@ -139,11 +146,10 @@ async function onSubmit() {
     return;
   }
 
+  if (!(await user.promptLogin("登录后才能报名"))) return;
+
   submitting.value = true;
   try {
-    if (!user.isLoggedIn) {
-      await user.login();
-    }
     await createRegistration({
       activityId: activityId.value,
       name: name.value.trim(),

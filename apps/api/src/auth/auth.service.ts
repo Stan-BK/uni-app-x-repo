@@ -2,9 +2,10 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService, type JwtSignOptions } from "@nestjs/jwt";
 import { IdentityProvider, type User } from "@prisma/client";
-import { BusinessEvent } from "@activity/shared";
+import { BusinessEvent, NICKNAME_MAX_LENGTH } from "@activity/shared";
 import { logBusinessEvent } from "../common/log-business-event";
 import { PrismaService } from "../prisma/prisma.service";
+import { isAllowedAvatarUrl } from "./avatar-url";
 import { WeixinClient } from "./weixin.client";
 
 const DEV_OPEN_ID = "dev-openid";
@@ -70,6 +71,56 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       canPublish: user.canPublish,
     };
+  }
+
+  async updateMe(
+    userId: string,
+    input: { nickname?: string | null; avatarUrl?: string | null },
+  ): Promise<MeResult> {
+    const hasNickname = Object.prototype.hasOwnProperty.call(input, "nickname");
+    const hasAvatar = Object.prototype.hasOwnProperty.call(input, "avatarUrl");
+    if (!hasNickname && !hasAvatar) {
+      throw new HttpException("请提供要更新的字段", HttpStatus.BAD_REQUEST);
+    }
+
+    const data: { nickname?: string | null; avatarUrl?: string | null } = {};
+
+    if (hasNickname) {
+      if (input.nickname == null) {
+        data.nickname = null;
+      } else {
+        const nickname = input.nickname.trim();
+        if (nickname.length > NICKNAME_MAX_LENGTH) {
+          throw new HttpException("昵称过长", HttpStatus.BAD_REQUEST);
+        }
+        data.nickname = nickname.length ? nickname : null;
+      }
+    }
+
+    if (hasAvatar) {
+      if (input.avatarUrl == null) {
+        data.avatarUrl = null;
+      } else if (!isAllowedAvatarUrl(input.avatarUrl)) {
+        throw new HttpException("头像地址无效", HttpStatus.BAD_REQUEST);
+      } else {
+        data.avatarUrl = input.avatarUrl;
+      }
+    }
+
+    try {
+      const user = await this.prisma.user.update({
+        where: { id: userId },
+        data,
+      });
+      return {
+        id: user.id,
+        nickname: user.nickname,
+        avatarUrl: user.avatarUrl,
+        canPublish: user.canPublish,
+      };
+    } catch {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
   }
 
   private async upsertWeixinUser(

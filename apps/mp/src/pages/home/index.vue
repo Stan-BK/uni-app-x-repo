@@ -17,15 +17,26 @@
       </view>
     </view>
     <view class="toolbar">
-      <input
-        class="search"
-        type="text"
-        confirm-type="search"
-        :value="q"
-        placeholder="搜索活动标题"
-        @input="onQInput"
-        @confirm="onSearch"
-      />
+      <view class="search-wrap">
+        <input
+          :key="searchNonce"
+          class="search"
+          type="text"
+          confirm-type="search"
+          :value="q"
+          placeholder="搜索活动标题"
+          @input="onQInput"
+          @confirm="onSearch"
+        />
+        <view
+          v-if="q"
+          class="search-clear"
+          hover-class="none"
+          @click.stop="onClearSearch"
+        >
+          <view class="ico-clear" />
+        </view>
+      </view>
       <view class="sort">
         <view
           class="sort-item"
@@ -181,6 +192,7 @@ const hotItems = ref<PublicActivity[]>([]);
 const loading = ref(false);
 const acting = ref(false);
 const q = ref("");
+const searchNonce = ref(0);
 const sort = ref<"startAt" | "publishedAt">("startAt");
 /** startAt 默认升序；publishedAt 默认降序；再点同一项切换方向 */
 const order = ref<"asc" | "desc">("asc");
@@ -270,6 +282,12 @@ function onSearch() {
   void load({ reset: true });
 }
 
+function onClearSearch() {
+  q.value = "";
+  searchNonce.value += 1;
+  void load({ reset: true });
+}
+
 function defaultOrderFor(field: "startAt" | "publishedAt"): "asc" | "desc" {
   return field === "publishedAt" ? "desc" : "asc";
 }
@@ -335,26 +353,18 @@ function goDetail(id: string) {
   uni.navigateTo({ url: `/pages/activity/detail?id=${encodeURIComponent(id)}` });
 }
 
-async function ensureLogin() {
-  if (user.isLoggedIn) return true;
+async function ensureLogin(message: string) {
   if (acting.value) return false;
   acting.value = true;
   try {
-    await user.login();
-    return true;
-  } catch (e) {
-    uni.showToast({
-      title: e instanceof Error ? e.message : "登录失败",
-      icon: "none",
-    });
-    return false;
+    return await user.promptLogin(message);
   } finally {
     acting.value = false;
   }
 }
 
 async function onPublish() {
-  if (!(await ensureLogin())) return;
+  if (!(await ensureLogin("登录后才能发布活动"))) return;
   if (!user.canPublish) {
     uni.showToast({ title: "发布权限已关闭", icon: "none" });
     return;
@@ -363,7 +373,7 @@ async function onPublish() {
 }
 
 async function onMine() {
-  if (!(await ensureLogin())) return;
+  if (!(await ensureLogin("登录后才能查看我的活动"))) return;
   uni.navigateTo({ url: "/pages/organizer/list" });
 }
 
@@ -411,17 +421,52 @@ $ed-motion-ease: cubic-bezier(0.32, 0.72, 0, 1) !default;
   margin-bottom: 24rpx;
 }
 
-.search {
-  width: 100%;
-  height: 72rpx;
-  padding: 0 24rpx;
+.search-wrap {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+  padding-right: 8rpx;
   box-sizing: border-box;
   background: $ed-color-surface;
   border: 1rpx solid $ed-color-border;
   border-radius: $ed-radius-input;
+}
+
+.search {
+  flex: 1;
+  min-width: 0;
+  height: 72rpx;
+  padding: 0 16rpx 0 24rpx;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
   font-size: 28rpx;
   color: $ed-color-text;
-  margin-bottom: 16rpx;
+}
+
+.search-clear {
+  flex-shrink: 0;
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+$ed-color-text-muted: #929b92 !default;
+
+.ico-clear {
+  width: 36rpx;
+  height: 36rpx;
+  background-color: $ed-color-text-muted;
+  -webkit-mask-image: url("/static/ico/clear.svg");
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  mask-image: url("/static/ico/clear.svg");
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
 }
 
 .sort {
