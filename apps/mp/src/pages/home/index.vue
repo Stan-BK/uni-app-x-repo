@@ -757,6 +757,7 @@ $ed-color-accent: #e56f3e !default;
   display: block;
   background: $ed-color-brand-soft;
   border: 3rpx solid $ed-color-surface;
+  box-shadow: 0 0 0 1rpx $ed-color-border;
   box-sizing: border-box;
 }
 

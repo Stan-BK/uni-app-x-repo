@@ -293,6 +293,8 @@ onShow(() => {
   border-radius: 50%;
   flex-shrink: 0;
   background: $ed-color-brand-soft;
+  border: 1rpx solid $ed-color-border;
+  box-sizing: border-box;
 }
 
 .avatar-fallback {

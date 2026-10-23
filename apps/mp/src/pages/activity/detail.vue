@@ -781,6 +781,8 @@ $ed-radius-pill: 999rpx !default;
 
 .attendee-avatar {
   background: $ed-color-brand-soft;
+  border: 1rpx solid $ed-color-border;
+  box-sizing: border-box;
 }
 
 .attendee-plus {

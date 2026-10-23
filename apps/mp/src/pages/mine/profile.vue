@@ -340,6 +340,8 @@ $ed-space-card: 32rpx !default;
   height: 144rpx;
   border-radius: 50%;
   background: $ed-color-brand-soft;
+  border: 1rpx solid $ed-color-border;
+  box-sizing: border-box;
 }
 
 .avatar-fallback {
