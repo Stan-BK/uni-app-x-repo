@@ -9,7 +9,7 @@ export type LoginResult = {
   };
 };
 
-function useDevLoginCode(): boolean {
+export function useDevLoginCode(): boolean {
   // 默认开发旁路；生产构建请设 VITE_AUTH_DEV_BYPASS=false 并配置微信密钥
   return import.meta.env.VITE_AUTH_DEV_BYPASS !== "false";
 }

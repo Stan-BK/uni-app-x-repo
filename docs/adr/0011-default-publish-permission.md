@@ -29,7 +29,8 @@ ADR-0003 规定独立 `Organizer` 实体、`publishStatus` 申请态、默认无
 
 4. **公开展示主办 = 用户昵称。**  
    - 公开 DTO 用 `hostName`（`User.nickname` trim 后非空用之，否则 `"用户"`）。  
-   - 不再返回 `organizer.displayName`。
+   - 不再返回 `organizer.displayName`。  
+   - 昵称/头像由用户自助写入，见 [ADR-0012](./0012-user-profile-display.md)。
 
 5. **API 口径。**  
    - 活动管理从 `/organizer/activities` 迁到 `/me/activities`（同一套 CRUD + publish/unpublish/cancel）。  

@@ -213,6 +213,11 @@ function errMessage(e: unknown): string {
 }
 
 async function load() {
+  if (!user.isLoggedIn) {
+    items.value = [];
+    loading.value = false;
+    return;
+  }
   loading.value = true;
   try {
     const res = await listMyActivities();
@@ -295,11 +300,14 @@ async function onCancel(id: string) {
 }
 
 onShow(() => {
-  if (user.isLoggedIn) {
-    void user.refreshIdentity().catch(() => {
-      /* 网络失败时保留本地态 */
-    });
+  if (!user.isLoggedIn) {
+    uni.showToast({ title: "请先登录", icon: "none" });
+    uni.navigateBack();
+    return;
   }
+  void user.refreshIdentity().catch(() => {
+    /* 网络失败时保留本地态 */
+  });
   void load();
 });
 </script>

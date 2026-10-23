@@ -203,7 +203,11 @@ import {
   getActivityShareMessage,
   shareActivity,
 } from "@/adapters/share";
+import { useUserStore } from "@/stores/user";
 import { ApiError, getUserToken } from "@/utils/request";
+
+const user = useUserStore();
+const ctaActing = ref(false);
 
 const DISPLAY_LABEL: Record<string, string> = {
   upcoming: "报名中",
@@ -472,11 +476,17 @@ async function onShare() {
   }
 }
 
-function onCta() {
-  if (!activity.value || !canRegister.value) return;
-  uni.navigateTo({
-    url: `/pages/register/index?activityId=${encodeURIComponent(activity.value.id)}`,
-  });
+async function onCta() {
+  if (!activity.value || !canRegister.value || ctaActing.value) return;
+  ctaActing.value = true;
+  try {
+    if (!(await user.promptLogin("登录后才能报名"))) return;
+    uni.navigateTo({
+      url: `/pages/register/index?activityId=${encodeURIComponent(activity.value.id)}`,
+    });
+  } finally {
+    ctaActing.value = false;
+  }
 }
 </script>
 

@@ -722,6 +722,7 @@ onLoad((query) => {
 onShow(() => {
   if (!user.isLoggedIn) {
     uni.showToast({ title: "请先登录", icon: "none" });
+    uni.navigateBack();
     return;
   }
   void user.refreshIdentity()

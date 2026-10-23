@@ -56,6 +56,14 @@
         }}</text>
       </view>
     </view>
+    <view
+      v-if="user.isLoggedIn"
+      class="logout"
+      hover-class="none"
+      @click="onLogout"
+    >
+      <text>退出登录</text>
+    </view>
   </view>
 </template>
 
@@ -146,6 +154,16 @@ async function onPickAlbum() {
     if (e && typeof e === "object" && "cancelled" in e) return;
     uni.showToast({ title: errMessage(e), icon: "none" });
   }
+}
+
+async function onLogout() {
+  const res = await uni.showModal({
+    title: "退出登录",
+    content: "退出后需重新登录。仅清除本机登录态，不会注销微信账号。",
+  });
+  if (!res.confirm) return;
+  user.logout();
+  uni.switchTab({ url: "/pages/mine/registrations" });
 }
 
 onShow(() => {
@@ -283,5 +301,18 @@ $ed-space-card: 32rpx !default;
 
 .value.muted {
   color: $ed-color-terracotta;
+}
+
+.logout {
+  margin-top: 48rpx;
+  padding: 16rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logout text {
+  font-size: 26rpx;
+  color: $ed-color-text-secondary;
 }
 </style>
