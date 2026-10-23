@@ -156,6 +156,9 @@ unpackage/
 # Git worktrees
 .worktrees/
 
+# WeChat DevTools 固定预览目录（跨 worktree，仅本地 dev）
+.mp-preview/
+
 # Visual brainstorm companion (local preview)
 .superpowers/
 

@@ -182,14 +182,15 @@ page {
 .page-l1 {
   isolation: isolate;
   padding: calc(
-      24rpx + var(--status-bar-height, 0px) + env(safe-area-inset-top, 0px)
+      #{$ed-nav-bar-height} + var(--status-bar-height, 0px) +
+        env(safe-area-inset-top, 0px)
     )
     $ed-space-page-x calc(168rpx + env(safe-area-inset-bottom));
 }
 
 /* #ifdef H5 */
 .page-l1 {
-  padding-top: calc(44px + env(safe-area-inset-top, 0px));
+  padding-top: calc(#{$ed-nav-bar-height} + env(safe-area-inset-top, 0px));
 }
 
 uni-tabbar,

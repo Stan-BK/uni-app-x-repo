@@ -7,7 +7,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev:mp-weixin": "pnpm --filter @activity/mp dev:mp-weixin",
+    "dev:mp-weixin": "bash scripts/dev-mp-weixin.sh",
     "dev:mp-toutiao": "pnpm --filter @activity/mp dev:mp-toutiao",
     "dev:mp-xhs": "pnpm --filter @activity/mp dev:mp-xhs",
     "dev:h5": "pnpm --filter @activity/mp dev:h5",

@@ -45,7 +45,7 @@ pnpm dev:api
 pnpm dev:admin
 ```
 
-小程序产物在 `apps/mp/dist/dev/<platform>`，用各端开发者工具打开。
+本地微信预览产物在主仓 `.mp-preview/mp-weixin`（`pnpm dev:mp-weixin` 会编译并打开微信开发者工具，跨 worktree 固定）。正式构建在 `apps/mp/dist/build/<platform>`。
 
 ## AI 协作约定
 
