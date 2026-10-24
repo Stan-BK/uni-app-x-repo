@@ -270,13 +270,41 @@ export class PaymentsService {
   ): Promise<void> {
     const order = await this.prisma.paymentOrder.findUnique({
       where: { id: paymentOrderId },
-      include: { refund: true },
+      include: {
+        refund: true,
+        registration: {
+          include: {
+            activity: {
+              include: { settlement: true },
+            },
+          },
+        },
+      },
     });
     if (!order) {
       throw new NotFoundException("支付单不存在");
     }
     if (order.status !== PaymentOrderStatus.paid) {
       throw new BadRequestException("仅已支付订单可退款");
+    }
+
+    const activity = order.registration.activity;
+    if (activity.settlement) {
+      throw new ConflictException({
+        message: "活动已结算，不可退款",
+        code: RegistrationErrorCode.RefundNotAllowed,
+      });
+    }
+    const now = new Date();
+    if (
+      reason === "user_cancel" &&
+      activity.endAt !== null &&
+      now >= activity.endAt
+    ) {
+      throw new ConflictException({
+        message: "活动已结束，不可退款",
+        code: RegistrationErrorCode.RefundNotAllowed,
+      });
     }
 
     const refundReason =

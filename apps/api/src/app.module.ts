@@ -9,6 +9,7 @@ import { AuthModule } from "./auth/auth.module";
 import { HealthModule } from "./health/health.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { PaymentsModule } from "./payments/payments.module";
+import { SettlementModule } from "./settlement/settlement.module";
 import { PublicActivitiesModule } from "./public-activities/public-activities.module";
 import { RegistrationsModule } from "./registrations/registrations.module";
 import { UploadsModule } from "./uploads/uploads.module";
@@ -22,6 +23,7 @@ import { UploadsModule } from "./uploads/uploads.module";
     ActivitiesModule,
     PublicActivitiesModule,
     PaymentsModule,
+    SettlementModule,
     RegistrationsModule,
     UploadsModule,
     AdminAuthModule,

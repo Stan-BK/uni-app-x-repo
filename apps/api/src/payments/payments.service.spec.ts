@@ -69,6 +69,26 @@ describe("PaymentsService", () => {
     status: RegistrationStatus.pending_payment,
   };
 
+  const refundableActivity = {
+    endAt: futureExpire,
+    settlement: null,
+  };
+
+  function paidOrderForRefund(
+    overrides: Record<string, unknown> = {},
+  ) {
+    return {
+      ...basePaymentOrder,
+      status: PaymentOrderStatus.paid,
+      refund: null,
+      registration: {
+        ...pendingRegistration,
+        activity: refundableActivity,
+      },
+      ...overrides,
+    };
+  }
+
   const basePaymentOrder = {
     id: "pay1",
     registrationId: "reg1",
@@ -445,11 +465,7 @@ describe("PaymentsService", () => {
 
   describe("refundPaid", () => {
     it("marks refund succeeded and cancels registration", async () => {
-      prisma.paymentOrder.findUnique.mockResolvedValue({
-        ...basePaymentOrder,
-        status: PaymentOrderStatus.paid,
-        refund: null,
-      });
+      prisma.paymentOrder.findUnique.mockResolvedValue(paidOrderForRefund());
       prisma.refund.create.mockResolvedValue({
         id: "ref1",
         outRefundNo: "RF-1",
@@ -480,11 +496,7 @@ describe("PaymentsService", () => {
 
     it("reuses existing refund when create hits unique constraint", async () => {
       const { Prisma } = await import("@prisma/client");
-      prisma.paymentOrder.findUnique.mockResolvedValue({
-        ...basePaymentOrder,
-        status: PaymentOrderStatus.paid,
-        refund: null,
-      });
+      prisma.paymentOrder.findUnique.mockResolvedValue(paidOrderForRefund());
       prisma.refund.create.mockRejectedValue(
         new Prisma.PrismaClientKnownRequestError("unique", {
           code: "P2002",
@@ -510,11 +522,7 @@ describe("PaymentsService", () => {
     });
 
     it("keeps registration confirmed when refund fails", async () => {
-      prisma.paymentOrder.findUnique.mockResolvedValue({
-        ...basePaymentOrder,
-        status: PaymentOrderStatus.paid,
-        refund: null,
-      });
+      prisma.paymentOrder.findUnique.mockResolvedValue(paidOrderForRefund());
       prisma.refund.create.mockResolvedValue({
         id: "ref1",
         outRefundNo: "RF-1",
