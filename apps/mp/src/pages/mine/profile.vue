@@ -98,6 +98,15 @@
       </view>
       <text class="hint">用于下次报名预填。活动主办看到的是当次报名快照。</text>
 
+      <view class="row">
+        <text class="field-label">待结算</text>
+        <text class="value">{{ pendingDisplay }}</text>
+      </view>
+      <view class="row">
+        <text class="field-label">可用余额</text>
+        <text class="value">{{ availableDisplay }}</text>
+      </view>
+
       <view class="row row-last">
         <text class="field-label">发布权限</text>
         <text class="value" :class="{ muted: !user.canPublish }">{{
@@ -122,6 +131,7 @@ import { onShow } from "@dcloudio/uni-app";
 import { PHONE_PATTERN } from "@activity/shared";
 import { pickAvatarFromAlbum } from "@/adapters/profile";
 import { uploadAvatar } from "@/api/me";
+import { getWallet } from "@/api/wallet";
 import { useUserStore } from "@/stores/user";
 import { ApiError } from "@/utils/request";
 
@@ -131,8 +141,26 @@ const draftRealName = ref("");
 const draftPhone = ref("");
 const avatarPreview = ref("");
 const saving = ref(false);
+const pendingDisplay = ref("--");
+const availableDisplay = ref("--");
 /** Bumped on each identity refresh so in-flight GET /me cannot clobber local state. */
 let loadGen = 0;
+
+function formatYuan(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
+async function loadWallet() {
+  pendingDisplay.value = "--";
+  availableDisplay.value = "--";
+  try {
+    const wallet = await getWallet();
+    pendingDisplay.value = formatYuan(wallet.pendingCents);
+    availableDisplay.value = formatYuan(wallet.availableCents);
+  } catch {
+    /* 失败时保持 -- */
+  }
+}
 
 const nicknameInputType = computed(() => {
   // #ifdef MP-WEIXIN
@@ -278,6 +306,7 @@ onShow(() => {
   }
   loadGen += 1;
   const gen = loadGen;
+  void loadWallet();
   void user.refreshIdentity()
     .catch(() => {
       /* 网络失败时保留本地态 */
