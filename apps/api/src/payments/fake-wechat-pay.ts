@@ -101,7 +101,7 @@ export class FakeWechatPay implements WechatPayPort {
   }
 
   clientParams(prepayId: string) {
-    return buildClientPayParams(prepayId, () => "fake");
+    return buildClientPayParams("fake-app-id", prepayId, () => "fake");
   }
 }
 

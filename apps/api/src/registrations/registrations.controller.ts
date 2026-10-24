@@ -44,4 +44,12 @@ export class RegistrationsController {
   ) {
     return this.registrationsService.cancel(user.userId, id);
   }
+
+  @Post(":id/payment-sync")
+  syncPayment(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param("id") id: string,
+  ) {
+    return this.registrationsService.syncPayment(user.userId, id);
+  }
 }

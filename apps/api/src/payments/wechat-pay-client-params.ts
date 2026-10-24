@@ -14,13 +14,14 @@ function randomNonceStr(length: number): string {
 }
 
 export function buildClientPayParams(
+  appId: string,
   prepayId: string,
   sign: WechatPaySignFn,
 ): ClientPayParams {
   const timeStamp = String(Math.floor(Date.now() / 1000));
   const nonceStr = randomNonceStr(32);
   const packageValue = `prepay_id=${prepayId}`;
-  const message = `${timeStamp}\n${nonceStr}\n${packageValue}\n`;
+  const message = `${appId}\n${timeStamp}\n${nonceStr}\n${packageValue}\n`;
 
   return {
     timeStamp,

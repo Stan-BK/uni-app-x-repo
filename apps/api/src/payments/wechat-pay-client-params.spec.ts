@@ -7,8 +7,8 @@ describe("buildClientPayParams", () => {
   it("builds wx.requestPayment params with injected sign", () => {
     const sign = (message: string) => `signed:${message}`;
 
-    const first = buildClientPayParams("wx123", sign);
-    const second = buildClientPayParams("wx123", sign);
+    const first = buildClientPayParams("wx-app-id", "wx123", sign);
+    const second = buildClientPayParams("wx-app-id", "wx123", sign);
 
     expect(first.package).toBe("prepay_id=wx123");
     expect(first.signType).toBe("RSA");
@@ -18,7 +18,7 @@ describe("buildClientPayParams", () => {
     expect(first.nonceStr).toHaveLength(32);
     expect(second.nonceStr).toHaveLength(32);
     expect(first.paySign).toBe(
-      `signed:${first.timeStamp}\n${first.nonceStr}\n${first.package}\n`,
+      `signed:wx-app-id\n${first.timeStamp}\n${first.nonceStr}\n${first.package}\n`,
     );
     expect(Number(first.timeStamp)).toBeGreaterThan(0);
   });

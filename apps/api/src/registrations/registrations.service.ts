@@ -319,6 +319,29 @@ export class RegistrationsService {
     });
   }
 
+  async syncPayment(userId: string, registrationId: string) {
+    const row = await this.prisma.registration.findUnique({
+      where: { id: registrationId },
+    });
+    if (!row) {
+      throw new NotFoundException("报名不存在");
+    }
+    if (row.userId !== userId) {
+      throw new ForbiddenException("无权同步该报名支付");
+    }
+
+    const synced =
+      await this.paymentsService.syncRegistrationPayment(registrationId);
+    const refreshed = await this.prisma.registration.findUniqueOrThrow({
+      where: { id: registrationId },
+    });
+
+    return {
+      ...toRegistrationDto(refreshed),
+      paymentStatus: synced.paymentStatus,
+    };
+  }
+
   async listMine(userId: string, query: ListMineQuery) {
     const page = Math.max(1, Number(query.page) || 1);
     const pageSize = Math.min(50, Math.max(1, Number(query.pageSize) || 20));

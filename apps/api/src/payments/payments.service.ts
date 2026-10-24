@@ -61,6 +61,52 @@ export class PaymentsService {
     return Boolean(this.wechatPayAppId && this.wechatPayMchId);
   }
 
+  async syncRegistrationPayment(
+    registrationId: string,
+  ): Promise<{ paymentStatus: "pending" | "paid" }> {
+    const pending = await this.prisma.paymentOrder.findFirst({
+      where: {
+        registrationId,
+        status: PaymentOrderStatus.pending,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    const order =
+      pending ??
+      (await this.prisma.paymentOrder.findFirst({
+        where: { registrationId },
+        orderBy: { createdAt: "desc" },
+      }));
+    if (!order) {
+      throw new NotFoundException("支付单不存在");
+    }
+
+    if (order.status === PaymentOrderStatus.paid) {
+      return { paymentStatus: "paid" };
+    }
+
+    const query = await this.wechatPay.query(order.outTradeNo);
+    if (query.tradeState === "SUCCESS") {
+      await this.confirmPaid({
+        outTradeNo: order.outTradeNo,
+        amountCents: query.amountCents ?? order.amountCents,
+        transactionId: query.transactionId ?? `wx-${order.outTradeNo}`,
+        appId: this.wechatPayAppId,
+        mchId: this.wechatPayMchId,
+      });
+      return { paymentStatus: "paid" };
+    }
+
+    const refreshed = await this.prisma.paymentOrder.findUnique({
+      where: { id: order.id },
+    });
+    if (refreshed?.status === PaymentOrderStatus.paid) {
+      return { paymentStatus: "paid" };
+    }
+
+    return { paymentStatus: "pending" };
+  }
+
   async prepare(
     registrationId: string,
     input: {
