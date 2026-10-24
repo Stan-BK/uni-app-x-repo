@@ -513,6 +513,50 @@ describeDb("SettlementService", () => {
       expect(updated?.refund?.status).toBe(RefundStatus.succeeded);
     });
 
+    it("writes processing refund before WeChat so settlement excludes it", async () => {
+      const owner = await createOwner();
+      const guest = await createParticipant();
+      const activity = await createPaidActivity(owner.id, {
+        platformFeeBps: 1000,
+      });
+      const { order } = await createPaidOrder(activity.id, guest.id, 500);
+      const port = (
+        paymentsService as unknown as { wechatPay: FakeWechatPay }
+      ).wechatPay;
+      const refundSpy = vi
+        .spyOn(port, "refund")
+        .mockImplementation(async () => {
+          const pendingRefund = await prisma.refund.findUnique({
+            where: { paymentOrderId: order.id },
+          });
+          expect(pendingRefund?.status).toBe(RefundStatus.processing);
+
+          const mid = await settlementService.settleActivity(activity.id, now);
+          expect(mid.settled).toBe(false);
+          return "succeeded";
+        });
+
+      try {
+        await paymentsService.refundPaid(order.id, "activity_closed");
+      } finally {
+        refundSpy.mockRestore();
+      }
+
+      const settled = await settlementService.settleActivity(activity.id, now);
+      expect(settled.settled).toBe(true);
+      const settlement = await prisma.activitySettlement.findUnique({
+        where: { activityId: activity.id },
+      });
+      expect(settlement).toMatchObject({
+        refundedCents: 500,
+        netCents: 0,
+        ledgerEntryId: null,
+      });
+      expect(
+        await prisma.walletAccount.findUnique({ where: { userId: owner.id } }),
+      ).toBeNull();
+    });
+
     it("rejects refund when settlement already exists", async () => {
       const owner = await createOwner();
       const guest1 = await createParticipant();

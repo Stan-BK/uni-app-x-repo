@@ -270,16 +270,7 @@ export class PaymentsService {
   ): Promise<void> {
     const order = await this.prisma.paymentOrder.findUnique({
       where: { id: paymentOrderId },
-      include: {
-        refund: true,
-        registration: {
-          include: {
-            activity: {
-              include: { settlement: true },
-            },
-          },
-        },
-      },
+      include: { registration: true },
     });
     if (!order) {
       throw new NotFoundException("支付单不存在");
@@ -288,78 +279,17 @@ export class PaymentsService {
       throw new BadRequestException("仅已支付订单可退款");
     }
 
-    const activity = order.registration.activity;
-    if (activity.settlement) {
-      throw new ConflictException({
-        message: "活动已结算，不可退款",
-        code: RegistrationErrorCode.RefundNotAllowed,
-      });
-    }
-    const now = new Date();
-    if (
-      reason === "user_cancel" &&
-      activity.endAt !== null &&
-      now >= activity.endAt
-    ) {
-      throw new ConflictException({
-        message: "活动已结束，不可退款",
-        code: RegistrationErrorCode.RefundNotAllowed,
-      });
-    }
-
-    const refundReason =
-      reason === "user_cancel"
-        ? RefundReason.user_cancel
-        : RefundReason.activity_closed;
-
-    let refundId: string;
-    let outRefundNo: string;
-
-    if (
-      order.refund &&
-      (order.refund.status === RefundStatus.processing ||
-        order.refund.status === RefundStatus.failed)
-    ) {
-      refundId = order.refund.id;
-      outRefundNo = order.refund.outRefundNo;
-    } else if (order.refund?.status === RefundStatus.succeeded) {
+    const claimed = await this.claimRefundBeforeWechat(order, reason);
+    if (!claimed) {
       return;
-    } else {
-      outRefundNo = newOutRefundNo();
-      try {
-        const created = await this.prisma.refund.create({
-          data: {
-            paymentOrderId: order.id,
-            outRefundNo,
-            amountCents: order.amountCents,
-            status: RefundStatus.processing,
-            reason: refundReason,
-          },
-        });
-        refundId = created.id;
-      } catch (error) {
-        if (!this.isUniqueConstraint(error)) {
-          throw error;
-        }
-        const existing = await this.prisma.refund.findUnique({
-          where: { paymentOrderId: order.id },
-        });
-        if (!existing) {
-          throw error;
-        }
-        if (existing.status === RefundStatus.succeeded) {
-          return;
-        }
-        refundId = existing.id;
-        outRefundNo = existing.outRefundNo;
-      }
     }
 
     const result = await this.wechatPay.refund({
-      outRefundNo,
+      outRefundNo: claimed.outRefundNo,
       outTradeNo: order.outTradeNo,
       amountCents: order.amountCents,
     });
+    const refundId = claimed.refundId;
 
     if (result === "succeeded") {
       const now = new Date();
@@ -389,6 +319,97 @@ export class PaymentsService {
         data: { status: RefundStatus.failed },
       });
     }
+  }
+
+  /**
+   * Insert or reuse a processing refund while the activity row is locked,
+   * and commit that row before calling WeChat. Settlement takes the same
+   * lock and skips while the refund is not succeeded.
+   */
+  private async claimRefundBeforeWechat(
+    order: {
+      id: string;
+      amountCents: number;
+      registration: { activityId: string };
+    },
+    reason: "user_cancel" | "activity_closed",
+  ): Promise<{ refundId: string; outRefundNo: string } | null> {
+    const activityId = order.registration.activityId;
+    const refundReason =
+      reason === "user_cancel"
+        ? RefundReason.user_cancel
+        : RefundReason.activity_closed;
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT id FROM "Activity" WHERE id = ${activityId} FOR UPDATE
+      `;
+      const activity = await tx.activity.findUnique({
+        where: { id: activityId },
+        include: { settlement: true },
+      });
+      if (!activity) {
+        throw new NotFoundException("活动不存在");
+      }
+      if (activity.settlement) {
+        throw new ConflictException({
+          message: "活动已结算，不可退款",
+          code: RegistrationErrorCode.RefundNotAllowed,
+        });
+      }
+      const now = new Date();
+      if (
+        reason === "user_cancel" &&
+        activity.endAt !== null &&
+        now >= activity.endAt
+      ) {
+        throw new ConflictException({
+          message: "活动已结束，不可退款",
+          code: RegistrationErrorCode.RefundNotAllowed,
+        });
+      }
+
+      const existing = await tx.refund.findUnique({
+        where: { paymentOrderId: order.id },
+      });
+      if (existing?.status === RefundStatus.succeeded) {
+        return null;
+      }
+      if (
+        existing &&
+        (existing.status === RefundStatus.processing ||
+          existing.status === RefundStatus.failed)
+      ) {
+        return { refundId: existing.id, outRefundNo: existing.outRefundNo };
+      }
+
+      try {
+        const created = await tx.refund.create({
+          data: {
+            paymentOrderId: order.id,
+            outRefundNo: newOutRefundNo(),
+            amountCents: order.amountCents,
+            status: RefundStatus.processing,
+            reason: refundReason,
+          },
+        });
+        return { refundId: created.id, outRefundNo: created.outRefundNo };
+      } catch (error) {
+        if (!this.isUniqueConstraint(error)) {
+          throw error;
+        }
+        const raced = await tx.refund.findUnique({
+          where: { paymentOrderId: order.id },
+        });
+        if (!raced) {
+          throw error;
+        }
+        if (raced.status === RefundStatus.succeeded) {
+          return null;
+        }
+        return { refundId: raced.id, outRefundNo: raced.outRefundNo };
+      }
+    });
   }
 
   private async ensurePrepayId(

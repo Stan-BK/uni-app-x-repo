@@ -37,7 +37,7 @@ export class PrismaRegistrationCancelHook implements RegistrationCancelHook {
         { refund: null },
         { refund: { status: { not: RefundStatus.succeeded } } },
       ],
-    } as const;
+    };
   }
 
   async closeActivity(activityId: string): Promise<void> {

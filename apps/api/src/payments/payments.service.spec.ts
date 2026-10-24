@@ -18,6 +18,7 @@ describe("PaymentsService", () => {
   const APP_ID = "wx8888888888888888";
 
   const tx = {
+    $queryRaw: vi.fn(),
     paymentOrder: {
       findUnique: vi.fn(),
       update: vi.fn(),
@@ -27,6 +28,11 @@ describe("PaymentsService", () => {
     },
     refund: {
       update: vi.fn(),
+      create: vi.fn(),
+      findUnique: vi.fn(),
+    },
+    activity: {
+      findUnique: vi.fn(),
     },
   };
 
@@ -107,6 +113,11 @@ describe("PaymentsService", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    tx.activity.findUnique.mockResolvedValue({
+      id: "act1",
+      endAt: futureExpire,
+      settlement: null,
+    });
     wechatPay = new FakeWechatPay();
     service = new PaymentsService(
       prisma as unknown as PrismaService,
@@ -466,7 +477,7 @@ describe("PaymentsService", () => {
   describe("refundPaid", () => {
     it("marks refund succeeded and cancels registration", async () => {
       prisma.paymentOrder.findUnique.mockResolvedValue(paidOrderForRefund());
-      prisma.refund.create.mockResolvedValue({
+      tx.refund.create.mockResolvedValue({
         id: "ref1",
         outRefundNo: "RF-1",
         status: RefundStatus.processing,
@@ -474,7 +485,7 @@ describe("PaymentsService", () => {
 
       await service.refundPaid("pay1", "user_cancel");
 
-      expect(prisma.refund.create).toHaveBeenCalled();
+      expect(tx.refund.create).toHaveBeenCalled();
       expect(tx.refund.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: { status: RefundStatus.succeeded },
@@ -497,21 +508,23 @@ describe("PaymentsService", () => {
     it("reuses existing refund when create hits unique constraint", async () => {
       const { Prisma } = await import("@prisma/client");
       prisma.paymentOrder.findUnique.mockResolvedValue(paidOrderForRefund());
-      prisma.refund.create.mockRejectedValue(
+      tx.refund.create.mockRejectedValue(
         new Prisma.PrismaClientKnownRequestError("unique", {
           code: "P2002",
           clientVersion: "test",
         }),
       );
-      prisma.refund.findUnique.mockResolvedValue({
-        id: "ref-existing",
-        outRefundNo: "RF-EXISTING",
-        status: RefundStatus.processing,
-      });
+      tx.refund.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          id: "ref-existing",
+          outRefundNo: "RF-EXISTING",
+          status: RefundStatus.processing,
+        });
 
       await service.refundPaid("pay1", "user_cancel");
 
-      expect(prisma.refund.findUnique).toHaveBeenCalledWith({
+      expect(tx.refund.findUnique).toHaveBeenCalledWith({
         where: { paymentOrderId: "pay1" },
       });
       expect(tx.refund.update).toHaveBeenCalledWith(
@@ -523,7 +536,7 @@ describe("PaymentsService", () => {
 
     it("keeps registration confirmed when refund fails", async () => {
       prisma.paymentOrder.findUnique.mockResolvedValue(paidOrderForRefund());
-      prisma.refund.create.mockResolvedValue({
+      tx.refund.create.mockResolvedValue({
         id: "ref1",
         outRefundNo: "RF-1",
         status: RefundStatus.processing,
