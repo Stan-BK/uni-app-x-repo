@@ -6,27 +6,42 @@
       hover-class="none"
       @click="onProfileTap"
     >
-      <image
-        v-if="user.me?.avatarUrl"
-        class="avatar"
-        :src="user.me.avatarUrl"
-        mode="aspectFill"
-      />
-      <view v-else class="avatar avatar-fallback">
-        <view class="avatar-head" />
-        <view class="avatar-body" />
+      <view class="profile-head">
+        <image
+          v-if="user.me?.avatarUrl"
+          class="avatar"
+          :src="user.me.avatarUrl"
+          mode="aspectFill"
+        />
+        <view v-else class="avatar avatar-fallback">
+          <view class="avatar-head" />
+          <view class="avatar-body" />
+        </view>
+        <view class="profile-meta">
+          <text class="nickname">{{
+            user.isLoggedIn ? user.me?.nickname || "微信用户" : "未登录"
+          }}</text>
+          <text class="profile-sub">{{
+            user.isLoggedIn ? "微信账号" : "点击登录微信账号"
+          }}</text>
+          <text
+            v-if="user.isLoggedIn && user.me && !user.canPublish"
+            class="msg"
+          >发布权限已关闭</text>
+        </view>
       </view>
-      <view class="profile-meta">
-        <text class="nickname">{{
-          user.isLoggedIn ? user.me?.nickname || "微信用户" : "未登录"
-        }}</text>
-        <text class="profile-sub">{{
-          user.isLoggedIn ? "微信账号" : "点击登录微信账号"
-        }}</text>
-        <text
-          v-if="user.isLoggedIn && user.me && !user.canPublish"
-          class="msg"
-        >发布权限已关闭</text>
+      <view v-if="user.isLoggedIn" class="wallet">
+        <view class="wallet-main">
+          <text class="wallet-label">可用余额</text>
+          <view class="wallet-amount">
+            <text class="wallet-currency">¥</text>
+            <text class="wallet-figure">{{ availableDisplay }}</text>
+          </view>
+        </view>
+        <view class="wallet-side">
+          <text class="wallet-label">待结算</text>
+          <text class="wallet-pending">{{ pendingDisplay }}</text>
+        </view>
       </view>
     </view>
     <view v-if="user.isLoggedIn" class="entry-row">
@@ -121,6 +136,7 @@ import {
   listMyRegistrations,
   type Registration,
 } from "@/api/registrations";
+import { getWallet } from "@/api/wallet";
 import { useUserStore } from "@/stores/user";
 import {
   isRegistrationPaymentConfirmed,
@@ -140,6 +156,9 @@ const STATUS_LABEL: Record<string, string> = {
 
 const user = useUserStore();
 const loading = ref(true);
+const pendingDisplay = ref("--");
+const availableDisplay = ref("--");
+let walletGen = 0;
 const items = ref<Registration[]>([]);
 const busy = ref(false);
 const payingId = ref("");
@@ -299,13 +318,37 @@ async function onCancel(item: Registration) {
   }
 }
 
+function formatYuan(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
+function clearWalletDisplay() {
+  pendingDisplay.value = "--";
+  availableDisplay.value = "--";
+}
+
+async function loadWallet() {
+  walletGen += 1;
+  const gen = walletGen;
+  clearWalletDisplay();
+  try {
+    const wallet = await getWallet();
+    if (gen !== walletGen || !user.isLoggedIn) return;
+    pendingDisplay.value = formatYuan(wallet.pendingCents);
+    availableDisplay.value = formatYuan(wallet.availableCents);
+  } catch {
+    if (gen !== walletGen) return;
+    clearWalletDisplay();
+  }
+}
+
 async function onLogin() {
   if (busy.value) return;
   busy.value = true;
   try {
     await user.login();
     uni.showToast({ title: "登录成功", icon: "none" });
-    await loadRegistrations();
+    await Promise.all([loadRegistrations(), loadWallet()]);
   } catch (e) {
     uni.showToast({
       title: e instanceof Error ? e.message : "登录失败",
@@ -349,11 +392,15 @@ onMounted(() => {
 
 onShow(() => {
   void loadRegistrations();
-  if (user.isLoggedIn) {
-    void user.refreshIdentity().catch(() => {
-      /* 网络失败时保留本地态 */
-    });
+  if (!user.isLoggedIn) {
+    walletGen += 1;
+    clearWalletDisplay();
+    return;
   }
+  void loadWallet();
+  void user.refreshIdentity().catch(() => {
+    /* 网络失败时保留本地态 */
+  });
 });
 </script>
 
@@ -372,9 +419,60 @@ onShow(() => {
 
 .profile {
   display: flex;
+  flex-direction: column;
+  margin-bottom: 20rpx;
+}
+
+.profile-head {
+  display: flex;
   align-items: center;
   gap: 24rpx;
-  margin-bottom: 20rpx;
+}
+
+.wallet {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: 28rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid $ed-color-border;
+}
+
+.wallet-label {
+  display: block;
+  font-size: 22rpx;
+  color: $ed-color-text-secondary;
+}
+
+.wallet-amount {
+  display: flex;
+  align-items: baseline;
+  margin-top: 8rpx;
+  color: $ed-color-text;
+}
+
+.wallet-currency {
+  margin-right: 4rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.wallet-figure {
+  font-size: 56rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.wallet-side {
+  text-align: right;
+}
+
+.wallet-pending {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $ed-color-brand;
 }
 
 .avatar {
