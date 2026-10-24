@@ -35,6 +35,7 @@ export function isActivityCategory(value: string): value is ActivityCategory {
 
 export const RegistrationStatus = {
   PendingReview: "pending_review",
+  PendingPayment: "pending_payment",
   Confirmed: "confirmed",
   Rejected: "rejected",
   Cancelled: "cancelled",
@@ -78,6 +79,9 @@ export type PublicActivityErrorCode =
 
 export const RegistrationErrorCode = {
   PaidNotSupported: "PAID_NOT_SUPPORTED",
+  PaymentMismatch: "PAYMENT_MISMATCH",
+  RefundNotAllowed: "REFUND_NOT_ALLOWED",
+  PaymentUnavailable: "PAYMENT_UNAVAILABLE",
   ActivityFull: "ACTIVITY_FULL",
   ActivityEnded: "ACTIVITY_ENDED",
   ActivityNotOpenable: "ACTIVITY_NOT_OPENABLE",
