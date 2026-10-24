@@ -8,6 +8,7 @@ import { AdminUsersModule } from "./admin-users/admin-users.module";
 import { AuthModule } from "./auth/auth.module";
 import { HealthModule } from "./health/health.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { PaymentsModule } from "./payments/payments.module";
 import { PublicActivitiesModule } from "./public-activities/public-activities.module";
 import { RegistrationsModule } from "./registrations/registrations.module";
 import { UploadsModule } from "./uploads/uploads.module";
@@ -20,6 +21,7 @@ import { UploadsModule } from "./uploads/uploads.module";
     AuthModule,
     ActivitiesModule,
     PublicActivitiesModule,
+    PaymentsModule,
     RegistrationsModule,
     UploadsModule,
     AdminAuthModule,

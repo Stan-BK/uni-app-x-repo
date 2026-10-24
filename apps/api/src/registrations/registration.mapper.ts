@@ -1,4 +1,5 @@
 import type { Registration } from "@prisma/client";
+import type { ClientPayParams } from "../payments/wechat-pay.port";
 
 export type RegistrationDto = {
   id: string;
@@ -14,6 +15,8 @@ export type RegistrationDto = {
 
 export type CreateRegistrationDto = RegistrationDto & {
   alreadyRegistered: boolean;
+  pay?: ClientPayParams | null;
+  paymentStatus?: "pending" | "paid" | null;
 };
 
 export function toRegistrationDto(row: Registration): RegistrationDto {

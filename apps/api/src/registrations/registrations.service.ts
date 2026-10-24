@@ -1,9 +1,11 @@
+import { randomBytes } from "node:crypto";
 import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import {
   BusinessEvent,
@@ -14,12 +16,17 @@ import {
 import {
   ActivityLifecycle,
   FeeType,
+  IdentityProvider,
+  PaymentOrderStatus,
   Prisma,
   RegistrationStatus,
   type Activity,
+  type Registration,
 } from "@prisma/client";
 import { logBusinessEvent } from "../common/log-business-event";
 import { computeDisplayStatus } from "../public-activities/public-activity.mapper";
+import { PAYMENT_HOLD_MS } from "../payments/payment.constants";
+import { PaymentsService } from "../payments/payments.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   toRegistrationDto,
@@ -44,6 +51,8 @@ type LockedActivity = Pick<
   | "id"
   | "lifecycle"
   | "feeType"
+  | "feeCents"
+  | "title"
   | "capacity"
   | "startAt"
   | "endAt"
@@ -51,9 +60,28 @@ type LockedActivity = Pick<
   | "allowUserCancel"
 >;
 
+type PaidPreparePayload = {
+  registrationId: string;
+  amountCents: number;
+  description: string;
+  payerOpenId: string;
+  dto: CreateRegistrationDto;
+};
+
+type CreateTxResult =
+  | { kind: "return"; dto: CreateRegistrationDto }
+  | { kind: "paid_prepare"; payload: PaidPreparePayload };
+
+function newPaymentOutTradeNo(): string {
+  return `PO${randomBytes(12).toString("hex")}`;
+}
+
 @Injectable()
 export class RegistrationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly paymentsService: PaymentsService,
+  ) {}
 
   async create(userId: string, input: CreateRegistrationInput) {
     const name = input.name?.trim() ?? "";
@@ -65,69 +93,181 @@ export class RegistrationsService {
       throw new BadRequestException("手机号格式不正确");
     }
     const { activityId } = input;
+    const now = new Date();
 
-    return this.prisma.$transaction(async (tx) => {
+    const txResult = await this.prisma.$transaction(async (tx) => {
       const activity = await this.lockActivity(tx, activityId);
       if (!activity) {
         throw new NotFoundException("活动不存在");
       }
-      this.assertActivityOpenable(activity);
+      this.assertActivityOpenable(activity, now);
 
-      const existing = await tx.registration.findUnique({
+      let existing = await tx.registration.findUnique({
         where: { userId_activityId: { userId, activityId } },
       });
+
       if (existing?.status === RegistrationStatus.confirmed) {
         return {
-          ...toRegistrationDto(existing),
-          alreadyRegistered: true,
-        } satisfies CreateRegistrationDto;
+          kind: "return",
+          dto: this.toCreateDto(existing, {
+            alreadyRegistered: true,
+            pay: null,
+            paymentStatus: null,
+          }),
+        } satisfies CreateTxResult;
       }
 
-      const confirmedCount = await tx.registration.count({
-        where: { activityId, status: RegistrationStatus.confirmed },
+      if (existing?.status === RegistrationStatus.pending_payment) {
+        const pendingOrder = await tx.paymentOrder.findFirst({
+          where: {
+            registrationId: existing.id,
+            status: PaymentOrderStatus.pending,
+          },
+        });
+        if (pendingOrder && pendingOrder.expireAt > now) {
+          if (activity.feeType !== FeeType.paid) {
+            throw new ConflictException({
+              message: "当前状态不可继续报名",
+              code: RegistrationErrorCode.NotCancellable,
+            });
+          }
+          const identity = await tx.userIdentity.findFirst({
+            where: { userId, provider: IdentityProvider.weixin },
+          });
+          if (!identity) {
+            throw new BadRequestException("请使用微信登录后再支付");
+          }
+          return {
+            kind: "paid_prepare",
+            payload: {
+              registrationId: existing.id,
+              amountCents: activity.feeCents,
+              description: activity.title,
+              payerOpenId: identity.openId,
+              dto: this.toCreateDto(existing, {
+                alreadyRegistered: false,
+              }),
+            },
+          } satisfies CreateTxResult;
+        }
+        if (pendingOrder && pendingOrder.expireAt <= now) {
+          await tx.paymentOrder.update({
+            where: { id: pendingOrder.id },
+            data: {
+              status: PaymentOrderStatus.closed,
+              closedAt: now,
+            },
+          });
+          await tx.registration.update({
+            where: { id: existing.id },
+            data: {
+              status: RegistrationStatus.cancelled,
+              cancelledAt: now,
+            },
+          });
+          existing = {
+            ...existing,
+            status: RegistrationStatus.cancelled,
+            cancelledAt: now,
+          };
+        }
+      }
+
+      const occupiedCount = await tx.registration.count({
+        where: {
+          activityId,
+          status: {
+            in: [
+              RegistrationStatus.confirmed,
+              RegistrationStatus.pending_payment,
+            ],
+          },
+        },
       });
-      if (confirmedCount >= activity.capacity) {
+      if (occupiedCount >= activity.capacity) {
         throw new ConflictException({
           message: "名额已满",
           code: RegistrationErrorCode.ActivityFull,
         });
       }
 
+      if (activity.feeType === FeeType.free) {
+        return {
+          kind: "return",
+          dto: await this.confirmFreeRegistration(
+            tx,
+            userId,
+            activityId,
+            name,
+            phone,
+            existing,
+          ),
+        } satisfies CreateTxResult;
+      }
+
+      const identity = await tx.userIdentity.findFirst({
+        where: { userId, provider: IdentityProvider.weixin },
+      });
+      if (!identity) {
+        throw new BadRequestException("请使用微信登录后再支付");
+      }
+
+      let registration: Registration;
       if (existing?.status === RegistrationStatus.cancelled) {
-        const updated = await tx.registration.update({
+        registration = await tx.registration.update({
           where: { id: existing.id },
           data: {
-            status: RegistrationStatus.confirmed,
+            status: RegistrationStatus.pending_payment,
             name,
             phone,
             cancelledAt: null,
           },
         });
-        return {
-          ...toRegistrationDto(updated),
-          alreadyRegistered: false,
-        } satisfies CreateRegistrationDto;
+      } else {
+        registration = await tx.registration.create({
+          data: {
+            activityId,
+            userId,
+            name,
+            phone,
+            status: RegistrationStatus.pending_payment,
+          },
+        });
+        logBusinessEvent({
+          event: BusinessEvent.RegistrationCreate,
+          actorId: userId,
+          targetId: registration.id,
+        });
       }
 
-      const created = await tx.registration.create({
+      const expireAt = new Date(now.getTime() + PAYMENT_HOLD_MS);
+      await tx.paymentOrder.create({
         data: {
-          activityId,
-          userId,
-          name,
-          phone,
-          status: RegistrationStatus.confirmed,
+          registrationId: registration.id,
+          outTradeNo: newPaymentOutTradeNo(),
+          amountCents: activity.feeCents,
+          status: PaymentOrderStatus.pending,
+          expireAt,
         },
       });
-      logBusinessEvent({
-        event: BusinessEvent.RegistrationCreate,
-        actorId: userId,
-        targetId: created.id,
-      });
+
       return {
-        ...toRegistrationDto(created),
-        alreadyRegistered: false,
-      } satisfies CreateRegistrationDto;
+        kind: "paid_prepare",
+        payload: {
+          registrationId: registration.id,
+          amountCents: activity.feeCents,
+          description: activity.title,
+          payerOpenId: identity.openId,
+          dto: this.toCreateDto(registration, { alreadyRegistered: false }),
+        },
+      } satisfies CreateTxResult;
     });
+
+    if (txResult.kind === "return") {
+      return txResult.dto;
+    }
+
+    return this.finishPaidPrepare(txResult.payload);
   }
 
   async cancel(userId: string, id: string) {
@@ -329,12 +469,126 @@ export class RegistrationsService {
     };
   }
 
+  private async confirmFreeRegistration(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    activityId: string,
+    name: string,
+    phone: string,
+    existing: Registration | null,
+  ): Promise<CreateRegistrationDto> {
+    if (existing?.status === RegistrationStatus.cancelled) {
+      const updated = await tx.registration.update({
+        where: { id: existing.id },
+        data: {
+          status: RegistrationStatus.confirmed,
+          name,
+          phone,
+          cancelledAt: null,
+        },
+      });
+      return this.toCreateDto(updated, {
+        alreadyRegistered: false,
+        pay: null,
+        paymentStatus: null,
+      });
+    }
+
+    const created = await tx.registration.create({
+      data: {
+        activityId,
+        userId,
+        name,
+        phone,
+        status: RegistrationStatus.confirmed,
+      },
+    });
+    logBusinessEvent({
+      event: BusinessEvent.RegistrationCreate,
+      actorId: userId,
+      targetId: created.id,
+    });
+    return this.toCreateDto(created, {
+      alreadyRegistered: false,
+      pay: null,
+      paymentStatus: null,
+    });
+  }
+
+  private async finishPaidPrepare(
+    payload: PaidPreparePayload,
+  ): Promise<CreateRegistrationDto> {
+    if (!this.paymentsService.isWechatPayConfigured()) {
+      await this.releasePendingPaidRegistration(payload.registrationId);
+      throw new ServiceUnavailableException({
+        message: "支付未配置",
+        code: RegistrationErrorCode.PaymentUnavailable,
+      });
+    }
+
+    const prepared = await this.paymentsService.prepare(
+      payload.registrationId,
+      {
+        amountCents: payload.amountCents,
+        description: payload.description,
+        payerOpenId: payload.payerOpenId,
+      },
+    );
+
+    return {
+      ...payload.dto,
+      pay: prepared.pay,
+      paymentStatus: prepared.status,
+    };
+  }
+
+  private async releasePendingPaidRegistration(
+    registrationId: string,
+  ): Promise<void> {
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      const order = await tx.paymentOrder.findFirst({
+        where: {
+          registrationId,
+          status: PaymentOrderStatus.pending,
+        },
+      });
+      if (order) {
+        await tx.paymentOrder.update({
+          where: { id: order.id },
+          data: {
+            status: PaymentOrderStatus.closed,
+            closedAt: now,
+          },
+        });
+      }
+      await tx.registration.update({
+        where: { id: registrationId },
+        data: {
+          status: RegistrationStatus.cancelled,
+          cancelledAt: now,
+        },
+      });
+    });
+  }
+
+  private toCreateDto(
+    row: Registration,
+    extra: Pick<CreateRegistrationDto, "alreadyRegistered"> &
+      Partial<Pick<CreateRegistrationDto, "pay" | "paymentStatus">>,
+  ): CreateRegistrationDto {
+    return {
+      ...toRegistrationDto(row),
+      ...extra,
+    };
+  }
+
   private async lockActivity(
     tx: Prisma.TransactionClient,
     activityId: string,
   ): Promise<LockedActivity | null> {
     const rows = await tx.$queryRaw<LockedActivity[]>`
-      SELECT id, lifecycle, "feeType", capacity, "startAt", "endAt",
+      SELECT id, lifecycle, "feeType", "feeCents", title, capacity, "startAt", "endAt",
              "registrationDeadlineAt", "allowUserCancel"
       FROM "Activity"
       WHERE id = ${activityId}
@@ -343,36 +597,30 @@ export class RegistrationsService {
     return rows[0] ?? null;
   }
 
-  private assertActivityOpenable(activity: LockedActivity) {
+  private assertActivityOpenable(activity: LockedActivity, now: Date) {
     if (activity.lifecycle !== ActivityLifecycle.published) {
       throw new ConflictException({
         message: "活动当前不可报名",
         code: RegistrationErrorCode.ActivityNotOpenable,
       });
     }
-    if (this.isEnded(activity.endAt)) {
+    if (this.isEnded(activity.endAt, now)) {
       throw new ConflictException({
         message: "活动已结束",
         code: RegistrationErrorCode.ActivityEnded,
       });
     }
     const deadline = activity.registrationDeadlineAt ?? activity.startAt;
-    if (deadline && new Date() >= new Date(deadline)) {
+    if (deadline && now >= new Date(deadline)) {
       throw new ConflictException({
         message: "报名已截止",
         code: RegistrationErrorCode.RegistrationClosed,
       });
     }
-    if (activity.feeType === FeeType.paid) {
-      throw new ConflictException({
-        message: "收费活动暂不支持在线报名",
-        code: RegistrationErrorCode.PaidNotSupported,
-      });
-    }
   }
 
-  private isEnded(endAt: Date | null | undefined): boolean {
+  private isEnded(endAt: Date | null | undefined, now = new Date()): boolean {
     if (!endAt) return false;
-    return new Date() >= new Date(endAt);
+    return now >= new Date(endAt);
   }
 }

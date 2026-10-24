@@ -57,6 +57,10 @@ export class PaymentsService {
       "";
   }
 
+  isWechatPayConfigured(): boolean {
+    return Boolean(this.wechatPayAppId && this.wechatPayMchId);
+  }
+
   async prepare(
     registrationId: string,
     input: {

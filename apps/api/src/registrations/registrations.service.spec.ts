@@ -6,16 +6,28 @@ import {
   FeeType,
   RegistrationStatus,
 } from "@prisma/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { PAYMENT_HOLD_MS } from "../payments/payment.constants";
+import { PaymentsService } from "../payments/payments.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RegistrationsService } from "./registrations.service";
 
 describe("RegistrationsService", () => {
   let service: RegistrationsService;
+  const paymentsService = {
+    prepare: vi.fn(),
+    isWechatPayConfigured: vi.fn().mockReturnValue(true),
+  };
   const tx = {
     $queryRaw: vi.fn(),
     activity: { findUnique: vi.fn() },
     user: { update: vi.fn() },
+    userIdentity: { findFirst: vi.fn() },
+    paymentOrder: {
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
     registration: {
       findUnique: vi.fn(),
       count: vi.fn(),
@@ -45,6 +57,7 @@ describe("RegistrationsService", () => {
       providers: [
         RegistrationsService,
         { provide: PrismaService, useValue: prisma },
+        { provide: PaymentsService, useValue: paymentsService },
       ],
     }).compile();
     service = mod.get(RegistrationsService);
@@ -54,12 +67,25 @@ describe("RegistrationsService", () => {
     id: "act1",
     lifecycle: ActivityLifecycle.published,
     feeType: FeeType.free,
+    feeCents: 0,
+    title: "徒步",
     capacity: 2,
     startAt: new Date("2030-01-01"),
     endAt: new Date("2030-01-02"),
     registrationDeadlineAt: new Date("2030-01-01"),
     allowUserCancel: true,
   };
+
+  const publishedPaid = {
+    ...publishedFree,
+    feeType: FeeType.paid,
+    feeCents: 9900,
+    startAt: new Date("2030-07-01"),
+    endAt: new Date("2030-07-02"),
+    registrationDeadlineAt: new Date("2030-07-01"),
+  };
+
+  const fixedNow = new Date("2030-06-01T12:00:00.000Z");
 
   it("create confirms when capacity available", async () => {
     tx.$queryRaw.mockResolvedValue([publishedFree]);
@@ -85,30 +111,16 @@ describe("RegistrationsService", () => {
       });
       expect(dto.status).toBe("confirmed");
       expect(dto.alreadyRegistered).toBe(false);
+      expect(dto.pay).toBeNull();
+      expect(dto.paymentStatus).toBeNull();
       expect(tx.registration.create).toHaveBeenCalled();
+      expect(tx.paymentOrder.create).not.toHaveBeenCalled();
       const payload = JSON.parse(String(spy.mock.calls.at(-1)?.[0]));
       expect(payload.event).toBe(BusinessEvent.RegistrationCreate);
       expect(payload.targetId).toBe("r1");
     } finally {
       spy.mockRestore();
     }
-  });
-
-  it("create rejects paid", async () => {
-    tx.$queryRaw.mockResolvedValue([
-      { ...publishedFree, feeType: FeeType.paid },
-    ]);
-    await expect(
-      service.create("u1", {
-        activityId: "act1",
-        name: "张三",
-        phone: "13800138000",
-      }),
-    ).rejects.toMatchObject({
-      response: expect.objectContaining({
-        code: RegistrationErrorCode.PaidNotSupported,
-      }),
-    });
   });
 
   it("create rejects when full", async () => {
@@ -349,6 +361,217 @@ describe("RegistrationsService", () => {
 
     expect(tx.user.update).not.toHaveBeenCalled();
     expect(dto.alreadyRegistered).toBe(true);
+  });
+
+  describe("paid registration create", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(fixedNow);
+      paymentsService.prepare.mockResolvedValue({
+        status: "pending",
+        pay: {
+          timeStamp: "123",
+          nonceStr: "abc",
+          package: "prepay_id=wx1",
+          signType: "RSA",
+          paySign: "sig",
+        },
+      });
+      tx.userIdentity.findFirst.mockResolvedValue({
+        openId: "wx-open-1",
+      });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("creates pending_payment and payment order within capacity", async () => {
+      tx.$queryRaw.mockResolvedValue([publishedPaid]);
+      tx.registration.findUnique.mockResolvedValue(null);
+      tx.registration.count.mockResolvedValue(0);
+      tx.registration.create.mockResolvedValue({
+        id: "r-paid",
+        activityId: "act1",
+        userId: "u1",
+        name: "张三",
+        phone: "13800138000",
+        status: RegistrationStatus.pending_payment,
+        cancelledAt: null,
+        createdAt: fixedNow,
+        updatedAt: fixedNow,
+      });
+      tx.paymentOrder.create.mockResolvedValue({ id: "po1" });
+
+      const dto = await service.create("u1", {
+        activityId: "act1",
+        name: "张三",
+        phone: "13800138000",
+      });
+
+      expect(dto.status).toBe("pending_payment");
+      expect(dto.paymentStatus).toBe("pending");
+      expect(dto.pay?.package).toBe("prepay_id=wx1");
+      expect(tx.registration.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: RegistrationStatus.pending_payment,
+          }),
+        }),
+      );
+      expect(tx.paymentOrder.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            amountCents: 9900,
+            expireAt: new Date(fixedNow.getTime() + PAYMENT_HOLD_MS),
+          }),
+        }),
+      );
+      expect(paymentsService.prepare).toHaveBeenCalledWith(
+        "r-paid",
+        expect.objectContaining({
+          amountCents: 9900,
+          payerOpenId: "wx-open-1",
+        }),
+      );
+    });
+
+    it("reuses unexpired pending_payment and calls prepare without new registration row", async () => {
+      const existing = {
+        id: "r-pending",
+        activityId: "act1",
+        userId: "u1",
+        name: "张三",
+        phone: "13800138000",
+        status: RegistrationStatus.pending_payment,
+        cancelledAt: null,
+        createdAt: fixedNow,
+        updatedAt: fixedNow,
+      };
+      tx.$queryRaw.mockResolvedValue([publishedPaid]);
+      tx.registration.findUnique.mockResolvedValue(existing);
+      tx.paymentOrder.findFirst.mockResolvedValue({
+        id: "po-old",
+        expireAt: new Date(fixedNow.getTime() + 60_000),
+        status: "pending",
+      });
+
+      const dto = await service.create("u1", {
+        activityId: "act1",
+        name: "张三",
+        phone: "13800138000",
+      });
+
+      expect(dto.id).toBe("r-pending");
+      expect(tx.registration.create).not.toHaveBeenCalled();
+      expect(tx.registration.update).not.toHaveBeenCalled();
+      expect(tx.paymentOrder.create).not.toHaveBeenCalled();
+      expect(paymentsService.prepare).toHaveBeenCalledWith(
+        "r-pending",
+        expect.objectContaining({ payerOpenId: "wx-open-1" }),
+      );
+    });
+
+    it("returns alreadyRegistered for confirmed paid without pay params", async () => {
+      const existing = {
+        id: "r1",
+        activityId: "act1",
+        userId: "u1",
+        name: "张三",
+        phone: "13800138000",
+        status: RegistrationStatus.confirmed,
+        cancelledAt: null,
+        createdAt: fixedNow,
+        updatedAt: fixedNow,
+      };
+      tx.$queryRaw.mockResolvedValue([publishedPaid]);
+      tx.registration.findUnique.mockResolvedValue(existing);
+
+      const dto = await service.create("u1", {
+        activityId: "act1",
+        name: "李四",
+        phone: "13900139000",
+      });
+
+      expect(dto.alreadyRegistered).toBe(true);
+      expect(dto.pay).toBeNull();
+      expect(dto.paymentStatus).toBeNull();
+      expect(paymentsService.prepare).not.toHaveBeenCalled();
+    });
+
+    it("rejects when pending_payment and confirmed reach capacity", async () => {
+      tx.$queryRaw.mockResolvedValue([publishedPaid]);
+      tx.registration.findUnique.mockResolvedValue(null);
+      tx.registration.count.mockResolvedValue(2);
+
+      await expect(
+        service.create("u1", {
+          activityId: "act1",
+          name: "张三",
+          phone: "13800138000",
+        }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: RegistrationErrorCode.ActivityFull,
+        }),
+      });
+      expect(tx.registration.create).not.toHaveBeenCalled();
+    });
+
+    it("after expiry updates same registration row and creates new payment order", async () => {
+      const existing = {
+        id: "r-expired",
+        activityId: "act1",
+        userId: "u1",
+        name: "旧名",
+        phone: "13700137000",
+        status: RegistrationStatus.pending_payment,
+        cancelledAt: null,
+        createdAt: fixedNow,
+        updatedAt: fixedNow,
+      };
+      tx.$queryRaw.mockResolvedValue([publishedPaid]);
+      tx.registration.findUnique.mockResolvedValue(existing);
+      tx.paymentOrder.findFirst.mockResolvedValue({
+        id: "po-expired",
+        expireAt: new Date(fixedNow.getTime() - 60_000),
+        status: "pending",
+      });
+      tx.registration.count.mockResolvedValue(0);
+      tx.paymentOrder.update.mockResolvedValue({});
+      tx.registration.update.mockResolvedValue({
+        ...existing,
+        name: "张三",
+        phone: "13800138000",
+        status: RegistrationStatus.pending_payment,
+        cancelledAt: null,
+      });
+      tx.paymentOrder.create.mockResolvedValue({ id: "po-new" });
+
+      const dto = await service.create("u1", {
+        activityId: "act1",
+        name: "张三",
+        phone: "13800138000",
+      });
+
+      expect(dto.id).toBe("r-expired");
+      expect(tx.registration.create).not.toHaveBeenCalled();
+      expect(tx.paymentOrder.update).toHaveBeenCalled();
+      expect(tx.registration.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "r-expired" },
+          data: expect.objectContaining({
+            status: RegistrationStatus.pending_payment,
+            name: "张三",
+          }),
+        }),
+      );
+      expect(tx.paymentOrder.create).toHaveBeenCalled();
+      expect(paymentsService.prepare).toHaveBeenCalledWith(
+        "r-expired",
+        expect.any(Object),
+      );
+    });
   });
 
   it("create does not write contact back when activity is full", async () => {
