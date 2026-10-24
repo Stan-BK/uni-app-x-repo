@@ -3,7 +3,7 @@
 - **状态：** Implemented
 - **日期：** 2026-10-19
 - **修订：** 2026-10-20 报名名单改为活动所有者（[ADR-0011](./0011-default-publish-permission.md)），不再使用组织者。2026-10-24 起 `feeType=paid`「拒绝报名」由 [ADR-0014](./0014-paid-registration-and-settlement.md) 替换；**免费报名**相关决策仍有效。
-- **关联：** roadmap P0-4、PRD AT-REG / D-03～D-06 / D-08、ADR-0005、ADR-0006、ADR-0011；支付另见未来支付 ADR / backend-ops 阶段 C
+- **关联：** roadmap P0-4、PRD AT-REG / D-03～D-06 / D-08、ADR-0005、ADR-0006、ADR-0011；收费报名支付与占名额扩展见 [ADR-0014](./0014-paid-registration-and-settlement.md)（取代下文决策 1 对 `paid` 的拒绝）
 - **设计规格：** [docs/superpowers/specs/2026-10-19-p0-4-free-registration-design.md](../superpowers/specs/2026-10-19-p0-4-free-registration-design.md)
 - **实现计划：** [docs/superpowers/plans/2026-10-19-p0-4-free-registration.md](../superpowers/plans/2026-10-19-p0-4-free-registration.md)
 
@@ -15,8 +15,8 @@ P0-3 已落地公开发现与详情；详情报名 CTA 仍为占位。P0-4 需�
 
 1. **仅免费可报名（P0-4）**  
    - 仅 `feeType=free` 的活动可提交报名并直接进入有效态。  
-   - `feeType=paid`：**拒绝报名**（明确业务 `code`）；端上禁用/隐藏报名 CTA。  
-   - 活动表可保留 `feeCents` / `platformFeeBps` 等字段；支付链路与收费报名 → **P2 + 运维阶段 C**，另立支付 ADR。
+   - `feeType=paid`：**拒绝报名**（明确业务 `code`）；端上禁用/隐藏报名 CTA。→ **已由 [ADR-0014](./0014-paid-registration-and-settlement.md) 取代（2026-10-24）**；实现收费报名时以 ADR-0014 为准，本条保留 P0 历史语义。  
+   - 活动表可保留 `feeCents` / `platformFeeBps` 等字段；支付链路与收费报名在 ADR-0014 Accepted 后归 **P1-3**（原 P2 + 阶段 C 表述已过时）。
 
 2. **报名模型 `Registration`**  
    - 字段基线：`id`、`activityId`、`userId`、`name`、`phone`、`status`、`createdAt`、`updatedAt`（及取消时间等实现细节见设计规格）。  

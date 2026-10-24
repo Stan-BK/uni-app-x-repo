@@ -15,7 +15,7 @@
 3. API：**NestJS + Prisma + PostgreSQL**。  
 4. Admin：**Vue3 + Vite + TypeScript**。  
 5. 共享枚举/契约放 `packages/shared`；OpenAPI 由 API 导出（后续 ADR 细化）。  
-6. 首期 **不做在线支付**，预留费用相关字段；收费报名归产品 P2 / 运维阶段 C（见 ADR-0010）。
+6. 首期 **不做在线支付**，预留费用相关字段；收费报名原归 P2 / 运维阶段 C（见 ADR-0010）。**[ADR-0014](./0014-paid-registration-and-settlement.md) Accepted 后**，仅就**收费报名微信收款与活动结算入账**突破本条；提现、支付宝及 ADR-0014 未列能力仍禁止。
 
 ## 备选方案
 
