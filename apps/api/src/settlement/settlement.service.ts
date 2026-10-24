@@ -17,6 +17,11 @@ export type SettleActivityResult = {
   settlementId?: string;
 };
 
+export type WalletView = {
+  availableCents: number;
+  pendingCents: number;
+};
+
 function newCuid(): string {
   return `c${randomBytes(12).toString("hex")}${Date.now().toString(36)}`.slice(
     0,
@@ -30,6 +35,60 @@ export class SettlementService {
     private readonly prisma: PrismaService,
     private readonly paymentsService: PaymentsService,
   ) {}
+
+  async getWallet(userId: string): Promise<WalletView> {
+    const account = await this.prisma.walletAccount.findUnique({
+      where: { userId },
+      select: { availableCents: true },
+    });
+    const availableCents = account?.availableCents ?? 0;
+
+    const unsettledActivities = await this.prisma.activity.findMany({
+      where: {
+        ownerUserId: userId,
+        feeType: FeeType.paid,
+        settlement: { is: null },
+      },
+      select: { id: true, platformFeeBps: true },
+    });
+
+    let pendingCents = 0;
+    for (const activity of unsettledActivities) {
+      const paidOrders = await this.prisma.paymentOrder.findMany({
+        where: {
+          registration: { activityId: activity.id },
+          status: {
+            in: [PaymentOrderStatus.paid, PaymentOrderStatus.refunded],
+          },
+        },
+        select: { amountCents: true },
+      });
+      const grossCents = paidOrders.reduce(
+        (sum, order) => sum + order.amountCents,
+        0,
+      );
+
+      const succeededRefunds = await this.prisma.refund.findMany({
+        where: {
+          paymentOrder: { registration: { activityId: activity.id } },
+          status: RefundStatus.succeeded,
+        },
+        select: { amountCents: true },
+      });
+      const refundedCents = succeededRefunds.reduce(
+        (sum, refund) => sum + refund.amountCents,
+        0,
+      );
+
+      pendingCents += settlementAmounts(
+        grossCents,
+        refundedCents,
+        activity.platformFeeBps,
+      ).netCents;
+    }
+
+    return { availableCents, pendingCents };
+  }
 
   async settleActivity(
     activityId: string,

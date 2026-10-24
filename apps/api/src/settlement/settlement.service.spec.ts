@@ -397,6 +397,73 @@ describeDb("SettlementService", () => {
     expect(settlement?.ledgerEntryId).toBeNull();
   });
 
+  describe("getWallet", () => {
+    it("returns availableCents 0 when the user has no wallet account", async () => {
+      const owner = await createOwner();
+      const guest = await createParticipant();
+      const activity = await createPaidActivity(owner.id);
+      await createPaidOrder(activity.id, guest.id, 500);
+
+      const wallet = await settlementService.getWallet(owner.id);
+      expect(wallet).toEqual({ availableCents: 0, pendingCents: 450 });
+    });
+
+    it("returns stored availableCents when a wallet exists", async () => {
+      const owner = await createOwner();
+      await prisma.walletAccount.create({
+        data: { userId: owner.id, availableCents: 1234 },
+      });
+
+      const wallet = await settlementService.getWallet(owner.id);
+      expect(wallet.availableCents).toBe(1234);
+    });
+
+    it("sums pendingCents from unsettled paid activities using current platformFeeBps", async () => {
+      const owner = await createOwner();
+      const guest1 = await createParticipant();
+      const guest2 = await createParticipant();
+      const activity = await createPaidActivity(owner.id, {
+        platformFeeBps: 1000,
+      });
+      await createPaidOrder(activity.id, guest1.id, 400);
+      await createPaidOrder(activity.id, guest2.id, 600);
+
+      const wallet = await settlementService.getWallet(owner.id);
+      expect(wallet.pendingCents).toBe(900);
+    });
+
+    it("excludes activities that already have a settlement from pendingCents", async () => {
+      const owner = await createOwner();
+      const guest1 = await createParticipant();
+      const guest2 = await createParticipant();
+      const settled = await createPaidActivity(owner.id, {
+        platformFeeBps: 1000,
+      });
+      await createPaidOrder(settled.id, guest1.id, 400);
+      await createPaidOrder(settled.id, guest2.id, 600);
+      await settlementService.settleActivity(settled.id, now);
+
+      const unsettled = await createPaidActivity(owner.id, {
+        platformFeeBps: 1000,
+      });
+      await createPaidOrder(unsettled.id, guest2.id, 200);
+
+      const wallet = await settlementService.getWallet(owner.id);
+      expect(wallet.availableCents).toBe(900);
+      expect(wallet.pendingCents).toBe(180);
+    });
+
+    it("returns only availableCents and pendingCents", async () => {
+      const owner = await createOwner();
+
+      const wallet = await settlementService.getWallet(owner.id);
+      expect(Object.keys(wallet).sort()).toEqual([
+        "availableCents",
+        "pendingCents",
+      ]);
+    });
+  });
+
   describe("refundPaid guards", () => {
     it("rejects user_cancel after endAt before settlement", async () => {
       vi.useFakeTimers();
