@@ -5,6 +5,7 @@ import {
   createSign,
   createVerify,
   randomBytes,
+  X509Certificate,
   type KeyObject,
 } from "node:crypto";
 import { UnauthorizedException } from "@nestjs/common";
@@ -14,6 +15,7 @@ import type { ClientPayParams, WechatPayPort, WechatTradeState } from "./wechat-
 import { WechatOutTradeNoUsedError } from "./wechat-pay.port";
 
 const WECHAT_PAY_API_BASE = "https://api.mch.weixin.qq.com";
+const NOTIFICATION_TIMESTAMP_TOLERANCE_SEC = 5 * 60;
 
 export type WechatPayNotificationHeaders = Record<
   string,
@@ -32,6 +34,8 @@ export type ParsedWechatNotification = {
 export type WechatPayV3CryptoConfig = {
   apiV3Key: string;
   platformCertPem: string;
+  /** Test hook: reference time for Wechatpay-Timestamp freshness checks. */
+  now?: Date;
 };
 
 export type WechatPayRequestSignInput = {
@@ -120,6 +124,13 @@ export function decryptWechatPayResource(input: {
   );
 }
 
+export function readPlatformCertificateSerial(
+  platformCertPem: string,
+): string {
+  const cert = new X509Certificate(platformCertPem);
+  return cert.serialNumber.toUpperCase();
+}
+
 export function parseWechatPayNotification(
   headers: WechatPayNotificationHeaders,
   rawBody: Buffer | string,
@@ -128,9 +139,13 @@ export function parseWechatPayNotification(
   const signature = headerValue(headers, "wechatpay-signature");
   const timestamp = headerValue(headers, "wechatpay-timestamp");
   const nonce = headerValue(headers, "wechatpay-nonce");
+  const serial = headerValue(headers, "wechatpay-serial");
   if (!signature || !timestamp || !nonce) {
     throw new UnauthorizedException("微信支付回调验签失败");
   }
+
+  assertNotificationTimestampFresh(timestamp, config.now ?? new Date());
+  assertNotificationSerialMatches(serial, config.platformCertPem);
 
   const body =
     typeof rawBody === "string" ? rawBody : rawBody.toString("utf8");
@@ -183,6 +198,30 @@ export function parseWechatPayNotification(
   };
 }
 
+function assertNotificationTimestampFresh(timestamp: string, now: Date): void {
+  const ts = Number(timestamp);
+  if (!Number.isFinite(ts)) {
+    throw new UnauthorizedException("微信支付回调验签失败");
+  }
+  const nowSec = Math.floor(now.getTime() / 1000);
+  if (Math.abs(nowSec - ts) > NOTIFICATION_TIMESTAMP_TOLERANCE_SEC) {
+    throw new UnauthorizedException("微信支付回调验签失败");
+  }
+}
+
+function assertNotificationSerialMatches(
+  headerSerial: string | undefined,
+  platformCertPem: string,
+): void {
+  if (!headerSerial?.trim()) {
+    throw new UnauthorizedException("微信支付回调验签失败");
+  }
+  const expected = readPlatformCertificateSerial(platformCertPem);
+  if (headerSerial.trim().toUpperCase() !== expected) {
+    throw new UnauthorizedException("微信支付回调验签失败");
+  }
+}
+
 function headerValue(
   headers: WechatPayNotificationHeaders,
   name: string,
@@ -221,9 +260,10 @@ function readPem(config: ConfigService, key: string): string {
 function randomNonceStr(length: number): string {
   const chars =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = randomBytes(length);
   let result = "";
   for (let i = 0; i < length; i += 1) {
-    result += chars[Math.floor(Math.random() * chars.length)]!;
+    result += chars[bytes[i]! % chars.length]!;
   }
   return result;
 }
