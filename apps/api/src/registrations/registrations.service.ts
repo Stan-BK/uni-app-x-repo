@@ -95,6 +95,12 @@ export class RegistrationsService {
     const { activityId } = input;
     const now = new Date();
 
+    const confirmedAfterClose =
+      await this.reconcileExpiredPendingPayment(userId, activityId, now);
+    if (confirmedAfterClose) {
+      return confirmedAfterClose;
+    }
+
     const txResult = await this.prisma.$transaction(async (tx) => {
       const activity = await this.lockActivity(tx, activityId);
       if (!activity) {
@@ -149,27 +155,6 @@ export class RegistrationsService {
               }),
             },
           } satisfies CreateTxResult;
-        }
-        if (pendingOrder && pendingOrder.expireAt <= now) {
-          await tx.paymentOrder.update({
-            where: { id: pendingOrder.id },
-            data: {
-              status: PaymentOrderStatus.closed,
-              closedAt: now,
-            },
-          });
-          await tx.registration.update({
-            where: { id: existing.id },
-            data: {
-              status: RegistrationStatus.cancelled,
-              cancelledAt: now,
-            },
-          });
-          existing = {
-            ...existing,
-            status: RegistrationStatus.cancelled,
-            cancelledAt: now,
-          };
         }
       }
 
@@ -467,6 +452,43 @@ export class RegistrationsService {
       page,
       pageSize,
     };
+  }
+
+  private async reconcileExpiredPendingPayment(
+    userId: string,
+    activityId: string,
+    now: Date,
+  ): Promise<CreateRegistrationDto | null> {
+    const existing = await this.prisma.registration.findUnique({
+      where: { userId_activityId: { userId, activityId } },
+    });
+    if (existing?.status !== RegistrationStatus.pending_payment) {
+      return null;
+    }
+
+    const pendingOrder = await this.prisma.paymentOrder.findFirst({
+      where: {
+        registrationId: existing.id,
+        status: PaymentOrderStatus.pending,
+      },
+    });
+    if (!pendingOrder || pendingOrder.expireAt > now) {
+      return null;
+    }
+
+    await this.paymentsService.closeIfExpired(pendingOrder.id, now);
+
+    const refreshed = await this.prisma.registration.findUnique({
+      where: { userId_activityId: { userId, activityId } },
+    });
+    if (refreshed?.status === RegistrationStatus.confirmed) {
+      return this.toCreateDto(refreshed, {
+        alreadyRegistered: true,
+        pay: null,
+        paymentStatus: "paid",
+      });
+    }
+    return null;
   }
 
   private async confirmFreeRegistration(

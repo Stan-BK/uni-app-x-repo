@@ -16,6 +16,7 @@ describe("RegistrationsService", () => {
   let service: RegistrationsService;
   const paymentsService = {
     prepare: vi.fn(),
+    closeIfExpired: vi.fn(),
     isWechatPayConfigured: vi.fn().mockReturnValue(true),
   };
   const tx = {
@@ -48,6 +49,9 @@ describe("RegistrationsService", () => {
       findMany: vi.fn(),
       count: vi.fn(),
       groupBy: vi.fn(),
+    },
+    paymentOrder: {
+      findFirst: vi.fn(),
     },
   };
 
@@ -448,6 +452,12 @@ describe("RegistrationsService", () => {
         createdAt: fixedNow,
         updatedAt: fixedNow,
       };
+      prisma.registration.findUnique.mockResolvedValue(existing);
+      prisma.paymentOrder.findFirst.mockResolvedValue({
+        id: "po-old",
+        expireAt: new Date(fixedNow.getTime() + 60_000),
+        status: "pending",
+      });
       tx.$queryRaw.mockResolvedValue([publishedPaid]);
       tx.registration.findUnique.mockResolvedValue(existing);
       tx.paymentOrder.findFirst.mockResolvedValue({
@@ -530,22 +540,31 @@ describe("RegistrationsService", () => {
         createdAt: fixedNow,
         updatedAt: fixedNow,
       };
-      tx.$queryRaw.mockResolvedValue([publishedPaid]);
-      tx.registration.findUnique.mockResolvedValue(existing);
-      tx.paymentOrder.findFirst.mockResolvedValue({
-        id: "po-expired",
-        expireAt: new Date(fixedNow.getTime() - 60_000),
-        status: "pending",
-      });
-      tx.registration.count.mockResolvedValue(0);
-      tx.paymentOrder.update.mockResolvedValue({});
-      tx.registration.update.mockResolvedValue({
+      const cancelled = {
+        ...existing,
+        status: RegistrationStatus.cancelled,
+        cancelledAt: fixedNow,
+      };
+      const renewed = {
         ...existing,
         name: "张三",
         phone: "13800138000",
         status: RegistrationStatus.pending_payment,
         cancelledAt: null,
+      };
+      prisma.registration.findUnique
+        .mockResolvedValueOnce(existing)
+        .mockResolvedValueOnce(cancelled);
+      prisma.paymentOrder.findFirst.mockResolvedValue({
+        id: "po-expired",
+        expireAt: new Date(fixedNow.getTime() - 60_000),
+        status: "pending",
       });
+      paymentsService.closeIfExpired.mockResolvedValue(undefined);
+      tx.$queryRaw.mockResolvedValue([publishedPaid]);
+      tx.registration.findUnique.mockResolvedValue(cancelled);
+      tx.registration.count.mockResolvedValue(0);
+      tx.registration.update.mockResolvedValue(renewed);
       tx.paymentOrder.create.mockResolvedValue({ id: "po-new" });
 
       const dto = await service.create("u1", {
@@ -554,9 +573,13 @@ describe("RegistrationsService", () => {
         phone: "13800138000",
       });
 
+      expect(paymentsService.closeIfExpired).toHaveBeenCalledWith(
+        "po-expired",
+        fixedNow,
+      );
       expect(dto.id).toBe("r-expired");
       expect(tx.registration.create).not.toHaveBeenCalled();
-      expect(tx.paymentOrder.update).toHaveBeenCalled();
+      expect(tx.paymentOrder.update).not.toHaveBeenCalled();
       expect(tx.registration.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "r-expired" },
@@ -571,6 +594,53 @@ describe("RegistrationsService", () => {
         "r-expired",
         expect.any(Object),
       );
+    });
+
+    it("after expiry confirms via WeChat SUCCESS without new payment order", async () => {
+      const existing = {
+        id: "r-expired-paid",
+        activityId: "act1",
+        userId: "u1",
+        name: "张三",
+        phone: "13800138000",
+        status: RegistrationStatus.pending_payment,
+        cancelledAt: null,
+        createdAt: fixedNow,
+        updatedAt: fixedNow,
+      };
+      const confirmed = {
+        ...existing,
+        status: RegistrationStatus.confirmed,
+        cancelledAt: null,
+      };
+      prisma.registration.findUnique
+        .mockResolvedValueOnce(existing)
+        .mockResolvedValueOnce(confirmed);
+      prisma.paymentOrder.findFirst.mockResolvedValue({
+        id: "po-expired-paid",
+        expireAt: new Date(fixedNow.getTime() - 60_000),
+        status: "pending",
+      });
+      paymentsService.closeIfExpired.mockResolvedValue(undefined);
+
+      const dto = await service.create("u1", {
+        activityId: "act1",
+        name: "张三",
+        phone: "13800138000",
+      });
+
+      expect(paymentsService.closeIfExpired).toHaveBeenCalledWith(
+        "po-expired-paid",
+        fixedNow,
+      );
+      expect(dto.id).toBe("r-expired-paid");
+      expect(dto.status).toBe("confirmed");
+      expect(dto.alreadyRegistered).toBe(true);
+      expect(dto.paymentStatus).toBe("paid");
+      expect(dto.pay).toBeNull();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(tx.paymentOrder.create).not.toHaveBeenCalled();
+      expect(paymentsService.prepare).not.toHaveBeenCalled();
     });
   });
 
