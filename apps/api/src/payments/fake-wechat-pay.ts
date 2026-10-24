@@ -80,6 +80,26 @@ export class FakeWechatPay implements WechatPayPort {
     return "succeeded";
   }
 
+  /** Test helper: simulate WeChat payment success for query/close flows. */
+  markPaid(outTradeNo: string, transactionId: string) {
+    const order = this.orders.get(outTradeNo);
+    if (!order) {
+      return;
+    }
+    order.tradeState = "SUCCESS";
+    order.transactionId = transactionId;
+  }
+
+  /** Test helper: pre-seed WeChat-side order without prepayId saved locally. */
+  seedOrder(outTradeNo: string, amountCents: number) {
+    this.orders.set(outTradeNo, {
+      prepayId: "",
+      amountCents,
+      tradeState: "NOTPAY",
+      transactionId: null,
+    });
+  }
+
   clientParams(prepayId: string) {
     return buildClientPayParams(prepayId, () => "fake");
   }
