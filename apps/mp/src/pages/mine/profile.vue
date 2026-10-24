@@ -145,20 +145,30 @@ const pendingDisplay = ref("--");
 const availableDisplay = ref("--");
 /** Bumped on each identity refresh so in-flight GET /me cannot clobber local state. */
 let loadGen = 0;
+/** Bumped when a wallet load is superseded or the user logs out. */
+let walletGen = 0;
 
 function formatYuan(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
-async function loadWallet() {
+function clearWalletDisplay() {
   pendingDisplay.value = "--";
   availableDisplay.value = "--";
+}
+
+async function loadWallet() {
+  walletGen += 1;
+  const gen = walletGen;
+  clearWalletDisplay();
   try {
     const wallet = await getWallet();
+    if (gen !== walletGen || !user.isLoggedIn) return;
     pendingDisplay.value = formatYuan(wallet.pendingCents);
     availableDisplay.value = formatYuan(wallet.availableCents);
   } catch {
-    /* 失败时保持 -- */
+    if (gen !== walletGen) return;
+    clearWalletDisplay();
   }
 }
 
@@ -295,12 +305,16 @@ async function onLogout() {
     content: "退出后需重新登录。仅清除本机登录态，不会注销微信账号。",
   });
   if (!res.confirm) return;
+  walletGen += 1;
+  clearWalletDisplay();
   user.logout();
   uni.switchTab({ url: "/pages/mine/registrations" });
 }
 
 onShow(() => {
   if (!user.isLoggedIn) {
+    walletGen += 1;
+    clearWalletDisplay();
     uni.showToast({ title: "请先登录", icon: "none" });
     return;
   }
