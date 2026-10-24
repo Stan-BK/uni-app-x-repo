@@ -1,5 +1,13 @@
 import { request } from "@/utils/request";
 
+export type RegistrationPayParams = {
+  timeStamp: string;
+  nonceStr: string;
+  package: string;
+  signType: "RSA";
+  paySign: string;
+};
+
 export type Registration = {
   id: string;
   activityId: string;
@@ -10,6 +18,8 @@ export type Registration = {
   status: string;
   cancelledAt?: string | null;
   createdAt: string;
+  paymentStatus?: "pending" | "paid" | null;
+  pay?: RegistrationPayParams | null;
   nickname?: string | null;
   avatarUrl?: string | null;
   activity?: {
@@ -38,12 +48,32 @@ function toQuery(params: Record<string, string | number | undefined>): string {
   return parts.length ? `?${parts.join("&")}` : "";
 }
 
+export type CreateRegistrationResult = Registration & {
+  alreadyRegistered: boolean;
+  pay?: RegistrationPayParams | null;
+  paymentStatus?: "pending" | "paid" | null;
+};
+
+export type RegistrationPaymentSyncResult = Registration & {
+  paymentStatus?: "pending" | "paid" | null;
+};
+
 export function createRegistration(body: {
   activityId: string;
   name: string;
   phone: string;
 }) {
-  return request<Registration>("/registrations", { method: "POST", data: body });
+  return request<CreateRegistrationResult>("/registrations", {
+    method: "POST",
+    data: body,
+  });
+}
+
+export function syncRegistrationPayment(id: string) {
+  return request<RegistrationPaymentSyncResult>(
+    `/registrations/${encodeURIComponent(id)}/payment-sync`,
+    { method: "POST" },
+  );
 }
 
 export function cancelRegistration(id: string) {

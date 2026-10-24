@@ -84,8 +84,22 @@
               </view>
               <text class="meta">{{ item.activity?.place || "—" }}</text>
               <text class="meta last">{{ formatTime(item.activity?.startAt) }}</text>
-              <view v-if="canCancel(item)" class="actions">
-                <text class="ed-btn-link" @click.stop="onCancel(item)">取消报名</text>
+              <view v-if="canPay(item) || canCancel(item)" class="actions">
+                <button
+                  v-if="canPay(item)"
+                  class="pay-btn ed-btn"
+                  hover-class="none"
+                  :loading="payingId === item.id"
+                  :disabled="payingId === item.id"
+                  @click.stop="onPay(item)"
+                >
+                  去支付
+                </button>
+                <text
+                  v-if="canCancel(item)"
+                  class="ed-btn-link"
+                  @click.stop="onCancel(item)"
+                >取消报名</text>
               </view>
             </view>
           </view>
@@ -103,14 +117,21 @@ import EdTabBar from "@/components/ed-tab-bar/ed-tab-bar.vue";
 import EdLeafDeco from "@/components/ed-leaf-deco/ed-leaf-deco.vue";
 import {
   cancelRegistration,
+  createRegistration,
   listMyRegistrations,
   type Registration,
 } from "@/api/registrations";
 import { useUserStore } from "@/stores/user";
+import {
+  isRegistrationPaymentConfirmed,
+  launchWechatRegistrationPay,
+  syncAfterPaymentSheet,
+} from "@/utils/registration-payment";
 import { ApiError } from "@/utils/request";
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "待确认",
+  pending_payment: "待支付",
   confirmed: "已确认",
   cancelled: "已取消",
   waitlist: "候补中",
@@ -120,6 +141,7 @@ const user = useUserStore();
 const loading = ref(true);
 const items = ref<Registration[]>([]);
 const busy = ref(false);
+const payingId = ref("");
 const brokenCovers = ref<Record<string, boolean>>({});
 const masonryCols = computed(() => {
   const cols: [Registration[], Registration[]] = [[], []];
@@ -145,10 +167,15 @@ function statusLabel(status: string) {
 
 function statusTagClass(status: string) {
   if (status === "confirmed") return "ed-tag-confirmed";
+  if (status === "pending_payment") return "ed-tag-pending";
   if (status === "pending") return "ed-tag-pending";
   if (status === "waitlist") return "ed-tag-waitlist";
   if (status === "cancelled") return "ed-tag-muted";
   return "ed-tag-muted";
+}
+
+function canPay(item: Registration): boolean {
+  return item.status === "pending_payment" && activityNotEnded(item);
 }
 
 function formatTime(iso?: string | null) {
@@ -191,6 +218,54 @@ async function loadRegistrations() {
     uni.showToast({ title: errMessage(e), icon: "none" });
   } finally {
     loading.value = false;
+  }
+}
+
+async function onPay(item: Registration) {
+  if (payingId.value) return;
+  payingId.value = item.id;
+  try {
+    const result = await createRegistration({
+      activityId: item.activityId,
+      name: item.name,
+      phone: item.phone,
+    });
+    if (
+      isRegistrationPaymentConfirmed({
+        status: result.status,
+        paymentStatus: result.paymentStatus,
+      })
+    ) {
+      uni.showToast({ title: "支付成功", icon: "success" });
+      await loadRegistrations();
+      return;
+    }
+    if (!result.pay) {
+      uni.showToast({ title: "暂无法拉起支付", icon: "none" });
+      return;
+    }
+    await launchWechatRegistrationPay(result.pay);
+    try {
+      const synced = await syncAfterPaymentSheet(result.id);
+      if (
+        isRegistrationPaymentConfirmed({
+          status: synced.status,
+          paymentStatus: synced.paymentStatus,
+        })
+      ) {
+        uni.showToast({ title: "支付成功", icon: "success" });
+        await loadRegistrations();
+        return;
+      }
+    } catch (syncErr) {
+      uni.showToast({ title: errMessage(syncErr), icon: "none" });
+    }
+    uni.showToast({ title: "待支付", icon: "none" });
+    await loadRegistrations();
+  } catch (e) {
+    uni.showToast({ title: errMessage(e), icon: "none" });
+  } finally {
+    payingId.value = "";
   }
 }
 
@@ -547,5 +622,19 @@ $ed-color-accent: #e56f3e !default;
   border-top: 1rpx solid $ed-color-border;
   margin-top: 16rpx;
   padding-top: 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.pay-btn {
+  width: 100%;
+  margin: 0;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.pay-btn::after {
+  border: none;
 }
 </style>

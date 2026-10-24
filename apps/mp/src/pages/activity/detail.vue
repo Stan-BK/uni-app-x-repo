@@ -317,7 +317,9 @@ const canRegister = computed(() => {
   const a = activity.value;
   if (!a) return false;
   if (alreadyRegistered.value) return false;
-  if (a.feeType === "paid") return false;
+  if (a.displayStatus === "ended") return false;
+  if (a.displayStatus === "closed") return false;
+  if (a.displayStatus === "full") return false;
   return a.displayStatus === "open" || a.displayStatus === "upcoming";
 });
 
@@ -331,7 +333,6 @@ const ctaText = computed(() => {
   const a = activity.value;
   if (!a) return "立即报名";
   if (alreadyRegistered.value) return "已报名";
-  if (a.feeType === "paid") return "暂不支持线上报名";
   if (a.displayStatus === "ended") return "活动已结束";
   if (a.displayStatus === "closed") return "报名已截止";
   if (a.displayStatus === "full") return "名额已满";

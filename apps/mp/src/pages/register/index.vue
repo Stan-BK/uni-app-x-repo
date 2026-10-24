@@ -33,7 +33,11 @@
             placeholder-class="placeholder"
           />
         </view>
-        <text class="hint">免费活动报名成功后可在「我的」查看</text>
+        <text class="hint">{{
+          isPaidActivity
+            ? "提交后将拉起微信支付，支付成功方视为报名成功"
+            : "免费活动报名成功后可在「我的」查看"
+        }}</text>
       </view>
 
       <button
@@ -42,14 +46,14 @@
         :loading="submitting"
         @click="onSubmit"
       >
-        提交报名
+        {{ isPaidActivity ? "提交并支付" : "提交报名" }}
       </button>
     </template>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { PHONE_PATTERN } from "@activity/shared";
 import {
@@ -59,6 +63,11 @@ import {
 import { createRegistration } from "@/api/registrations";
 import { useUserStore } from "@/stores/user";
 import { contactDiffersFromPrefill } from "@/utils/contact-prefill";
+import {
+  isRegistrationPaymentConfirmed,
+  launchWechatRegistrationPay,
+  syncAfterPaymentSheet,
+} from "@/utils/registration-payment";
 import { ApiError } from "@/utils/request";
 
 const user = useUserStore();
@@ -70,6 +79,12 @@ const loading = ref(true);
 const submitting = ref(false);
 const errorMessage = ref("");
 let didPrefill = false;
+
+const isPaidActivity = computed(() => {
+  const a = activity.value;
+  if (!a) return false;
+  return a.feeType === "paid" && a.feeCents > 0;
+});
 
 function formatTime(iso?: string | null) {
   if (!iso) return "时间待定";
@@ -160,6 +175,37 @@ onShow(() => {
   });
 });
 
+async function afterRegistrationSuccess(
+  result: { alreadyRegistered: boolean },
+  submitted: { name: string; phone: string },
+) {
+  if (
+    !result.alreadyRegistered &&
+    contactDiffersFromPrefill(user.me, submitted)
+  ) {
+    const res = await uni.showModal({
+      title: "报名成功",
+      content: "是否将本次填写的姓名和手机号保存为下次预填？",
+      confirmText: "保存",
+      cancelText: "不了",
+    });
+    if (res.confirm) {
+      try {
+        await user.updateProfile({
+          realName: submitted.name,
+          phone: submitted.phone,
+        });
+      } catch (e) {
+        uni.showToast({ title: toastForError(e), icon: "none" });
+      }
+    }
+  } else {
+    uni.showToast({ title: "报名已提交", icon: "success" });
+    await new Promise((resolve) => setTimeout(resolve, 600));
+  }
+  uni.switchTab({ url: "/pages/mine/registrations" });
+}
+
 async function onSubmit() {
   if (!activity.value || !activityId.value || submitting.value) return;
   const err = validate();
@@ -181,31 +227,42 @@ async function onSubmit() {
       activityId: activityId.value,
       ...submitted,
     });
+
     if (
-      !result.alreadyRegistered &&
-      contactDiffersFromPrefill(user.me, submitted)
+      isRegistrationPaymentConfirmed({
+        status: result.status,
+        paymentStatus: result.paymentStatus,
+      })
     ) {
-      const res = await uni.showModal({
-        title: "报名成功",
-        content: "是否将本次填写的姓名和手机号保存为下次预填？",
-        confirmText: "保存",
-        cancelText: "不了",
-      });
-      if (res.confirm) {
-        try {
-          await user.updateProfile({
-            realName: submitted.name,
-            phone: submitted.phone,
-          });
-        } catch (e) {
-          uni.showToast({ title: toastForError(e), icon: "none" });
-        }
-      }
-    } else {
-      uni.showToast({ title: "报名已提交", icon: "success" });
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      await afterRegistrationSuccess(result, submitted);
+      return;
     }
-    uni.switchTab({ url: "/pages/mine/registrations" });
+
+    if (result.pay) {
+      await launchWechatRegistrationPay(result.pay);
+      let syncedStatus = result.status;
+      let syncedPaymentStatus = result.paymentStatus;
+      try {
+        const synced = await syncAfterPaymentSheet(result.id);
+        syncedStatus = synced.status;
+        syncedPaymentStatus = synced.paymentStatus;
+      } catch (syncErr) {
+        uni.showToast({ title: toastForError(syncErr), icon: "none" });
+      }
+      if (
+        isRegistrationPaymentConfirmed({
+          status: syncedStatus,
+          paymentStatus: syncedPaymentStatus,
+        })
+      ) {
+        await afterRegistrationSuccess(result, submitted);
+        return;
+      }
+      uni.showToast({ title: "待支付", icon: "none" });
+      return;
+    }
+
+    await afterRegistrationSuccess(result, submitted);
   } catch (e) {
     uni.showToast({ title: toastForError(e), icon: "none" });
   } finally {
