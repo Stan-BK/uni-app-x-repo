@@ -156,6 +156,11 @@ export class RegistrationsService {
             },
           } satisfies CreateTxResult;
         }
+        if (pendingOrder && pendingOrder.expireAt <= now) {
+          throw new ConflictException({
+            message: "支付关单未完成，请稍后重试",
+          });
+        }
       }
 
       const occupiedCount = await tx.registration.count({
@@ -487,6 +492,19 @@ export class RegistrationsService {
         pay: null,
         paymentStatus: "paid",
       });
+    }
+    if (refreshed?.status === RegistrationStatus.pending_payment) {
+      const stillPendingOrder = await this.prisma.paymentOrder.findFirst({
+        where: {
+          registrationId: refreshed.id,
+          status: PaymentOrderStatus.pending,
+        },
+      });
+      if (stillPendingOrder && stillPendingOrder.expireAt <= now) {
+        throw new ConflictException({
+          message: "支付关单未完成，请稍后重试",
+        });
+      }
     }
     return null;
   }

@@ -4,6 +4,7 @@ import { BusinessEvent, RegistrationErrorCode } from "@activity/shared";
 import {
   ActivityLifecycle,
   FeeType,
+  PaymentOrderStatus,
   RegistrationStatus,
 } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -371,6 +372,12 @@ describe("RegistrationsService", () => {
     beforeEach(() => {
       vi.useFakeTimers();
       vi.setSystemTime(fixedNow);
+      prisma.registration.findUnique.mockReset();
+      prisma.paymentOrder.findFirst.mockReset();
+      prisma.registration.findUnique.mockResolvedValue(null);
+      prisma.paymentOrder.findFirst.mockResolvedValue(null);
+      paymentsService.isWechatPayConfigured.mockReturnValue(true);
+      paymentsService.closeIfExpired.mockReset();
       paymentsService.prepare.mockResolvedValue({
         status: "pending",
         pay: {
@@ -594,6 +601,131 @@ describe("RegistrationsService", () => {
         "r-expired",
         expect.any(Object),
       );
+    });
+
+    it("rejects paid create without weixin identity", async () => {
+      tx.$queryRaw.mockResolvedValue([publishedPaid]);
+      tx.registration.findUnique.mockResolvedValue(null);
+      tx.registration.count.mockResolvedValue(0);
+      tx.userIdentity.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.create("u1", {
+          activityId: "act1",
+          name: "张三",
+          phone: "13800138000",
+        }),
+      ).rejects.toMatchObject({
+        response: { message: "请使用微信登录后再支付" },
+      });
+      expect(tx.registration.create).not.toHaveBeenCalled();
+      expect(tx.paymentOrder.create).not.toHaveBeenCalled();
+      expect(paymentsService.prepare).not.toHaveBeenCalled();
+    });
+
+    it("releases pending hold and throws when wechat pay is not configured", async () => {
+      paymentsService.isWechatPayConfigured.mockReturnValue(false);
+      tx.$queryRaw.mockResolvedValue([publishedPaid]);
+      tx.registration.findUnique.mockResolvedValue(null);
+      tx.registration.count.mockResolvedValue(0);
+      tx.registration.create.mockResolvedValue({
+        id: "r-paid",
+        activityId: "act1",
+        userId: "u1",
+        name: "张三",
+        phone: "13800138000",
+        status: RegistrationStatus.pending_payment,
+        cancelledAt: null,
+        createdAt: fixedNow,
+        updatedAt: fixedNow,
+      });
+      tx.paymentOrder.create.mockResolvedValue({ id: "po1" });
+      tx.paymentOrder.findFirst.mockResolvedValue({ id: "po1" });
+      tx.paymentOrder.update.mockResolvedValue({});
+      tx.registration.update.mockResolvedValue({
+        id: "r-paid",
+        status: RegistrationStatus.cancelled,
+        cancelledAt: fixedNow,
+      });
+
+      await expect(
+        service.create("u1", {
+          activityId: "act1",
+          name: "张三",
+          phone: "13800138000",
+        }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: RegistrationErrorCode.PaymentUnavailable,
+          message: "支付未配置",
+        }),
+      });
+
+      expect(prisma.$transaction).toHaveBeenCalledTimes(2);
+      expect(tx.paymentOrder.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "po1" },
+          data: expect.objectContaining({
+            status: PaymentOrderStatus.closed,
+            closedAt: fixedNow,
+          }),
+        }),
+      );
+      expect(tx.registration.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "r-paid" },
+          data: expect.objectContaining({
+            status: RegistrationStatus.cancelled,
+            cancelledAt: fixedNow,
+          }),
+        }),
+      );
+      expect(paymentsService.prepare).not.toHaveBeenCalled();
+    });
+
+    it("rejects retry when closeIfExpired leaves expired pending_payment", async () => {
+      const existing = {
+        id: "r-stuck",
+        activityId: "act1",
+        userId: "u1",
+        name: "张三",
+        phone: "13800138000",
+        status: RegistrationStatus.pending_payment,
+        cancelledAt: null,
+        createdAt: fixedNow,
+        updatedAt: fixedNow,
+      };
+      const expiredOrder = {
+        id: "po-stuck",
+        expireAt: new Date(fixedNow.getTime() - 60_000),
+        status: PaymentOrderStatus.pending,
+      };
+      prisma.registration.findUnique
+        .mockResolvedValueOnce(existing)
+        .mockResolvedValueOnce(existing);
+      prisma.paymentOrder.findFirst
+        .mockResolvedValueOnce(expiredOrder)
+        .mockResolvedValueOnce(expiredOrder);
+      paymentsService.closeIfExpired.mockResolvedValue(undefined);
+
+      await expect(
+        service.create("u1", {
+          activityId: "act1",
+          name: "张三",
+          phone: "13800138000",
+        }),
+      ).rejects.toMatchObject({
+        response: { message: "支付关单未完成，请稍后重试" },
+      });
+
+      expect(paymentsService.closeIfExpired).toHaveBeenCalledWith(
+        "po-stuck",
+        fixedNow,
+      );
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(tx.registration.create).not.toHaveBeenCalled();
+      expect(tx.paymentOrder.create).not.toHaveBeenCalled();
+      expect(tx.registration.count).not.toHaveBeenCalled();
     });
 
     it("after expiry confirms via WeChat SUCCESS without new payment order", async () => {
