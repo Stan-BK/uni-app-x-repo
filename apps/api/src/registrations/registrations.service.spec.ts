@@ -950,6 +950,33 @@ describe("RegistrationsService", () => {
     expect(paymentsService.refundPaid).not.toHaveBeenCalled();
   });
 
+  it("cancel throws when refund leaves registration confirmed", async () => {
+    prisma.registration.findUnique.mockResolvedValue({
+      id: "r1",
+      userId: "u1",
+      activityId: "act1",
+      status: RegistrationStatus.confirmed,
+      activity: { ...publishedPaid, ...paidActivityFields },
+    });
+    prisma.registration.findUniqueOrThrow.mockResolvedValue({
+      id: "r1",
+      activityId: "act1",
+      userId: "u1",
+      name: "张三",
+      phone: "13800138000",
+      status: RegistrationStatus.confirmed,
+      cancelledAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    prisma.paymentOrder.findFirst.mockResolvedValue({ id: "pay-1" });
+    paymentsService.refundPaid.mockResolvedValue(undefined);
+
+    await expect(service.cancel("u1", "r1")).rejects.toMatchObject({
+      response: { message: "退款未完成，请稍后重试" },
+    });
+  });
+
   it("cancel refunds paid confirmed registration", async () => {
     prisma.registration.findUnique.mockResolvedValue({
       id: "r1",

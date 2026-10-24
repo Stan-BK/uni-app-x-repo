@@ -336,6 +336,11 @@ export class RegistrationsService {
       const refreshed = await this.prisma.registration.findUniqueOrThrow({
         where: { id },
       });
+      if (refreshed.status === RegistrationStatus.confirmed) {
+        throw new ConflictException({
+          message: "退款未完成，请稍后重试",
+        });
+      }
       return toRegistrationDto(refreshed);
     }
 

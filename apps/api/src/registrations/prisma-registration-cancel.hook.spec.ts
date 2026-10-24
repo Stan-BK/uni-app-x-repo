@@ -33,7 +33,7 @@ describe("PrismaRegistrationCancelHook", () => {
     hook = moduleRef.get(PrismaRegistrationCancelHook);
   });
 
-  it("cancels all confirmed registrations for activity", async () => {
+  it("cancels only free confirmed registrations for activity", async () => {
     prisma.registration.updateMany.mockResolvedValue({ count: 2 });
 
     await hook.cancelAllForActivity("act-1");
@@ -48,6 +48,7 @@ describe("PrismaRegistrationCancelHook", () => {
     expect(args.where).toEqual({
       activityId: "act-1",
       status: RegistrationStatus.confirmed,
+      activity: { feeType: FeeType.free },
     });
     expect(args.data.status).toBe(RegistrationStatus.cancelled);
     expect(args.data.cancelledAt).toBeInstanceOf(Date);
@@ -55,10 +56,9 @@ describe("PrismaRegistrationCancelHook", () => {
 
   it("closeActivity closes unpaid, refunds paid without succeeded refund, cancels free confirmed", async () => {
     paymentsService.closeUnpaidForActivity.mockResolvedValue(undefined);
-    prisma.paymentOrder.findMany.mockResolvedValue([
-      { id: "pay-1" },
-      { id: "pay-2" },
-    ]);
+    prisma.paymentOrder.findMany
+      .mockResolvedValueOnce([{ id: "pay-1" }, { id: "pay-2" }])
+      .mockResolvedValueOnce([]);
     paymentsService.refundPaid.mockResolvedValue(undefined);
     prisma.registration.updateMany.mockResolvedValue({ count: 1 });
 
@@ -97,5 +97,22 @@ describe("PrismaRegistrationCancelHook", () => {
         cancelledAt: expect.any(Date),
       },
     });
+  });
+
+  it("closeActivity throws when paid orders remain without succeeded refund", async () => {
+    paymentsService.closeUnpaidForActivity.mockResolvedValue(undefined);
+    prisma.paymentOrder.findMany
+      .mockResolvedValueOnce([{ id: "pay-1" }])
+      .mockResolvedValueOnce([{ id: "pay-1" }]);
+
+    await expect(hook.closeActivity("act-1")).rejects.toMatchObject({
+      response: { message: "退款未完成，请稍后重试" },
+    });
+
+    expect(paymentsService.refundPaid).toHaveBeenCalledWith(
+      "pay-1",
+      "activity_closed",
+    );
+    expect(prisma.registration.updateMany).not.toHaveBeenCalled();
   });
 });
