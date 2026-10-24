@@ -38,9 +38,28 @@ enum FeeType {
 
 enum RegistrationStatus {
   pending_review
+  pending_payment
   confirmed
   rejected
   cancelled
+}
+
+enum PaymentOrderStatus {
+  pending
+  paid
+  closed
+  refunded
+}
+
+enum RefundStatus {
+  processing
+  succeeded
+  failed
+}
+
+enum RefundReason {
+  user_cancel
+  activity_closed
 }
 
 model User {
@@ -142,10 +161,44 @@ model Registration {
   cancelledAt DateTime?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
-  activity    Activity           @relation(fields: [activityId], references: [id])
-  user        User               @relation(fields: [userId], references: [id])
+  activity       Activity        @relation(fields: [activityId], references: [id])
+  user           User            @relation(fields: [userId], references: [id])
+  paymentOrders  PaymentOrder[]
 
   @@unique([userId, activityId])
   @@index([activityId, status])
   @@index([userId, createdAt])
+}
+
+/// Partial unique indexes (one pending / one paid per registration) are defined in migration 20261024120000_paid_registration_payment only.
+model PaymentOrder {
+  id             String             @id @default(cuid())
+  registrationId String
+  outTradeNo     String             @unique
+  amountCents    Int
+  status         PaymentOrderStatus @default(pending)
+  prepayId       String?
+  transactionId  String?
+  expireAt       DateTime
+  paidAt         DateTime?
+  closedAt       DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  registration   Registration       @relation(fields: [registrationId], references: [id])
+  refund         Refund?
+
+  @@index([registrationId, status])
+  @@index([status, expireAt])
+}
+
+model Refund {
+  id             String       @id @default(cuid())
+  paymentOrderId String       @unique
+  outRefundNo    String       @unique
+  amountCents    Int
+  status         RefundStatus
+  reason         RefundReason
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  paymentOrder   PaymentOrder @relation(fields: [paymentOrderId], references: [id])
 }
