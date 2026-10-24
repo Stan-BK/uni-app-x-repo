@@ -4,9 +4,9 @@
 > 产品原文：`docs/产品文档.docx`；摘要：`docs/product/prd-summary.md`。  
 > **基础设施与云资源升级：** 见 [backend-ops-roadmap.md](./backend-ops-roadmap.md)（ADR-0010）。功能按本文件 P0/P1/P2；中间件/部署按该文档阶段 A–D。
 
-**MVP 边界：** 免费活动发布—发现—报名—所有者名单—后台发布权冻结/下架。  
-**明确不做（首期）：** 在线支付/退款、签到、评价、候补、分销。  
-**已确认后置：** 收费报名 / 支付订单归 **P2** 与运维「阶段 C（有交易再上）」，上线前另立支付 ADR。
+**MVP 边界：** 免费活动发布—发现—报名—所有者名单—后台发布权冻结/下架；**P1-3** 起开放收费报名收款与活动结束结算入账（见 [ADR-0014](./adr/0014-paid-registration-and-settlement.md)）。  
+**明确不做（首期 MVP）：** 签到、评价、候补、分销；提现、支付宝、活动结束后退款仍后置 **P2**。  
+**有交易能力：** P1-3 微信支付 JSAPI + 结束前退款 + 净额入账；运维「阶段 C」随 P1-3 评估 Redis/MQ，提现与对账深化仍见 P2。
 
 ---
 
@@ -148,6 +148,19 @@
 
 ---
 
+## P1-3 收费报名与结算入账
+
+**ADR：** [0014](./adr/0014-paid-registration-and-settlement.md)（Accepted）  
+**设计：** [docs/superpowers/specs/2026-10-24-paid-registration-and-settlement-design.md](./superpowers/specs/2026-10-24-paid-registration-and-settlement-design.md)  
+**计划：** [支付与退款](./superpowers/plans/2026-10-24-paid-registration-payment.md)、[结算入账](./superpowers/plans/2026-10-24-activity-settlement-wallet.md)
+
+- [ ] 支付与退款（JSAPI、`pending_payment` 占名额、关单、回调幂等、结束前退款）  
+- [ ] 结算入账（活动结束/取消下架后净额进发布者可用余额、待结算预估；**不含提现**）  
+
+**验收：** 见设计规格 §9。免费报名行为不变；提现仍属 P2。
+
+---
+
 ## P1（后置）
 
 分类等高级筛选、订阅消息、举报、统计看板、活动开始提醒。  
@@ -155,7 +168,7 @@
 
 ## P2 / 独立里程碑
 
-微信支付、订单状态机、退款、对账（运维阶段 C）；签到；评价；候补；商业化能力。
+发布者提现、微信商家转账、支付宝、对账深化、活动结束后退款；签到；评价；候补；商业化能力。（收费报名 JSAPI、订单状态机、结束前退款、结算入账见 P1-3 / ADR-0014。）
 
 对应基础设施：引入支付前评估 Redis / MQ；部署仍可为 Docker 单机，峰值前启动阶段 D（多副本 / 主从）。
 

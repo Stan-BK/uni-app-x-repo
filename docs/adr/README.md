@@ -26,5 +26,6 @@
 | [0011](./0011-default-publish-permission.md) | 用户默认可发布（取消 Organizer） | Implemented |
 | [0012](./0012-user-profile-display.md) | 用户展示资料（昵称 / 头像）可自助更新 | Implemented |
 | [0013](./0013-registration-contact-prefill.md) | 报名联系人资料与表单预填 | Implemented |
+| [0014](./0014-paid-registration-and-settlement.md) | 收费报名支付与结算入账 | Accepted |
 
 状态说明：`Proposed` → `Accepted` → `Implemented`；废弃用 `Superseded` / `Rejected`。

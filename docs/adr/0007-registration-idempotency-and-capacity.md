@@ -2,7 +2,7 @@
 
 - **状态：** Implemented
 - **日期：** 2026-10-19
-- **修订：** 2026-10-20 报名名单改为活动所有者（[ADR-0011](./0011-default-publish-permission.md)），不再使用组织者。
+- **修订：** 2026-10-20 报名名单改为活动所有者（[ADR-0011](./0011-default-publish-permission.md)），不再使用组织者。2026-10-24 起 `feeType=paid`「拒绝报名」由 [ADR-0014](./0014-paid-registration-and-settlement.md) 替换；**免费报名**相关决策仍有效。
 - **关联：** roadmap P0-4、PRD AT-REG / D-03～D-06 / D-08、ADR-0005、ADR-0006、ADR-0011；支付另见未来支付 ADR / backend-ops 阶段 C
 - **设计规格：** [docs/superpowers/specs/2026-10-19-p0-4-free-registration-design.md](../superpowers/specs/2026-10-19-p0-4-free-registration-design.md)
 - **实现计划：** [docs/superpowers/plans/2026-10-19-p0-4-free-registration.md](../superpowers/plans/2026-10-19-p0-4-free-registration.md)
