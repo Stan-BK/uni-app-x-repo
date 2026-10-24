@@ -16,7 +16,10 @@ describe("AdminActivitiesService", () => {
     },
     $transaction: vi.fn(),
   };
-  const cancelHook = { cancelAllForActivity: vi.fn() };
+  const cancelHook = {
+    cancelAllForActivity: vi.fn(),
+    closeActivity: vi.fn(),
+  };
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -50,7 +53,7 @@ describe("AdminActivitiesService", () => {
     const result = await service.remove("act-1", "admin-1", {
       reason: "违规",
     });
-    expect(cancelHook.cancelAllForActivity).toHaveBeenCalledWith("act-1");
+    expect(cancelHook.closeActivity).toHaveBeenCalledWith("act-1");
     expect(result.lifecycle).toBe(ActivityLifecycle.removed);
   });
 

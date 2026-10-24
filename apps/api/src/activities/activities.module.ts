@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { CanPublishGuard } from "../common/guards/can-publish.guard";
+import { PaymentsModule } from "../payments/payments.module";
 import { PrismaRegistrationCancelHook } from "../registrations/prisma-registration-cancel.hook";
 import { RegistrationsModule } from "../registrations/registrations.module";
 import { ActivitiesController } from "./activities.controller";
@@ -8,7 +9,7 @@ import { ActivitiesService } from "./activities.service";
 import { REGISTRATION_CANCEL_HOOK } from "./registration-cancel.hook";
 
 @Module({
-  imports: [AuthModule, RegistrationsModule],
+  imports: [AuthModule, RegistrationsModule, PaymentsModule],
   controllers: [ActivitiesController],
   providers: [
     ActivitiesService,

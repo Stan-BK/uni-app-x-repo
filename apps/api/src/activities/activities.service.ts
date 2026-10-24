@@ -204,7 +204,7 @@ export class ActivitiesService {
     if (activity.lifecycle !== ActivityLifecycle.published) {
       throw new ConflictException("Only published can unpublish to draft");
     }
-    await this.registrationCancel.cancelAllForActivity(id);
+    await this.registrationCancel.closeActivity(id);
     return this.prisma.activity.update({
       where: { id },
       data: { lifecycle: ActivityLifecycle.draft },
@@ -223,7 +223,7 @@ export class ActivitiesService {
     ) {
       throw new ConflictException("Cannot cancel from current state");
     }
-    await this.registrationCancel.cancelAllForActivity(id);
+    await this.registrationCancel.closeActivity(id);
     return this.prisma.activity.update({
       where: { id },
       data: {

@@ -24,7 +24,10 @@ describe("ActivitiesService", () => {
       count: vi.fn(),
     },
   };
-  const cancelHook = { cancelAllForActivity: vi.fn() };
+  const cancelHook = {
+    cancelAllForActivity: vi.fn(),
+    closeActivity: vi.fn(),
+  };
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -163,10 +166,10 @@ describe("ActivitiesService", () => {
       id: "act-1",
       lifecycle: ActivityLifecycle.draft,
     });
-    cancelHook.cancelAllForActivity.mockResolvedValue(undefined);
+    cancelHook.closeActivity.mockResolvedValue(undefined);
 
     const result = await service.unpublish("user-1", "act-1");
-    expect(cancelHook.cancelAllForActivity).toHaveBeenCalledWith("act-1");
+    expect(cancelHook.closeActivity).toHaveBeenCalledWith("act-1");
     expect(result.lifecycle).toBe(ActivityLifecycle.draft);
   });
 
@@ -181,10 +184,10 @@ describe("ActivitiesService", () => {
       id: "act-1",
       lifecycle: ActivityLifecycle.draft,
     });
-    cancelHook.cancelAllForActivity.mockResolvedValue(undefined);
+    cancelHook.closeActivity.mockResolvedValue(undefined);
 
     const result = await service.unpublish("user-1", "act-1");
-    expect(cancelHook.cancelAllForActivity).toHaveBeenCalledWith("act-1");
+    expect(cancelHook.closeActivity).toHaveBeenCalledWith("act-1");
     expect(result.lifecycle).toBe(ActivityLifecycle.draft);
   });
 });

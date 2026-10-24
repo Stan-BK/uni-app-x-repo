@@ -1,13 +1,24 @@
 import { Test } from "@nestjs/testing";
-import { RegistrationStatus } from "@prisma/client";
+import {
+  FeeType,
+  PaymentOrderStatus,
+  RefundStatus,
+  RegistrationStatus,
+} from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PaymentsService } from "../payments/payments.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { PrismaRegistrationCancelHook } from "./prisma-registration-cancel.hook";
 
 describe("PrismaRegistrationCancelHook", () => {
   let hook: PrismaRegistrationCancelHook;
+  const paymentsService = {
+    closeUnpaidForActivity: vi.fn(),
+    refundPaid: vi.fn(),
+  };
   const prisma = {
     registration: { updateMany: vi.fn() },
+    paymentOrder: { findMany: vi.fn() },
   };
 
   beforeEach(async () => {
@@ -16,6 +27,7 @@ describe("PrismaRegistrationCancelHook", () => {
       providers: [
         PrismaRegistrationCancelHook,
         { provide: PrismaService, useValue: prisma },
+        { provide: PaymentsService, useValue: paymentsService },
       ],
     }).compile();
     hook = moduleRef.get(PrismaRegistrationCancelHook);
@@ -39,5 +51,51 @@ describe("PrismaRegistrationCancelHook", () => {
     });
     expect(args.data.status).toBe(RegistrationStatus.cancelled);
     expect(args.data.cancelledAt).toBeInstanceOf(Date);
+  });
+
+  it("closeActivity closes unpaid, refunds paid without succeeded refund, cancels free confirmed", async () => {
+    paymentsService.closeUnpaidForActivity.mockResolvedValue(undefined);
+    prisma.paymentOrder.findMany.mockResolvedValue([
+      { id: "pay-1" },
+      { id: "pay-2" },
+    ]);
+    paymentsService.refundPaid.mockResolvedValue(undefined);
+    prisma.registration.updateMany.mockResolvedValue({ count: 1 });
+
+    await hook.closeActivity("act-1");
+
+    expect(paymentsService.closeUnpaidForActivity).toHaveBeenCalledWith(
+      "act-1",
+    );
+    expect(prisma.paymentOrder.findMany).toHaveBeenCalledWith({
+      where: {
+        status: PaymentOrderStatus.paid,
+        registration: { activityId: "act-1" },
+        OR: [
+          { refund: null },
+          { refund: { status: { not: RefundStatus.succeeded } } },
+        ],
+      },
+    });
+    expect(paymentsService.refundPaid).toHaveBeenCalledTimes(2);
+    expect(paymentsService.refundPaid).toHaveBeenCalledWith(
+      "pay-1",
+      "activity_closed",
+    );
+    expect(paymentsService.refundPaid).toHaveBeenCalledWith(
+      "pay-2",
+      "activity_closed",
+    );
+    expect(prisma.registration.updateMany).toHaveBeenCalledWith({
+      where: {
+        activityId: "act-1",
+        status: RegistrationStatus.confirmed,
+        activity: { feeType: FeeType.free },
+      },
+      data: {
+        status: RegistrationStatus.cancelled,
+        cancelledAt: expect.any(Date),
+      },
+    });
   });
 });

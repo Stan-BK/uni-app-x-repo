@@ -39,7 +39,7 @@ export class AdminActivitiesService {
     if (activity.lifecycle !== ActivityLifecycle.published) {
       throw new ConflictException("Only published activities can be removed");
     }
-    await this.registrationCancel.cancelAllForActivity(id);
+    await this.registrationCancel.closeActivity(id);
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.activity.update({

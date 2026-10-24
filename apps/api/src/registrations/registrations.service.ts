@@ -274,6 +274,7 @@ export class RegistrationsService {
             endAt: true,
             registrationDeadlineAt: true,
             allowUserCancel: true,
+            refundable: true,
           },
         },
       },
@@ -304,6 +305,38 @@ export class RegistrationsService {
         message: "当前状态不可取消",
         code: RegistrationErrorCode.NotCancellable,
       });
+    }
+
+    if (row.activity.feeType === FeeType.paid) {
+      if (row.activity.lifecycle !== ActivityLifecycle.published) {
+        throw new ConflictException({
+          message: "当前状态不可取消",
+          code: RegistrationErrorCode.NotCancellable,
+        });
+      }
+      if (!row.activity.refundable) {
+        throw new ConflictException({
+          message: "该活动不支持退款",
+          code: RegistrationErrorCode.RefundNotAllowed,
+        });
+      }
+      const paidOrder = await this.prisma.paymentOrder.findFirst({
+        where: {
+          registrationId: id,
+          status: PaymentOrderStatus.paid,
+        },
+      });
+      if (!paidOrder) {
+        throw new ConflictException({
+          message: "当前状态不可取消",
+          code: RegistrationErrorCode.NotCancellable,
+        });
+      }
+      await this.paymentsService.refundPaid(paidOrder.id, "user_cancel");
+      const refreshed = await this.prisma.registration.findUniqueOrThrow({
+        where: { id },
+      });
+      return toRegistrationDto(refreshed);
     }
 
     return this.prisma.$transaction(async (tx) => {

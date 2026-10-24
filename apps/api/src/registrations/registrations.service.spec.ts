@@ -18,6 +18,7 @@ describe("RegistrationsService", () => {
   const paymentsService = {
     prepare: vi.fn(),
     closeIfExpired: vi.fn(),
+    refundPaid: vi.fn(),
     isWechatPayConfigured: vi.fn().mockReturnValue(true),
   };
   const tx = {
@@ -47,6 +48,7 @@ describe("RegistrationsService", () => {
     },
     registration: {
       findUnique: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
       findMany: vi.fn(),
       count: vi.fn(),
       groupBy: vi.fn(),
@@ -54,6 +56,12 @@ describe("RegistrationsService", () => {
     paymentOrder: {
       findFirst: vi.fn(),
     },
+  };
+
+  const paidActivityFields = {
+    lifecycle: ActivityLifecycle.published,
+    feeType: FeeType.paid,
+    refundable: true,
   };
 
   beforeEach(async () => {
@@ -880,6 +888,126 @@ describe("RegistrationsService", () => {
         code: RegistrationErrorCode.ActivityEnded,
       }),
     });
+  });
+
+  it("cancel rejects paid registration when refundable is false", async () => {
+    prisma.registration.findUnique.mockResolvedValue({
+      id: "r1",
+      userId: "u1",
+      activityId: "act1",
+      status: RegistrationStatus.confirmed,
+      activity: {
+        ...publishedPaid,
+        ...paidActivityFields,
+        refundable: false,
+      },
+    });
+    await expect(service.cancel("u1", "r1")).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: RegistrationErrorCode.RefundNotAllowed,
+      }),
+    });
+    expect(paymentsService.refundPaid).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("cancel rejects paid registration when allowUserCancel is false", async () => {
+    prisma.registration.findUnique.mockResolvedValue({
+      id: "r1",
+      userId: "u1",
+      status: RegistrationStatus.confirmed,
+      activity: {
+        ...publishedPaid,
+        ...paidActivityFields,
+        allowUserCancel: false,
+      },
+    });
+    await expect(service.cancel("u1", "r1")).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: RegistrationErrorCode.CancelNotAllowed,
+      }),
+    });
+    expect(paymentsService.refundPaid).not.toHaveBeenCalled();
+  });
+
+  it("cancel rejects paid registration when activity ended", async () => {
+    prisma.registration.findUnique.mockResolvedValue({
+      id: "r1",
+      userId: "u1",
+      status: RegistrationStatus.confirmed,
+      activity: {
+        ...publishedPaid,
+        ...paidActivityFields,
+        startAt: new Date("2020-01-01"),
+        endAt: new Date("2020-01-02"),
+      },
+    });
+    await expect(service.cancel("u1", "r1")).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: RegistrationErrorCode.ActivityEnded,
+      }),
+    });
+    expect(paymentsService.refundPaid).not.toHaveBeenCalled();
+  });
+
+  it("cancel refunds paid confirmed registration", async () => {
+    prisma.registration.findUnique.mockResolvedValue({
+      id: "r1",
+      userId: "u1",
+      activityId: "act1",
+      name: "张三",
+      phone: "13800138000",
+      status: RegistrationStatus.confirmed,
+      activity: { ...publishedPaid, ...paidActivityFields },
+    });
+    prisma.registration.findUniqueOrThrow.mockResolvedValue({
+      id: "r1",
+      activityId: "act1",
+      userId: "u1",
+      name: "张三",
+      phone: "13800138000",
+      status: RegistrationStatus.cancelled,
+      cancelledAt: new Date("2030-06-02"),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    prisma.paymentOrder.findFirst.mockResolvedValue({ id: "pay-1" });
+    paymentsService.refundPaid.mockResolvedValue(undefined);
+
+    const dto = await service.cancel("u1", "r1");
+
+    expect(paymentsService.refundPaid).toHaveBeenCalledWith(
+      "pay-1",
+      "user_cancel",
+    );
+    expect(dto.status).toBe("cancelled");
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("cancel does not refund free registration", async () => {
+    prisma.registration.findUnique.mockResolvedValue({
+      id: "r1",
+      userId: "u1",
+      activityId: "act1",
+      status: RegistrationStatus.confirmed,
+      activity: publishedFree,
+    });
+    tx.$queryRaw.mockResolvedValue([publishedFree]);
+    tx.registration.update.mockResolvedValue({
+      id: "r1",
+      activityId: "act1",
+      userId: "u1",
+      name: "张三",
+      phone: "13800138000",
+      status: RegistrationStatus.cancelled,
+      cancelledAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await service.cancel("u1", "r1");
+
+    expect(paymentsService.refundPaid).not.toHaveBeenCalled();
   });
 
   it("listMine returns paginated items with activity summary", async () => {
