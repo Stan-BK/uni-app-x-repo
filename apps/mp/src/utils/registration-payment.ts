@@ -41,3 +41,7 @@ export async function launchWechatRegistrationPay(
 export async function syncAfterPaymentSheet(registrationId: string) {
   return syncRegistrationPayment(registrationId);
 }
+
+/** 微信支付成功但服务端尚未确认时的提示 */
+export const REGISTRATION_PAYMENT_PENDING_CONFIRM_TOAST =
+  "支付结果确认中，请到我的报名查看";

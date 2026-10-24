@@ -125,6 +125,7 @@ import { useUserStore } from "@/stores/user";
 import {
   isRegistrationPaymentConfirmed,
   launchWechatRegistrationPay,
+  REGISTRATION_PAYMENT_PENDING_CONFIRM_TOAST,
   syncAfterPaymentSheet,
 } from "@/utils/registration-payment";
 import { ApiError } from "@/utils/request";
@@ -242,9 +243,20 @@ async function onPay(item: Registration) {
     }
     if (!result.pay) {
       uni.showToast({ title: "暂无法拉起支付", icon: "none" });
+      await loadRegistrations();
       return;
     }
-    await launchWechatRegistrationPay(result.pay);
+    const payResult = await launchWechatRegistrationPay(result.pay);
+    if (payResult === "cancel") {
+      uni.showToast({ title: "待支付", icon: "none" });
+      await loadRegistrations();
+      return;
+    }
+    if (payResult === "fail") {
+      uni.showToast({ title: "支付未完成", icon: "none" });
+      await loadRegistrations();
+      return;
+    }
     try {
       const synced = await syncAfterPaymentSheet(result.id);
       if (
@@ -257,10 +269,13 @@ async function onPay(item: Registration) {
         await loadRegistrations();
         return;
       }
-    } catch (syncErr) {
-      uni.showToast({ title: errMessage(syncErr), icon: "none" });
+    } catch {
+      /* 同步失败时仍可能已支付，刷新列表保留待支付态 */
     }
-    uni.showToast({ title: "待支付", icon: "none" });
+    uni.showToast({
+      title: REGISTRATION_PAYMENT_PENDING_CONFIRM_TOAST,
+      icon: "none",
+    });
     await loadRegistrations();
   } catch (e) {
     uni.showToast({ title: errMessage(e), icon: "none" });

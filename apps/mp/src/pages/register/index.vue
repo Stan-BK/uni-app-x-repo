@@ -66,6 +66,7 @@ import { contactDiffersFromPrefill } from "@/utils/contact-prefill";
 import {
   isRegistrationPaymentConfirmed,
   launchWechatRegistrationPay,
+  REGISTRATION_PAYMENT_PENDING_CONFIRM_TOAST,
   syncAfterPaymentSheet,
 } from "@/utils/registration-payment";
 import { ApiError } from "@/utils/request";
@@ -239,26 +240,46 @@ async function onSubmit() {
     }
 
     if (result.pay) {
-      await launchWechatRegistrationPay(result.pay);
-      let syncedStatus = result.status;
-      let syncedPaymentStatus = result.paymentStatus;
-      try {
-        const synced = await syncAfterPaymentSheet(result.id);
-        syncedStatus = synced.status;
-        syncedPaymentStatus = synced.paymentStatus;
-      } catch (syncErr) {
-        uni.showToast({ title: toastForError(syncErr), icon: "none" });
-      }
-      if (
-        isRegistrationPaymentConfirmed({
-          status: syncedStatus,
-          paymentStatus: syncedPaymentStatus,
-        })
-      ) {
-        await afterRegistrationSuccess(result, submitted);
+      const payResult = await launchWechatRegistrationPay(result.pay);
+      if (payResult === "cancel") {
+        uni.showToast({ title: "待支付", icon: "none" });
         return;
       }
-      uni.showToast({ title: "待支付", icon: "none" });
+      if (payResult === "fail") {
+        uni.showToast({ title: "支付未完成", icon: "none" });
+        return;
+      }
+      try {
+        const synced = await syncAfterPaymentSheet(result.id);
+        if (
+          isRegistrationPaymentConfirmed({
+            status: synced.status,
+            paymentStatus: synced.paymentStatus,
+          })
+        ) {
+          await afterRegistrationSuccess(result, submitted);
+          return;
+        }
+      } catch {
+        /* 同步失败时仍可能已支付，提示用户到我的报名查看 */
+      }
+      uni.showToast({
+        title: REGISTRATION_PAYMENT_PENDING_CONFIRM_TOAST,
+        icon: "none",
+      });
+      return;
+    }
+
+    const needsPayment =
+      isPaidActivity.value || result.status === "pending_payment";
+    if (
+      needsPayment &&
+      !isRegistrationPaymentConfirmed({
+        status: result.status,
+        paymentStatus: result.paymentStatus,
+      })
+    ) {
+      uni.showToast({ title: "暂无法拉起支付", icon: "none" });
       return;
     }
 
