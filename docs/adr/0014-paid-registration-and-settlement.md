@@ -1,6 +1,6 @@
 # ADR-0014: 收费报名支付与结算入账
 
-- **状态：** Accepted
+- **状态：** Implemented
 - **日期：** 2026-10-24
 - **关联：** roadmap P1-3、PRD D-05 / D-06、[ADR-0005](./0005-activity-lifecycle-and-model.md)、[ADR-0007](./0007-registration-idempotency-and-capacity.md)、[ADR-0010](./0010-backend-ops-stack.md)
 - **设计规格：** [docs/superpowers/specs/2026-10-24-paid-registration-and-settlement-design.md](../superpowers/specs/2026-10-24-paid-registration-and-settlement-design.md)
@@ -43,5 +43,6 @@ P0-4 与 ADR-0007 已落地免费报名闭环，并对 `feeType=paid` **拒绝�
 
 ## 实现备注
 
+- **代码入口：** `apps/api/src/payments`（JSAPI 下单/回调/关单/退款）、`apps/api/src/settlement`（活动关窗结算与发布者钱包入账）；小程序收费报名调起支付与个人页可用余额/待结算展示见 `apps/mp` 对应页面。发布者提现、支付宝、Admin 改余额未实现。
 - 涉及：`packages/shared`（状态与错误码）；`apps/api`（报名分支、微信支付适配、关单扫描、退款、结算）；`apps/mp`（收费 CTA、待支付、钱包展示）。细节见设计规格与两份实现计划。
 - 验收要点：规格 §9 单元测试清单；免费行为不变；15 分钟内不换 `outTradeNo`；重复回调只确认一次；下架全额退与结算净额 0；活动结束后拒绝退款。

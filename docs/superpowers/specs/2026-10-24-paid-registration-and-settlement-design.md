@@ -1,7 +1,7 @@
 # 收费报名与活动结算入账设计规格
 
 - **日期：** 2026-10-24
-- **状态：** 已评审（2026-10-24）。写代码前先落 ADR-0014 为 Accepted。
+- **状态：** Implemented（实现见 [ADR-0014](../../adr/0014-paid-registration-and-settlement.md)）。
 - **实现计划：** [支付与退款](../plans/2026-10-24-paid-registration-payment.md)、[结算入账](../plans/2026-10-24-activity-settlement-wallet.md)
 - **关联：** roadmap 本阶段新增；PRD 收费报名与活动结束后抽成；[ADR-0005](../../adr/0005-activity-lifecycle-and-model.md)、[ADR-0007](../../adr/0007-registration-idempotency-and-capacity.md)、[ADR-0010](../../adr/0010-backend-ops-stack.md)
 - **范围：** 收费活动的微信支付、支付成功后确认报名、结束前按规则退款、活动结束将净额记入发布者现金账户。发布者可看待结算预估和可用余额。
