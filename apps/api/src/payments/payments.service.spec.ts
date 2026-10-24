@@ -39,12 +39,14 @@ describe("PaymentsService", () => {
       findUnique: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     registration: {
       update: vi.fn(),
     },
     refund: {
       create: vi.fn(),
+      findUnique: vi.fn(),
       update: vi.fn(),
     },
   };
@@ -151,6 +153,7 @@ describe("PaymentsService", () => {
     it("closes and rotates outTradeNo when merchant order exists locally without prepayId", async () => {
       wechatPay.seedOrder("PO-ORIGINAL", 100);
       prisma.paymentOrder.findFirst.mockResolvedValue(basePaymentOrder);
+      prisma.paymentOrder.updateMany.mockResolvedValue({ count: 1 });
       prisma.paymentOrder.update.mockImplementation(async ({ data }) => ({
         ...basePaymentOrder,
         ...data,
@@ -164,11 +167,14 @@ describe("PaymentsService", () => {
         now: baseNow,
       });
 
-      expect(closeSpy).toHaveBeenCalledWith("PO-ORIGINAL");
-      const rotateCall = prisma.paymentOrder.update.mock.calls.find(
-        (call) => call[0].data?.outTradeNo,
+      expect(prisma.paymentOrder.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "pay1", outTradeNo: "PO-ORIGINAL" },
+        }),
       );
-      expect(rotateCall?.[0].data.outTradeNo).not.toBe("PO-ORIGINAL");
+      expect(closeSpy).toHaveBeenCalledWith("PO-ORIGINAL");
+      const rotateCall = prisma.paymentOrder.updateMany.mock.calls[0]?.[0];
+      expect(rotateCall?.data.outTradeNo).not.toBe("PO-ORIGINAL");
       expect(result.status).toBe("pending");
       expect(result.pay?.package).toMatch(/^prepay_id=fake-prepay-/);
     });
@@ -182,7 +188,8 @@ describe("PaymentsService", () => {
       });
       tx.paymentOrder.findUnique.mockResolvedValue({
         ...basePaymentOrder,
-        status: PaymentOrderStatus.pending,
+        status: PaymentOrderStatus.closed,
+        closedAt: pastExpire,
       });
       const createSpy = vi.spyOn(wechatPay, "createJsapi");
 
@@ -205,7 +212,10 @@ describe("PaymentsService", () => {
       );
       expect(tx.registration.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: { status: RegistrationStatus.confirmed },
+          data: {
+            status: RegistrationStatus.confirmed,
+            cancelledAt: null,
+          },
         }),
       );
     });
@@ -255,6 +265,12 @@ describe("PaymentsService", () => {
 
     it("does not change paidAt on duplicate confirmation", async () => {
       const paidAt = new Date("2030-06-01T12:05:00.000Z");
+      prisma.paymentOrder.findUnique.mockResolvedValue({
+        ...basePaymentOrder,
+        status: PaymentOrderStatus.paid,
+        paidAt,
+        transactionId: "wx-txn-1",
+      });
       tx.paymentOrder.findUnique.mockResolvedValue({
         ...basePaymentOrder,
         status: PaymentOrderStatus.paid,
@@ -274,8 +290,73 @@ describe("PaymentsService", () => {
         mchId: MCH_ID,
       });
 
+      expect(prisma.$transaction).not.toHaveBeenCalled();
       expect(tx.paymentOrder.update).not.toHaveBeenCalled();
       expect(tx.registration.update).not.toHaveBeenCalled();
+    });
+
+    it("ignores amount and mch mismatch when payment is already paid", async () => {
+      prisma.paymentOrder.findUnique.mockResolvedValue({
+        ...basePaymentOrder,
+        status: PaymentOrderStatus.paid,
+        paidAt: new Date("2030-06-01T12:05:00.000Z"),
+      });
+
+      await expect(
+        service.confirmPaid({
+          outTradeNo: "PO-ORIGINAL",
+          amountCents: 999,
+          transactionId: "wx-txn-2",
+          appId: "wrong-app",
+          mchId: "wrong-mch",
+        }),
+      ).resolves.toBeUndefined();
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it("recovers closed payment and cancelled registration on confirmPaid", async () => {
+      const closedAt = new Date("2030-06-01T11:50:00.000Z");
+      prisma.paymentOrder.findUnique.mockResolvedValue({
+        ...basePaymentOrder,
+        status: PaymentOrderStatus.closed,
+        closedAt,
+      });
+      tx.paymentOrder.findUnique.mockResolvedValue({
+        ...basePaymentOrder,
+        status: PaymentOrderStatus.closed,
+        closedAt,
+        registration: {
+          ...pendingRegistration,
+          status: RegistrationStatus.cancelled,
+        },
+      });
+
+      await service.confirmPaid({
+        outTradeNo: "PO-ORIGINAL",
+        amountCents: 100,
+        transactionId: "wx-txn-late",
+        appId: APP_ID,
+        mchId: MCH_ID,
+      });
+
+      expect(tx.paymentOrder.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: PaymentOrderStatus.paid,
+            transactionId: "wx-txn-late",
+            closedAt: null,
+          }),
+        }),
+      );
+      expect(tx.registration.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            status: RegistrationStatus.confirmed,
+            cancelledAt: null,
+          },
+        }),
+      );
     });
   });
 
@@ -332,13 +413,17 @@ describe("PaymentsService", () => {
 
       expect(tx.registration.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: { status: RegistrationStatus.confirmed },
+          data: {
+            status: RegistrationStatus.confirmed,
+            cancelledAt: null,
+          },
         }),
       );
       expect(tx.paymentOrder.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             status: PaymentOrderStatus.paid,
+            closedAt: null,
           }),
         }),
       );
@@ -389,6 +474,37 @@ describe("PaymentsService", () => {
           data: expect.objectContaining({
             status: RegistrationStatus.cancelled,
           }),
+        }),
+      );
+    });
+
+    it("reuses existing refund when create hits unique constraint", async () => {
+      const { Prisma } = await import("@prisma/client");
+      prisma.paymentOrder.findUnique.mockResolvedValue({
+        ...basePaymentOrder,
+        status: PaymentOrderStatus.paid,
+        refund: null,
+      });
+      prisma.refund.create.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError("unique", {
+          code: "P2002",
+          clientVersion: "test",
+        }),
+      );
+      prisma.refund.findUnique.mockResolvedValue({
+        id: "ref-existing",
+        outRefundNo: "RF-EXISTING",
+        status: RefundStatus.processing,
+      });
+
+      await service.refundPaid("pay1", "user_cancel");
+
+      expect(prisma.refund.findUnique).toHaveBeenCalledWith({
+        where: { paymentOrderId: "pay1" },
+      });
+      expect(tx.refund.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "ref-existing" },
         }),
       );
     });

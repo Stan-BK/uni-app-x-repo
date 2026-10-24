@@ -9,6 +9,7 @@ import { ConfigService } from "@nestjs/config";
 import { RegistrationErrorCode } from "@activity/shared";
 import {
   PaymentOrderStatus,
+  Prisma,
   RefundReason,
   RefundStatus,
   RegistrationStatus,
@@ -81,12 +82,18 @@ export class PaymentsService {
 
     const query = await this.wechatPay.query(order.outTradeNo);
     if (query.tradeState === "SUCCESS") {
-      await this.confirmPaidInTransaction(
+      const confirmed = await this.confirmPaidInTransaction(
         order,
         query.transactionId ?? `wx-${order.outTradeNo}`,
         query.amountCents ?? order.amountCents,
       );
-      return { status: "paid", pay: null };
+      if (confirmed) {
+        return { status: "paid", pay: null };
+      }
+      throw new ConflictException({
+        message: "支付确认失败",
+        code: RegistrationErrorCode.PaymentMismatch,
+      });
     }
 
     if (order.prepayId) {
@@ -99,6 +106,12 @@ export class PaymentsService {
     const ensured = await this.ensurePrepayId(order, input);
     if (ensured.status === "paid") {
       return { status: "paid", pay: null };
+    }
+    if (ensured.status === "failed") {
+      throw new ConflictException({
+        message: "支付确认失败",
+        code: RegistrationErrorCode.PaymentMismatch,
+      });
     }
     return {
       status: "pending",
@@ -113,6 +126,13 @@ export class PaymentsService {
     appId: string;
     mchId: string;
   }): Promise<void> {
+    const existing = await this.prisma.paymentOrder.findUnique({
+      where: { outTradeNo: input.outTradeNo },
+    });
+    if (existing?.status === PaymentOrderStatus.paid) {
+      return;
+    }
+
     this.assertWechatConfigMatch(input.appId, input.mchId);
 
     await this.prisma.$transaction(async (tx) => {
@@ -123,12 +143,17 @@ export class PaymentsService {
       if (!order) {
         throw new NotFoundException("支付单不存在");
       }
-      this.assertAmountMatch(order.amountCents, input.amountCents);
 
       if (order.status === PaymentOrderStatus.paid) {
         return;
       }
-      if (order.status !== PaymentOrderStatus.pending) {
+
+      this.assertAmountMatch(order.amountCents, input.amountCents);
+
+      if (
+        order.status !== PaymentOrderStatus.pending &&
+        order.status !== PaymentOrderStatus.closed
+      ) {
         throw new ConflictException({
           message: "支付单状态不可确认",
           code: RegistrationErrorCode.PaymentMismatch,
@@ -142,11 +167,15 @@ export class PaymentsService {
           status: PaymentOrderStatus.paid,
           transactionId: input.transactionId,
           paidAt: now,
+          closedAt: null,
         },
       });
       await tx.registration.update({
         where: { id: order.registrationId },
-        data: { status: RegistrationStatus.confirmed },
+        data: {
+          status: RegistrationStatus.confirmed,
+          cancelledAt: null,
+        },
       });
     });
   }
@@ -219,16 +248,33 @@ export class PaymentsService {
       return;
     } else {
       outRefundNo = newOutRefundNo();
-      const created = await this.prisma.refund.create({
-        data: {
-          paymentOrderId: order.id,
-          outRefundNo,
-          amountCents: order.amountCents,
-          status: RefundStatus.processing,
-          reason: refundReason,
-        },
-      });
-      refundId = created.id;
+      try {
+        const created = await this.prisma.refund.create({
+          data: {
+            paymentOrderId: order.id,
+            outRefundNo,
+            amountCents: order.amountCents,
+            status: RefundStatus.processing,
+            reason: refundReason,
+          },
+        });
+        refundId = created.id;
+      } catch (error) {
+        if (!this.isUniqueConstraint(error)) {
+          throw error;
+        }
+        const existing = await this.prisma.refund.findUnique({
+          where: { paymentOrderId: order.id },
+        });
+        if (!existing) {
+          throw error;
+        }
+        if (existing.status === RefundStatus.succeeded) {
+          return;
+        }
+        refundId = existing.id;
+        outRefundNo = existing.outRefundNo;
+      }
     }
 
     const result = await this.wechatPay.refund({
@@ -275,7 +321,9 @@ export class PaymentsService {
       payerOpenId: string;
     },
   ): Promise<
-    { status: "paid" } | { status: "pending"; order: PaymentOrder }
+    | { status: "paid" }
+    | { status: "pending"; order: PaymentOrder }
+    | { status: "failed" }
   > {
     try {
       const { prepayId } = await this.wechatPay.createJsapi({
@@ -296,35 +344,42 @@ export class PaymentsService {
       }
     }
 
-    const query = await this.wechatPay.query(order.outTradeNo);
+    const staleOutTradeNo = order.outTradeNo;
+    const query = await this.wechatPay.query(staleOutTradeNo);
     if (query.tradeState === "SUCCESS") {
-      await this.confirmPaidInTransaction(
+      const confirmed = await this.confirmPaidInTransaction(
         order,
-        query.transactionId ?? `wx-${order.outTradeNo}`,
+        query.transactionId ?? `wx-${staleOutTradeNo}`,
         query.amountCents ?? order.amountCents,
       );
-      return { status: "paid" };
-    }
-
-    const closeResult = await this.wechatPay.close(order.outTradeNo);
-    if (closeResult === "paid") {
-      const afterClose = await this.wechatPay.query(order.outTradeNo);
-      await this.confirmPaidInTransaction(
-        order,
-        afterClose.transactionId ?? `wx-${order.outTradeNo}`,
-        order.amountCents,
-      );
-      return { status: "paid" };
+      return confirmed ? { status: "paid" } : { status: "failed" };
     }
 
     const newOutTradeNoValue = newOutTradeNo();
-    const rotated = await this.prisma.paymentOrder.update({
-      where: { id: order.id },
+    const rotated = await this.prisma.paymentOrder.updateMany({
+      where: { id: order.id, outTradeNo: staleOutTradeNo },
       data: { outTradeNo: newOutTradeNoValue, prepayId: null },
     });
+    if (rotated.count === 0) {
+      throw new ConflictException({
+        message: "支付单已被其他请求更新，请重试",
+        code: RegistrationErrorCode.PaymentMismatch,
+      });
+    }
+
+    const closeResult = await this.wechatPay.close(staleOutTradeNo);
+    if (closeResult === "paid") {
+      const afterClose = await this.wechatPay.query(staleOutTradeNo);
+      const confirmed = await this.confirmPaidInTransaction(
+        order,
+        afterClose.transactionId ?? `wx-${staleOutTradeNo}`,
+        order.amountCents,
+      );
+      return confirmed ? { status: "paid" } : { status: "failed" };
+    }
 
     const { prepayId } = await this.wechatPay.createJsapi({
-      outTradeNo: rotated.outTradeNo,
+      outTradeNo: newOutTradeNoValue,
       amountCents: input.amountCents,
       description: input.description,
       payerOpenId: input.payerOpenId,
@@ -358,7 +413,7 @@ export class PaymentsService {
         await this.confirmPaidInTransaction(
           order,
           afterClose.transactionId ?? `wx-${order.outTradeNo}`,
-          order.amountCents,
+          afterClose.amountCents ?? order.amountCents,
         );
         return;
       }
@@ -388,9 +443,10 @@ export class PaymentsService {
     order: Pick<PaymentOrder, "id" | "registrationId" | "status" | "amountCents">,
     transactionId: string,
     amountCents: number,
-  ): Promise<void> {
+  ): Promise<boolean> {
     this.assertAmountMatch(order.amountCents, amountCents);
 
+    let confirmed = false;
     await this.prisma.$transaction(async (tx) => {
       const current = await tx.paymentOrder.findUnique({
         where: { id: order.id },
@@ -399,9 +455,13 @@ export class PaymentsService {
         return;
       }
       if (current.status === PaymentOrderStatus.paid) {
+        confirmed = true;
         return;
       }
-      if (current.status !== PaymentOrderStatus.pending) {
+      if (
+        current.status !== PaymentOrderStatus.pending &&
+        current.status !== PaymentOrderStatus.closed
+      ) {
         return;
       }
 
@@ -412,13 +472,26 @@ export class PaymentsService {
           status: PaymentOrderStatus.paid,
           transactionId,
           paidAt,
+          closedAt: null,
         },
       });
       await tx.registration.update({
         where: { id: order.registrationId },
-        data: { status: RegistrationStatus.confirmed },
+        data: {
+          status: RegistrationStatus.confirmed,
+          cancelledAt: null,
+        },
       });
+      confirmed = true;
     });
+    return confirmed;
+  }
+
+  private isUniqueConstraint(error: unknown): boolean {
+    return (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    );
   }
 
   private assertWechatConfigMatch(appId: string, mchId: string): void {
