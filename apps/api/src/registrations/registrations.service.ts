@@ -381,6 +381,9 @@ export class RegistrationsService {
   }
 
   async listMine(userId: string, query: ListMineQuery) {
+    const now = new Date();
+    await this.closeExpiredPendingOrdersForUser(userId, now);
+
     const page = Math.max(1, Number(query.page) || 1);
     const pageSize = Math.min(50, Math.max(1, Number(query.pageSize) || 20));
     const where: Prisma.RegistrationWhereInput = {
@@ -391,7 +394,6 @@ export class RegistrationsService {
       ...(query.activityId ? { activityId: query.activityId } : {}),
     };
     const skip = (page - 1) * pageSize;
-    const now = new Date();
     const [rows, total] = await Promise.all([
       this.prisma.registration.findMany({
         where,
@@ -518,6 +520,23 @@ export class RegistrationsService {
       page,
       pageSize,
     };
+  }
+
+  private async closeExpiredPendingOrdersForUser(
+    userId: string,
+    now: Date,
+  ): Promise<void> {
+    const expiredOrders = await this.prisma.paymentOrder.findMany({
+      where: {
+        status: PaymentOrderStatus.pending,
+        expireAt: { lte: now },
+        registration: { userId },
+      },
+      select: { id: true },
+    });
+    for (const order of expiredOrders) {
+      await this.paymentsService.closeIfExpired(order.id, now);
+    }
   }
 
   private async reconcileExpiredPendingPayment(

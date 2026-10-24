@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { ActivityLifecycle } from "@prisma/client";
+import { ActivityLifecycle, RegistrationStatus } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PrismaService } from "../prisma/prisma.service";
 import { PublicActivitiesService } from "./public-activities.service";
@@ -309,6 +309,53 @@ describe("PublicActivitiesService", () => {
 
     const dto = await service.getById("a1");
     expect(dto.displayStatus).toBe("full");
+  });
+
+  it("get returns full when pending_payment occupies last seat", async () => {
+    const start = new Date("2030-01-01T10:00:00.000Z");
+    const end = new Date("2030-01-01T12:00:00.000Z");
+    prisma.activity.findUnique.mockResolvedValue({
+      id: "a1",
+      title: "付费场",
+      coverUrl: "https://x/c.jpg",
+      category: "观赛",
+      description: null,
+      rules: "须知",
+      startAt: start,
+      endAt: end,
+      place: "滨江",
+      placeLat: 1,
+      placeLng: 2,
+      capacity: 1,
+      feeType: "paid",
+      feeCents: 100,
+      feeNote: null,
+      lifecycle: ActivityLifecycle.published,
+      publishedAt: new Date("2026-10-01T00:00:00.000Z"),
+      cancelReason: null,
+      removeReason: null,
+      platformFeeBps: 100,
+      owner: { nickname: "探索社" },
+    });
+    prisma.registration.count.mockImplementation(
+      (args: { where: { status?: RegistrationStatus | { in: RegistrationStatus[] } } }) => {
+        if (args.where.status === RegistrationStatus.confirmed) {
+          return Promise.resolve(0);
+        }
+        if (
+          typeof args.where.status === "object" &&
+          args.where.status.in.includes(RegistrationStatus.pending_payment)
+        ) {
+          return Promise.resolve(1);
+        }
+        return Promise.resolve(0);
+      },
+    );
+    prisma.registration.findMany.mockResolvedValue([]);
+
+    const dto = await service.getById("a1");
+    expect(dto.displayStatus).toBe("full");
+    expect(dto.confirmedCount).toBe(0);
   });
 
   it("get returns closed when registration deadline passed", async () => {

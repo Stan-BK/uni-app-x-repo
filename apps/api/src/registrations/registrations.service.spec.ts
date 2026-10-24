@@ -55,6 +55,7 @@ describe("RegistrationsService", () => {
     },
     paymentOrder: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
     },
   };
 
@@ -66,6 +67,7 @@ describe("RegistrationsService", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    prisma.paymentOrder.findMany.mockResolvedValue([]);
     const mod = await Test.createTestingModule({
       providers: [
         RegistrationsService,

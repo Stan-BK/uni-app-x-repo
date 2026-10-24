@@ -60,6 +60,7 @@ export function toPublicDto(
   opts: {
     includeRules: boolean;
     confirmedCount: number;
+    occupiedCount?: number;
     now?: Date;
     attendees?: { nickname: string; avatarUrl: string | null }[];
   },
@@ -87,7 +88,7 @@ export function toPublicDto(
     displayStatus: computeDisplayStatus(
       row.startAt,
       row.endAt,
-      opts.confirmedCount,
+      opts.occupiedCount ?? opts.confirmedCount,
       row.capacity,
       opts.now,
       row.registrationDeadlineAt,

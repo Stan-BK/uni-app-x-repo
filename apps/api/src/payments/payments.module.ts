@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { PrismaModule } from "../prisma/prisma.module";
 import { PrismaService } from "../prisma/prisma.service";
 import { FakeWechatPay } from "./fake-wechat-pay";
+import { PaymentExpiryScanner } from "./payment-expiry.scanner";
 import { PaymentsController } from "./payments.controller";
 import { PaymentsService } from "./payments.service";
 import {
@@ -34,6 +35,7 @@ import { WECHAT_PAY_PORT, type WechatPayPort } from "./wechat-pay.port";
       ): PaymentsService => new PaymentsService(prisma, wechatPay, config),
       inject: [PrismaService, WECHAT_PAY_PORT, ConfigService],
     },
+    PaymentExpiryScanner,
   ],
   exports: [PaymentsService, WECHAT_PAY_PORT],
 })

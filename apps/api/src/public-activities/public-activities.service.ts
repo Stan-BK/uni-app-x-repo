@@ -73,8 +73,8 @@ export class PublicActivitiesService {
     ]);
 
     const ids = rows.map((row) => row.id);
-    const [confirmedByActivity, attendeesByActivity] = await Promise.all([
-      this.countConfirmedByActivityIds(ids),
+    const [occupiedByActivity, attendeesByActivity] = await Promise.all([
+      this.countOccupiedByActivityIds(ids),
       this.listConfirmedAttendeesByActivityIds(ids, 3),
     ]);
 
@@ -83,7 +83,8 @@ export class PublicActivitiesService {
         toPublicDto(row, {
           includeRules: false,
           now,
-          confirmedCount: confirmedByActivity.get(row.id) ?? 0,
+          confirmedCount: 0,
+          occupiedCount: occupiedByActivity.get(row.id) ?? 0,
           attendees: attendeesByActivity.get(row.id) ?? [],
         }),
       ),
@@ -116,9 +117,20 @@ export class PublicActivitiesService {
     if (row.lifecycle !== ActivityLifecycle.published) {
       throw new NotFoundException("活动不存在");
     }
-    const [confirmedCount, attendeeRows] = await Promise.all([
+    const [confirmedCount, occupiedCount, attendeeRows] = await Promise.all([
       this.prisma.registration.count({
         where: { activityId: row.id, status: RegistrationStatus.confirmed },
+      }),
+      this.prisma.registration.count({
+        where: {
+          activityId: row.id,
+          status: {
+            in: [
+              RegistrationStatus.confirmed,
+              RegistrationStatus.pending_payment,
+            ],
+          },
+        },
       }),
       this.prisma.registration.findMany({
         where: { activityId: row.id, status: RegistrationStatus.confirmed },
@@ -132,6 +144,7 @@ export class PublicActivitiesService {
     return toPublicDto(row, {
       includeRules: true,
       confirmedCount,
+      occupiedCount,
       attendees: attendeeRows.map((item) => this.mapAttendee(item.user)),
     });
   }
@@ -143,10 +156,12 @@ export class PublicActivitiesService {
       include: { owner: { select: { nickname: true } } },
     });
     const ids = rows.map((row) => row.id);
-    const [confirmedByActivity, attendeesByActivity] = await Promise.all([
-      this.countConfirmedByActivityIds(ids),
-      this.listConfirmedAttendeesByActivityIds(ids, 3),
-    ]);
+    const [confirmedByActivity, occupiedByActivity, attendeesByActivity] =
+      await Promise.all([
+        this.countConfirmedByActivityIds(ids),
+        this.countOccupiedByActivityIds(ids),
+        this.listConfirmedAttendeesByActivityIds(ids, 3),
+      ]);
     return [...rows]
       .sort((a, b) => {
         const countDiff =
@@ -163,6 +178,7 @@ export class PublicActivitiesService {
           includeRules: false,
           now,
           confirmedCount: confirmedByActivity.get(row.id) ?? 0,
+          occupiedCount: occupiedByActivity.get(row.id) ?? 0,
           attendees: attendeesByActivity.get(row.id) ?? [],
         }),
       );
@@ -221,6 +237,24 @@ export class PublicActivitiesService {
       where: {
         activityId: { in: activityIds },
         status: RegistrationStatus.confirmed,
+      },
+      _count: { _all: true },
+    });
+    return new Map(groups.map((g) => [g.activityId, g._count._all]));
+  }
+
+  private async countOccupiedByActivityIds(activityIds: string[]) {
+    if (activityIds.length === 0) return new Map<string, number>();
+    const groups = await this.prisma.registration.groupBy({
+      by: ["activityId"],
+      where: {
+        activityId: { in: activityIds },
+        status: {
+          in: [
+            RegistrationStatus.confirmed,
+            RegistrationStatus.pending_payment,
+          ],
+        },
       },
       _count: { _all: true },
     });
