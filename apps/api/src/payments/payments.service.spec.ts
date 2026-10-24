@@ -236,6 +236,23 @@ describe("PaymentsService", () => {
       expect(tx.registration.update).not.toHaveBeenCalled();
     });
 
+    it("rejects wrong mchId and keeps registration pending_payment", async () => {
+      await expect(
+        service.confirmPaid({
+          outTradeNo: "PO-ORIGINAL",
+          amountCents: 100,
+          transactionId: "wx-txn-1",
+          appId: APP_ID,
+          mchId: "wrong-mch-id",
+        }),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          code: RegistrationErrorCode.PaymentMismatch,
+        }),
+      });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
     it("does not change paidAt on duplicate confirmation", async () => {
       const paidAt = new Date("2030-06-01T12:05:00.000Z");
       tx.paymentOrder.findUnique.mockResolvedValue({
