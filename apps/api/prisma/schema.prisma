@@ -62,6 +62,10 @@ enum RefundReason {
   activity_closed
 }
 
+enum LedgerEntryType {
+  settlement_credit
+}
+
 model User {
   id        String     @id @default(cuid())
   nickname  String?
@@ -75,6 +79,8 @@ model User {
   identities    UserIdentity[]
   activities    Activity[]
   registrations Registration[]
+  wallet        WalletAccount?
+  settlements   ActivitySettlement[]
 }
 
 model UserIdentity {
@@ -119,6 +125,7 @@ model Activity {
   updatedAt      DateTime          @updatedAt
   owner          User              @relation(fields: [ownerUserId], references: [id])
   registrations  Registration[]
+  settlement     ActivitySettlement?
 
   @@index([ownerUserId, lifecycle])
   @@index([lifecycle, startAt])
@@ -201,4 +208,43 @@ model Refund {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   paymentOrder   PaymentOrder @relation(fields: [paymentOrderId], references: [id])
+}
+
+model WalletAccount {
+  id             String        @id @default(cuid())
+  userId         String        @unique
+  /// Non-negative balance enforced by CHECK in migration SQL (Prisma cannot express it).
+  availableCents Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  user           User          @relation(fields: [userId], references: [id])
+  entries        LedgerEntry[]
+}
+
+model LedgerEntry {
+  id                  String          @id @default(cuid())
+  accountId           String
+  type                LedgerEntryType
+  availableDeltaCents Int
+  availableAfterCents Int
+  idempotencyKey      String          @unique
+  refType             String
+  refId               String
+  createdAt           DateTime        @default(now())
+  account             WalletAccount   @relation(fields: [accountId], references: [id])
+}
+
+model ActivitySettlement {
+  id            String   @id @default(cuid())
+  activityId    String   @unique
+  ownerUserId   String
+  grossCents    Int
+  refundedCents Int
+  platformFeeBps Int
+  feeCents      Int
+  netCents      Int
+  ledgerEntryId String?  @unique
+  createdAt     DateTime @default(now())
+  activity      Activity @relation(fields: [activityId], references: [id])
+  owner         User     @relation(fields: [ownerUserId], references: [id])
 }
