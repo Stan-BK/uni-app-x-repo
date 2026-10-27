@@ -1,36 +1,48 @@
 <template>
   <view class="hot">
-    <text class="hot-title">热门活动</text>
-    <view
-      class="deck"
-      @touchstart="onPointerStart"
-      @touchend="onPointerEnd"
-      @mousedown="onMouseDown"
-      @mouseup="onMouseUp"
-    >
-      <view
-        v-for="(card, i) in deck"
-        :key="card.key"
-        class="slide"
-        :class="slotClass(i)"
-        @click="onTap(card, i)"
+    <view class="hot-head">
+      <image
+        class="hot-banner"
+        src="/static/ico/hot-title.png"
+        mode="heightFix"
+      />
+    </view>
+    <view class="stage">
+      <swiper
+        class="deck"
+        circular
+        autoplay
+        :interval="4200"
+        @change="onChange"
       >
-        <image
-          v-if="card.coverUrl"
-          class="slide-cover"
-          :src="card.coverUrl"
-          mode="aspectFill"
+        <swiper-item v-for="card in deck" :key="card.key">
+          <view class="slide" hover-class="none" @click="onTap(card)">
+            <image
+              v-if="card.coverUrl"
+              class="slide-cover"
+              :src="card.coverUrl"
+              mode="aspectFill"
+            />
+            <view v-else class="slide-cover slide-fallback" />
+            <view class="slide-mask" />
+            <text class="slide-title">{{ card.title }}</text>
+          </view>
+        </swiper-item>
+      </swiper>
+      <view class="dots">
+        <view
+          v-for="(card, i) in deck"
+          :key="`${card.key}-dot`"
+          class="dot"
+          :class="dotClass(i)"
         />
-        <view v-else class="slide-cover slide-fallback" />
-        <view class="slide-mask" />
-        <text class="slide-title">{{ card.title }}</text>
       </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import type { PublicActivity } from "@/api/public-activities";
 
 type HotCard = {
@@ -46,9 +58,6 @@ const emit = defineEmits<{
 }>();
 
 const current = ref(0);
-const startX = ref(0);
-const swiping = ref(false);
-let timer: ReturnType<typeof setInterval> | null = null;
 
 const deck = computed<HotCard[]>(() =>
   props.items.slice(0, 3).map((item) => ({
@@ -59,81 +68,19 @@ const deck = computed<HotCard[]>(() =>
   })),
 );
 
-function offsetOf(index: number) {
-  const n = deck.value.length;
-  let delta = (index - current.value) % n;
-  if (delta > n / 2) delta -= n;
-  if (delta < -n / 2) delta += n;
-  return delta;
+function onChange(e: { detail: { current: number } }) {
+  current.value = e.detail.current;
 }
 
-function slotClass(index: number) {
-  const delta = offsetOf(index);
-  if (delta === 0) return "is-front";
-  if (delta === 1) return "is-next";
-  return "is-prev";
-}
-
-function step(dir: 1 | -1) {
-  const n = deck.value.length;
-  current.value = (current.value + dir + n) % n;
-}
-
-function pointerX(e: {
-  changedTouches?: { clientX: number }[];
-  clientX?: number;
-}) {
-  return e.changedTouches?.[0]?.clientX ?? e.clientX ?? 0;
-}
-
-function onPointerStart(e: {
-  changedTouches?: { clientX: number }[];
-  clientX?: number;
-}) {
-  startX.value = pointerX(e);
-  swiping.value = false;
-  stopAuto();
-}
-
-function onPointerEnd(e: {
-  changedTouches?: { clientX: number }[];
-  clientX?: number;
-}) {
-  const dx = pointerX(e) - startX.value;
-  if (Math.abs(dx) >= 40) {
-    swiping.value = true;
-    step(dx < 0 ? 1 : -1);
-  }
-  startAuto();
-}
-
-function onMouseDown(e: { clientX?: number }) {
-  onPointerStart(e);
-}
-
-function onMouseUp(e: { clientX?: number }) {
-  onPointerEnd(e);
-}
-
-function onTap(card: HotCard, index: number) {
-  if (swiping.value) return;
-  if (offsetOf(index) !== 0) {
-    current.value = index;
-    return;
-  }
+function onTap(card: HotCard) {
   emit("select", card.id);
 }
 
-function startAuto() {
-  stopAuto();
-  timer = setInterval(() => step(1), 4200);
-}
-
-function stopAuto() {
-  if (timer) {
-    clearInterval(timer);
-    timer = null;
-  }
+function dotClass(index: number) {
+  const dist = Math.abs(index - current.value);
+  if (dist === 0) return "is-main";
+  if (dist === 1) return "is-near";
+  return "is-far";
 }
 
 watch(
@@ -142,9 +89,6 @@ watch(
     current.value = 0;
   },
 );
-
-onMounted(() => startAuto());
-onUnmounted(() => stopAuto());
 </script>
 
 <style scoped lang="scss">
@@ -152,46 +96,31 @@ onUnmounted(() => stopAuto());
   margin: 0 0 28rpx;
 }
 
-.hot-title {
+.hot-head {
+  margin: 0 0 8rpx;
+}
+
+.hot-banner {
+  height: 120rpx;
   display: block;
-  font-size: 28rpx;
-  font-weight: 700;
-  color: $ed-color-text;
-  margin-bottom: 8rpx;
+}
+
+.stage {
+  position: relative;
+  border-radius: $ed-radius-card;
+  overflow: hidden;
 }
 
 .deck {
-  position: relative;
+  width: 100%;
   height: 400rpx;
 }
 
 .slide {
-  position: absolute;
-  left: 50%;
-  top: 20rpx;
-  width: 460rpx;
-  height: 340rpx;
-  margin-left: -230rpx;
-  border-radius: $ed-radius-card;
+  position: relative;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  box-shadow: 0 16rpx 36rpx rgba(36, 49, 45, 0.16);
-  transition: transform 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
-  transform-origin: center center;
-}
-
-.slide.is-front {
-  transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-  z-index: 3;
-}
-
-.slide.is-next {
-  transform: translate3d(96rpx, 6rpx, 0) rotate(3.5deg) scale(0.94);
-  z-index: 2;
-}
-
-.slide.is-prev {
-  transform: translate3d(-96rpx, 6rpx, 0) rotate(-3.5deg) scale(0.94);
-  z-index: 1;
 }
 
 .slide-cover {
@@ -221,7 +150,7 @@ onUnmounted(() => stopAuto());
 .slide-title {
   position: absolute;
   left: 28rpx;
-  right: 28rpx;
+  right: 120rpx;
   bottom: 24rpx;
   color: #ffffff;
   font-size: 30rpx;
@@ -230,5 +159,39 @@ onUnmounted(() => stopAuto());
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.dots {
+  position: absolute;
+  right: 24rpx;
+  bottom: 24rpx;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12rpx;
+  pointer-events: none;
+}
+
+.dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: #ffffff;
+  opacity: 0.22;
+  transform: scale(0.33);
+  transition:
+    transform 0.28s ease,
+    opacity 0.28s ease;
+}
+
+.dot.is-near {
+  opacity: 0.45;
+  transform: scale(0.66);
+}
+
+.dot.is-main {
+  opacity: 1;
+  transform: scale(1);
 }
 </style>

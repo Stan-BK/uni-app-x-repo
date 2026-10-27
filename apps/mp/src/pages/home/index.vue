@@ -8,16 +8,27 @@
     />
     <view class="entry-row">
       <view class="entry entry-primary" hover-class="none" @click="onPublish">
-        <view class="ico ico-plus" />
-        <text>发布活动</text>
+        <view class="entry-ico">
+          <view class="ico ico-plus" />
+        </view>
+        <view class="entry-copy">
+          <text class="entry-title">发布活动</text>
+          <text class="entry-desc">分享你的精彩</text>
+        </view>
       </view>
       <view class="entry entry-secondary" hover-class="none" @click="onMine">
-        <view class="ico ico-list" />
-        <text>我的活动</text>
+        <view class="entry-ico">
+          <view class="ico ico-list" />
+        </view>
+        <view class="entry-copy">
+          <text class="entry-title">我的活动</text>
+          <text class="entry-desc">查看/管理活动</text>
+        </view>
       </view>
     </view>
     <view class="toolbar">
       <view class="search-wrap">
+        <view class="search-ico" />
         <input
           :key="searchNonce"
           class="search"
@@ -425,18 +436,33 @@ $ed-motion-ease: cubic-bezier(0.32, 0.72, 0, 1) !default;
   display: flex;
   align-items: center;
   margin-bottom: 16rpx;
-  padding-right: 8rpx;
+  padding: 0 8rpx 0 24rpx;
   box-sizing: border-box;
   background: $ed-color-surface;
-  border: 1rpx solid $ed-color-border;
+  border: 1rpx solid #d9eee8;
   border-radius: $ed-radius-input;
+}
+
+.search-ico {
+  width: 36rpx;
+  height: 36rpx;
+  flex-shrink: 0;
+  background-color: #169f8a;
+  -webkit-mask-image: url("/static/ico/search.svg");
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  mask-image: url("/static/ico/search.svg");
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
 }
 
 .search {
   flex: 1;
   min-width: 0;
   height: 72rpx;
-  padding: 0 16rpx 0 24rpx;
+  padding: 0 16rpx 0 12rpx;
   box-sizing: border-box;
   background: transparent;
   border: none;
@@ -483,6 +509,7 @@ $ed-color-text-muted: #929b92 !default;
   padding: 10rpx 20rpx;
   border-radius: $ed-radius-pill;
   background: $ed-color-surface;
+  border: 1rpx solid #d9eee8;
 }
 
 .sort-item.active {
@@ -506,31 +533,83 @@ $ed-color-text-muted: #929b92 !default;
 
 .entry-row {
   display: flex;
-  gap: 16rpx;
+  gap: 20rpx;
   margin-bottom: 24rpx;
 }
 
 .entry {
   flex: 1;
-  height: 80rpx;
+  min-width: 0;
+  height: 124rpx;
+  padding: 20rpx 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 26rpx;
+  border-radius: $ed-radius-card;
+  box-sizing: border-box;
+}
+
+.entry-ico {
+  width: 84rpx;
+  height: 84rpx;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12rpx;
-  border-radius: $ed-radius-input;
-  font-size: 26rpx;
-  font-weight: 600;
+  flex-shrink: 0;
+  color: #ffffff;
 }
 
-$ed-color-accent: #e56f3e !default;
+.entry-ico .ico-plus,
+.entry-ico .ico-list {
+  width: 40rpx;
+  height: 40rpx;
+}
 
-.entry-primary {
+.entry-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10rpx;
+  min-width: 0;
+}
+
+.entry-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  line-height: 1;
+  color: #173e37;
+}
+
+.entry-desc {
+  font-size: 20rpx;
+  line-height: 1;
+  color: #7d8d85;
+}
+
+.entry.entry-primary {
+  background: #ffe0cf;
+}
+
+.entry.entry-primary .entry-ico {
+  background: #ff7352;
+}
+
+.entry.entry-secondary {
+  background: #d6f5ea;
+}
+
+.entry.entry-secondary .entry-ico {
+  background: #20b79b;
+}
+
+.entry-fab-btn.entry-primary {
   background: $ed-color-accent;
   color: #ffffff;
   box-shadow: 0 8rpx 20rpx rgba(229, 111, 62, 0.3);
 }
 
-.entry-secondary {
+.entry-fab-btn.entry-secondary {
   background: $ed-color-brand;
   color: #ffffff;
   box-shadow: 0 8rpx 20rpx rgba(30, 155, 136, 0.28);
