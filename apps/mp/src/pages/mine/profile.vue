@@ -1,5 +1,8 @@
 <template>
   <view class="page page-l2">
+    <view v-if="showLoginGuideTip" class="guide-banner">
+      <text class="guide-banner-text">请选择头像并填写昵称</text>
+    </view>
     <view class="card">
       <view class="avatar-block">
         <!-- #ifdef MP-WEIXIN -->
@@ -118,7 +121,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { PHONE_PATTERN } from "@activity/shared";
 import { pickAvatarFromAlbum } from "@/adapters/profile";
 import { uploadAvatar } from "@/api/me";
@@ -131,6 +134,8 @@ const draftRealName = ref("");
 const draftPhone = ref("");
 const avatarPreview = ref("");
 const saving = ref(false);
+/** 从登录成功引导进入 */
+const fromLogin = ref(false);
 /** Bumped on each identity refresh so in-flight GET /me cannot clobber local state. */
 let loadGen = 0;
 
@@ -141,6 +146,17 @@ const nicknameInputType = computed(() => {
   // #ifndef MP-WEIXIN
   return "text";
   // #endif
+});
+
+const showLoginGuideTip = computed(() => {
+  if (!fromLogin.value) return false;
+  const nick = draftNickname.value.trim();
+  const avatar = avatarPreview.value.trim();
+  return !nick || !avatar;
+});
+
+onLoad((query) => {
+  fromLogin.value = query?.from === "login";
 });
 
 function syncFromStore() {
@@ -300,6 +316,21 @@ $ed-color-brand-soft: #d4f3ec !default;
 $ed-color-terracotta: #b94e2d !default;
 $ed-radius-card: 32rpx !default;
 $ed-space-card: 32rpx !default;
+
+.guide-banner {
+  margin-top: 24rpx;
+  padding: 20rpx 28rpx;
+  background: $ed-color-brand-soft;
+  border-radius: $ed-radius-card;
+  border: 1rpx solid $ed-color-border;
+}
+
+.guide-banner-text {
+  font-size: 26rpx;
+  color: $ed-color-brand;
+  line-height: 1.5;
+  font-weight: 600;
+}
 
 .card {
   margin-top: 24rpx;

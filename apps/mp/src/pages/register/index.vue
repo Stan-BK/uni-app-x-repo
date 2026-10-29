@@ -168,8 +168,9 @@ onShow(() => {
     return;
   }
   void user.promptLogin("登录后才能报名").then((ok) => {
+    // 登录成功但需完善资料时 promptLogin 会跳资料页并返回 false，勿 navigateBack
     if (!ok) {
-      uni.navigateBack();
+      if (!user.isLoggedIn) uni.navigateBack();
       return;
     }
     void applyPrefill();

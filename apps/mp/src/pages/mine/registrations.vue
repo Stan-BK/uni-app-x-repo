@@ -347,7 +347,9 @@ async function onLogin() {
   busy.value = true;
   try {
     await user.login();
-    uni.showToast({ title: "登录成功", icon: "none" });
+    if (!user.guideProfileIfNeeded("login")) {
+      uni.showToast({ title: "登录成功", icon: "none" });
+    }
     await Promise.all([loadRegistrations(), loadWallet()]);
   } catch (e) {
     uni.showToast({
