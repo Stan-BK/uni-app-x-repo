@@ -16,6 +16,7 @@
     "build:mp-xhs": "pnpm --filter @activity/mp build:mp-xhs",
     "dev:api": "pnpm --filter @activity/api start:dev",
     "dev:admin": "pnpm --filter @activity/admin dev",
+    "build:admin": "pnpm --filter @activity/admin build",
     "type-check": "pnpm -r --if-present type-check",
     "lint": "pnpm -r --if-present lint"
   }

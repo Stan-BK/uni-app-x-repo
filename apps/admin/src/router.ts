@@ -5,7 +5,7 @@ import LoginView from "./views/Login.vue";
 import UsersView from "./views/Users.vue";
 
 export const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: "/", redirect: "/users" },
     {
