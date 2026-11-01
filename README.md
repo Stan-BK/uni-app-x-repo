@@ -13,6 +13,8 @@
 | [docs/backend-ops-roadmap.md](./docs/backend-ops-roadmap.md) | 后端/云资源选型与阶段升级（已确认） |
 | [docs/product/prd-summary.md](./docs/product/prd-summary.md) | PRD 摘要与 MVP 默认 |
 | [docs/adr/](./docs/adr/) | 架构决策留底 |
+| [docs/design/admin-ui.md](./docs/design/admin-ui.md) | 运营后台 UI 规范（tokens / 布局 / 组件） |
+| [docs/research/element-plus-admin-frameworks-2025.md](./docs/research/element-plus-admin-frameworks-2025.md) | Element Plus 后台框架选型调研 |
 | [docs/superpowers/specs/2026-10-17-monorepo-doc-driven-design.md](./docs/superpowers/specs/2026-10-17-monorepo-doc-driven-design.md) | Monorepo 设计规格 |
 
 ## 仓库结构
