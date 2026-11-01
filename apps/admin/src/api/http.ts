@@ -1,5 +1,3 @@
-import { AdminRole } from "@activity/shared";
-
 const TOKEN_KEY = "admin_access_token";
 const ADMIN_KEY = "admin_profile";
 
@@ -43,10 +41,6 @@ export function setAdminToken(token: string | null): void {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(ADMIN_KEY);
   }
-}
-
-export function isAdminRole(): boolean {
-  return getAdminProfile()?.role === AdminRole.Admin;
 }
 
 export class ApiError extends Error {

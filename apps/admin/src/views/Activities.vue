@@ -1,36 +1,53 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { Refresh } from "@element-plus/icons-vue";
+import { ActivityLifecycleStatus, FeeType } from "@activity/shared";
 import { ElMessage, ElMessageBox } from "element-plus";
+import { computed, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import {
   listActivities,
   removeActivity,
   type ActivityRow,
 } from "../api/admin";
-import { ApiError, isAdminRole, setAdminToken } from "../api/http";
+import { ApiError } from "../api/http";
+import PageHeader from "../components/PageHeader.vue";
+import ProTableLite from "../components/ProTableLite.vue";
+import StatusPill from "../components/StatusPill.vue";
+import UserIdentity from "../components/UserIdentity.vue";
+import { useTable } from "../composables/useTable";
+import { Capability } from "../permissions";
+import { handleListError } from "../utils/errors";
+import { displayName, formatDateTime, formatFee } from "../utils/format";
+
+type Tone = "ok" | "warn" | "danger" | "info" | "neutral";
+
+const LIFECYCLE_META: Record<string, { label: string; tone: Tone }> = {
+  [ActivityLifecycleStatus.Draft]: { label: "草稿", tone: "neutral" },
+  [ActivityLifecycleStatus.Published]: { label: "已发布", tone: "ok" },
+  [ActivityLifecycleStatus.Cancelled]: { label: "已取消", tone: "warn" },
+  [ActivityLifecycleStatus.Removed]: { label: "已下架", tone: "danger" },
+  [ActivityLifecycleStatus.Ended]: { label: "已结束", tone: "neutral" },
+};
 
 const router = useRouter();
-const rows = ref<ActivityRow[]>([]);
-const loading = ref(false);
 const busyId = ref<string | null>(null);
-/** empty string = all */
-const lifecycleFilter = ref("published");
+/** empty string = 全部 */
+const lifecycleFilter = ref<string>(ActivityLifecycleStatus.Published);
 
-async function load() {
-  loading.value = true;
-  try {
-    rows.value = await listActivities(
-      lifecycleFilter.value || undefined,
-    );
-  } catch (e) {
-    if (e instanceof ApiError && e.status === 401) {
-      await router.replace("/login");
-      return;
-    }
-    ElMessage.error(e instanceof ApiError ? e.message : "加载失败");
-  } finally {
-    loading.value = false;
-  }
+const { rows, loading, load, refresh } = useTable<ActivityRow>({
+  fetch: () => listActivities(lifecycleFilter.value || undefined),
+  onError: (error) => handleListError(error, router, "加载失败"),
+});
+
+const publishedCount = computed(
+  () => rows.value.filter((row) => row.lifecycle === ActivityLifecycleStatus.Published).length,
+);
+const removedCount = computed(
+  () => rows.value.filter((row) => row.lifecycle === ActivityLifecycleStatus.Removed).length,
+);
+
+function lifecycleMeta(lifecycle: string) {
+  return LIFECYCLE_META[lifecycle] ?? { label: lifecycle, tone: "neutral" as Tone };
 }
 
 async function onRemove(row: ActivityRow) {
@@ -44,90 +61,113 @@ async function onRemove(row: ActivityRow) {
     busyId.value = row.id;
     await removeActivity(row.id, value.trim());
     ElMessage.success("已下架");
-    await load();
+    refresh();
   } catch (e) {
     if (e === "cancel" || e === "close") return;
+    if (e instanceof ApiError && e.status === 401) {
+      await router.replace("/login");
+      return;
+    }
     ElMessage.error(e instanceof ApiError ? e.message : "下架失败");
   } finally {
     busyId.value = null;
   }
 }
 
-function logout() {
-  setAdminToken(null);
-  void router.replace("/login");
-}
-
-function formatFee(row: ActivityRow) {
-  if (row.feeType === "free") return "免费";
-  return `¥${(row.feeCents / 100).toFixed(2)}`;
-}
-
 watch(lifecycleFilter, () => {
-  void load();
-});
-
-onMounted(() => {
-  void load();
+  void load(1);
 });
 </script>
 
 <template>
-  <div class="page">
-    <div class="bar">
-      <h1>活动列表</h1>
-      <el-space>
-        <router-link class="nav-link" to="/users">用户发布权</router-link>
-        <router-link v-if="isAdminRole()" class="nav-link" to="/audit-logs">审计日志</router-link>
+  <div>
+    <PageHeader
+      title="活动列表"
+      description="查看全平台活动，对已发布的活动执行下架；下架会通知主办方并留痕。"
+    >
+      <template #actions>
         <el-select
           v-model="lifecycleFilter"
+          class="lifecycle-select"
           placeholder="生命周期"
-          style="width: 140px"
         >
           <el-option label="全部" value="" />
-          <el-option label="已发布" value="published" />
-          <el-option label="草稿" value="draft" />
-          <el-option label="已下架" value="removed" />
-          <el-option label="已取消" value="cancelled" />
+          <el-option label="已发布" :value="ActivityLifecycleStatus.Published" />
+          <el-option label="草稿" :value="ActivityLifecycleStatus.Draft" />
+          <el-option label="已下架" :value="ActivityLifecycleStatus.Removed" />
+          <el-option label="已取消" :value="ActivityLifecycleStatus.Cancelled" />
+          <el-option label="已结束" :value="ActivityLifecycleStatus.Ended" />
         </el-select>
-        <el-button :loading="loading" @click="load">刷新</el-button>
-        <el-button @click="logout">退出</el-button>
-      </el-space>
-    </div>
+        <el-button :icon="Refresh" :loading="loading" @click="refresh">刷新</el-button>
+      </template>
+    </PageHeader>
 
-    <el-table
-      v-loading="loading"
-      class="table"
-      :data="rows"
-      stripe
-      empty-text="暂无活动"
-    >
-      <el-table-column prop="title" label="标题" min-width="160" />
-      <el-table-column label="主办" min-width="120">
+    <ProTableLite :data="rows" :loading="loading" row-key="id" empty-text="该筛选下暂无活动">
+      <template #toolbar>
+        <span class="stat">当前筛选 <b>{{ rows.length }}</b> 条</span>
+        <span class="divider" />
+        <span class="stat stat--ok">已发布 <b>{{ publishedCount }}</b></span>
+        <span class="stat stat--off">已下架 <b>{{ removedCount }}</b></span>
+        <span class="toolbar-note">免费与付费活动按主办方设置展示</span>
+      </template>
+
+      <el-table-column label="活动" min-width="260">
         <template #default="{ row }">
-          {{ row.owner?.nickname || "用户" }}
+          <div class="cell-stack">
+            <span class="cell-title">{{ row.title }}</span>
+            <span class="mono text-muted">{{ row.id }}</span>
+          </div>
         </template>
       </el-table-column>
-      <el-table-column prop="lifecycle" label="状态" width="100" />
-      <el-table-column label="费用" width="100">
+      <el-table-column label="主办" min-width="200">
         <template #default="{ row }">
-          {{ formatFee(row) }}
+          <UserIdentity
+            :name="displayName(row.owner?.nickname)"
+            :sub="row.owner?.id"
+            :size="28"
+          />
         </template>
       </el-table-column>
-      <el-table-column label="开始时间" min-width="160">
+      <el-table-column label="状态" width="120">
         <template #default="{ row }">
-          {{ row.startAt ? new Date(row.startAt).toLocaleString() : "—" }}
+          <StatusPill
+            :tone="lifecycleMeta(row.lifecycle).tone"
+            :label="lifecycleMeta(row.lifecycle).label"
+          />
         </template>
       </el-table-column>
-      <el-table-column label="下架原因" min-width="140">
+      <el-table-column label="费用" width="110">
         <template #default="{ row }">
-          {{ row.removeReason || "—" }}
+          <span :class="row.feeType === FeeType.Free ? 'text-muted' : 'cell-title'">
+            {{ formatFee(row.feeType, row.feeCents) }}
+          </span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="100" fixed="right">
+      <el-table-column label="开始时间" min-width="170">
+        <template #default="{ row }">
+          <span class="text-secondary">
+            {{ row.startAt ? formatDateTime(row.startAt) : "未设置" }}
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column label="下架原因" min-width="200">
+        <template #default="{ row }">
+          <el-tooltip
+            v-if="row.removeReason"
+            :content="row.removeReason"
+            placement="top"
+            :show-after="200"
+          >
+            <span class="cell-ellipsis text-secondary">{{ row.removeReason }}</span>
+          </el-tooltip>
+          <span v-else class="text-muted">—</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="110" align="right" fixed="right">
         <template #default="{ row }">
           <el-button
-            v-if="row.lifecycle === 'published'"
+            v-if="row.lifecycle === ActivityLifecycleStatus.Published"
+            v-auth="Capability.RemoveActivity"
             type="danger"
             link
             :loading="busyId === row.id"
@@ -135,43 +175,67 @@ onMounted(() => {
           >
             下架
           </el-button>
-          <span v-else class="muted">—</span>
+          <span v-else class="text-muted">—</span>
         </template>
       </el-table-column>
-    </el-table>
+    </ProTableLite>
   </div>
 </template>
 
 <style scoped>
-.page {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 24px;
+.lifecycle-select {
+  width: 148px;
 }
-.bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+
+.stat {
+  font-size: 13px;
+  color: var(--text-secondary);
 }
-.bar h1 {
-  margin: 0;
-  font-size: 20px;
+
+.stat b {
+  color: var(--text-primary);
   font-weight: 600;
+  margin: 0 2px;
 }
-.nav-link {
-  color: var(--el-color-primary);
-  text-decoration: none;
-  font-size: 14px;
+
+.stat--ok b {
+  color: var(--success);
 }
-.nav-link:hover {
-  text-decoration: underline;
+
+.stat--off b {
+  color: var(--danger);
 }
-.table {
-  width: 100%;
+
+.divider {
+  width: 1px;
+  height: 14px;
+  background: var(--border);
 }
-.muted {
-  color: var(--el-text-color-placeholder);
+
+.toolbar-note {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.cell-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cell-title {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.cell-ellipsis {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
 }
 </style>

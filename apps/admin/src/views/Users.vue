@@ -1,56 +1,37 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { Refresh } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
+import { computed, ref } from "vue";
+import { useRouter } from "vue-router";
 import {
   freezePublish,
   listUsers,
   unfreezePublish,
   type AdminUserRow,
 } from "../api/admin";
-import { ApiError, isAdminRole, setAdminToken } from "../api/http";
+import { ApiError } from "../api/http";
+import PageHeader from "../components/PageHeader.vue";
+import ProTableLite from "../components/ProTableLite.vue";
+import StatusPill from "../components/StatusPill.vue";
+import UserIdentity from "../components/UserIdentity.vue";
+import { useTable } from "../composables/useTable";
+import { Capability } from "../permissions";
+import { handleListError } from "../utils/errors";
+import { displayName, formatDateTime } from "../utils/format";
 
 const router = useRouter();
-const rows = ref<AdminUserRow[]>([]);
-const loading = ref(false);
 const busyId = ref<string | null>(null);
-const page = ref(1);
-const pageSize = ref(20);
-const total = ref(0);
 
-async function load(nextPage = page.value) {
-  loading.value = true;
-  try {
-    const result = await listUsers(nextPage);
-    rows.value = result.items;
-    page.value = result.page;
-    pageSize.value = result.pageSize;
-    total.value = result.total;
-  } catch (e) {
-    if (e instanceof ApiError && e.status === 401) {
-      await router.replace("/login");
-      return;
-    }
-    ElMessage.error(e instanceof ApiError ? e.message : "加载失败");
-  } finally {
-    loading.value = false;
-  }
-}
+const { rows, loading, page, pageSize, total, goPage, refresh } = useTable<AdminUserRow>({
+  fetch: ({ page: targetPage }) => listUsers(targetPage),
+  onError: (error) => handleListError(error, router, "加载失败"),
+});
 
-function displayName(row: AdminUserRow) {
-  return row.nickname?.trim() || "用户";
-}
+const publishableCount = computed(() => rows.value.filter((row) => row.canPublish).length);
+const frozenCount = computed(() => rows.value.filter((row) => !row.canPublish).length);
 
 function subjectLabel(row: AdminUserRow) {
-  return `${displayName(row)}（${row.id}）`;
-}
-
-async function handleUnauthorized(e: unknown) {
-  if (e instanceof ApiError && e.status === 401) {
-    await router.replace("/login");
-    return true;
-  }
-  return false;
+  return `${displayName(row.nickname)}（${row.id}）`;
 }
 
 async function promptReason(row: AdminUserRow, action: "冻结" | "恢复") {
@@ -68,166 +49,132 @@ async function promptReason(row: AdminUserRow, action: "冻结" | "恢复") {
   return value.trim();
 }
 
-async function onFreeze(row: AdminUserRow) {
+async function onSubmitAction(row: AdminUserRow, action: "冻结" | "恢复") {
   try {
-    const reason = await promptReason(row, "冻结");
+    const reason = await promptReason(row, action);
     busyId.value = row.id;
-    await freezePublish(row.id, reason);
-    ElMessage.success("已冻结发布权");
-    await load();
+    if (action === "冻结") {
+      await freezePublish(row.id, reason);
+    } else {
+      await unfreezePublish(row.id, reason);
+    }
+    ElMessage.success(action === "冻结" ? "已冻结发布权" : "已恢复发布权");
+    refresh();
   } catch (e) {
     if (e === "cancel" || e === "close") return;
-    if (await handleUnauthorized(e)) return;
-    ElMessage.error(e instanceof ApiError ? e.message : "冻结失败");
+    if (e instanceof ApiError && e.status === 401) {
+      await router.replace("/login");
+      return;
+    }
+    ElMessage.error(
+      e instanceof ApiError ? e.message : action === "冻结" ? "冻结失败" : "恢复失败",
+    );
   } finally {
     busyId.value = null;
   }
 }
-
-async function onUnfreeze(row: AdminUserRow) {
-  try {
-    const reason = await promptReason(row, "恢复");
-    busyId.value = row.id;
-    await unfreezePublish(row.id, reason);
-    ElMessage.success("已恢复发布权");
-    await load();
-  } catch (e) {
-    if (e === "cancel" || e === "close") return;
-    if (await handleUnauthorized(e)) return;
-    ElMessage.error(e instanceof ApiError ? e.message : "恢复失败");
-  } finally {
-    busyId.value = null;
-  }
-}
-
-function logout() {
-  setAdminToken(null);
-  void router.replace("/login");
-}
-
-function onPageChange(next: number) {
-  void load(next);
-}
-
-onMounted(() => {
-  void load(1);
-});
 </script>
 
 <template>
-  <div class="page">
-    <div class="bar">
-      <h1>用户发布权</h1>
-      <el-space>
-        <router-link v-if="isAdminRole()" class="nav-link" to="/audit-logs">审计日志</router-link>
-        <router-link class="nav-link" to="/activities">活动列表</router-link>
-        <el-button :loading="loading" @click="load()">刷新</el-button>
-        <el-button @click="logout">退出</el-button>
-      </el-space>
-    </div>
-
-    <el-table
-      v-loading="loading"
-      class="table"
-      row-key="id"
-      :data="rows"
-      stripe
-      empty-text="暂无用户"
+  <div>
+    <PageHeader
+      title="用户发布权"
+      description="默认可发布；冻结后用户无法创建或发布活动，敏感操作会写入审计日志。"
     >
-      <el-table-column label="昵称" min-width="140">
+      <template #actions>
+        <el-button :icon="Refresh" :loading="loading" @click="refresh">刷新</el-button>
+      </template>
+    </PageHeader>
+
+    <ProTableLite
+      :data="rows"
+      :loading="loading"
+      row-key="id"
+      empty-text="暂无用户"
+      paged
+      :page="page"
+      :page-size="pageSize"
+      :total="total"
+      @page-change="goPage"
+    >
+      <template #toolbar>
+        <span class="stat">
+          共 <b>{{ total }}</b> 位用户
+        </span>
+        <span class="divider" />
+        <span class="stat stat--ok">本页可发布 <b>{{ publishableCount }}</b></span>
+        <span class="stat stat--off">本页已冻结 <b>{{ frozenCount }}</b></span>
+      </template>
+
+      <el-table-column label="用户" min-width="280">
         <template #default="{ row }">
-          {{ displayName(row) }}
+          <UserIdentity :name="displayName(row.nickname)" :sub="row.id" />
         </template>
       </el-table-column>
-      <el-table-column label="用户 ID" min-width="220">
+      <el-table-column label="发布权" width="140">
         <template #default="{ row }">
-          <span class="user-id">{{ row.id }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="发布权" width="120">
-        <template #default="{ row }">
-          <el-tag :type="row.canPublish ? 'success' : 'info'" size="small">
-            {{ row.canPublish ? "可发布" : "已冻结" }}
-          </el-tag>
+          <StatusPill
+            :tone="row.canPublish ? 'ok' : 'danger'"
+            :label="row.canPublish ? '可发布' : '已冻结'"
+          />
         </template>
       </el-table-column>
       <el-table-column label="注册时间" min-width="180">
         <template #default="{ row }">
-          {{ new Date(row.createdAt).toLocaleString() }}
+          <span class="text-secondary">{{ formatDateTime(row.createdAt) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="120" fixed="right">
+      <el-table-column label="操作" width="140" align="right" fixed="right">
         <template #default="{ row }">
           <el-button
             v-if="row.canPublish"
+            v-auth="Capability.ManagePublish"
             type="danger"
             link
             :loading="busyId === row.id"
-            @click="onFreeze(row)"
+            @click="onSubmitAction(row, '冻结')"
           >
-            冻结
+            冻结发布权
           </el-button>
           <el-button
             v-else
+            v-auth="Capability.ManagePublish"
             type="primary"
             link
             :loading="busyId === row.id"
-            @click="onUnfreeze(row)"
+            @click="onSubmitAction(row, '恢复')"
           >
-            恢复
+            恢复发布权
           </el-button>
         </template>
       </el-table-column>
-    </el-table>
-
-    <el-pagination
-      class="pager"
-      background
-      layout="prev, pager, next, total"
-      :current-page="page"
-      :page-size="pageSize"
-      :total="total"
-      @current-change="onPageChange"
-    />
+    </ProTableLite>
   </div>
 </template>
 
 <style scoped>
-.page {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 24px;
+.stat {
+  font-size: 13px;
+  color: var(--text-secondary);
 }
-.bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-.bar h1 {
-  margin: 0;
-  font-size: 20px;
+
+.stat b {
+  color: var(--text-primary);
   font-weight: 600;
+  margin: 0 2px;
 }
-.nav-link {
-  color: var(--el-color-primary);
-  text-decoration: none;
-  font-size: 14px;
+
+.stat--ok b {
+  color: var(--success);
 }
-.nav-link:hover {
-  text-decoration: underline;
+
+.stat--off b {
+  color: var(--danger);
 }
-.table {
-  width: 100%;
-}
-.user-id {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  user-select: all;
-}
-.pager {
-  margin-top: 16px;
-  justify-content: flex-end;
+
+.divider {
+  width: 1px;
+  height: 14px;
+  background: var(--border);
 }
 </style>
