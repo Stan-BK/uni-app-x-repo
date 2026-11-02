@@ -58,7 +58,7 @@ describe("SubscribeMessageService", () => {
   const prisma = {
     subscribeMessageJob: {
       findMany: vi.fn(),
-      update: vi.fn(),
+      updateMany: vi.fn(),
     },
   };
   const config = {
@@ -80,8 +80,8 @@ describe("SubscribeMessageService", () => {
 
   function lastUpdateData(index = 0) {
     return (
-      prisma.subscribeMessageJob.update.mock.calls[index][0] as {
-        where: { id: string };
+      prisma.subscribeMessageJob.updateMany.mock.calls[index][0] as {
+        where: { id: string; status: string };
         data: Record<string, unknown>;
       }
     ).data;
@@ -89,7 +89,7 @@ describe("SubscribeMessageService", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    prisma.subscribeMessageJob.update.mockResolvedValue({});
+    prisma.subscribeMessageJob.updateMany.mockResolvedValue({ count: 1 });
     weixin = new FakeWeixinSubscribe();
     service = new SubscribeMessageService(prisma as never, weixin, config as never);
   });
@@ -164,6 +164,20 @@ describe("SubscribeMessageService", () => {
     ]);
     await service.scan(now);
     expect(weixin.sent).toHaveLength(1);
-    expect(prisma.subscribeMessageJob.update).toHaveBeenCalledTimes(1);
+    expect(prisma.subscribeMessageJob.updateMany).toHaveBeenCalledTimes(1);
+  });
+
+  it("guards updates with status pending and tolerates 0 rows", async () => {
+    seed([makeJob()]);
+    prisma.subscribeMessageJob.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.scan(now)).resolves.toBeUndefined();
+    expect(weixin.sent).toHaveLength(1);
+    const arg = prisma.subscribeMessageJob.updateMany.mock.calls[0][0] as {
+      where: { id: string; status: string };
+    };
+    expect(arg.where).toEqual({
+      id: "job-1",
+      status: SubscribeMessageJobStatus.pending,
+    });
   });
 });

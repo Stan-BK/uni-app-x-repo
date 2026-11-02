@@ -10,6 +10,8 @@ import { SubscribeMessageService } from "./subscribe-message.service";
 @Injectable()
 export class SubscribeMessageScanner implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SubscribeMessageScanner.name);
+  /** 上一轮未结束时跳过本 tick，避免叠扫重复发送。 */
+  private running = false;
   private timer: ReturnType<typeof setInterval> | undefined;
 
   constructor(private readonly service: SubscribeMessageService) {}
@@ -19,9 +21,18 @@ export class SubscribeMessageScanner implements OnModuleInit, OnModuleDestroy {
       return;
     }
     this.timer = setInterval(() => {
-      void this.service.scan().catch((error: unknown) => {
-        this.logger.error("subscribe message scan tick failed", error);
-      });
+      if (this.running) {
+        return;
+      }
+      this.running = true;
+      void this.service
+        .scan()
+        .catch((error: unknown) => {
+          this.logger.error("subscribe message scan tick failed", error);
+        })
+        .finally(() => {
+          this.running = false;
+        });
     }, SUBSCRIBE_SCAN_INTERVAL_MS);
   }
 

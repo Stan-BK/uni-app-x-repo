@@ -196,6 +196,10 @@ export class SubscribeMessageService {
       sentAt?: Date;
     },
   ): Promise<void> {
-    await this.prisma.subscribeMessageJob.update({ where: { id }, data });
+    // 仅 pending 可被更新：并发取消后不会被改回 sent/skipped；count 为 0 属正常，不抛错。
+    await this.prisma.subscribeMessageJob.updateMany({
+      where: { id, status: SubscribeMessageJobStatus.pending },
+      data,
+    });
   }
 }
