@@ -217,13 +217,16 @@ async function onSubmit() {
     return;
   }
 
-  // 未登录时登录弹窗会打断微信手势，本次点击只登录，用户再点提交时才申请订阅授权
+  // 订阅授权必须在点击调用栈内同步拉起：此前不能 await 任何东西。
+  // 未登录或资料未就绪时，本次点击只做登录/引导，用户再点提交时才申请授权。
   if (!user.isLoggedIn) {
     await user.promptLogin("登录后才能报名");
     return;
   }
-  // 已登录仍需走 promptLogin，保留资料未完善时的引导
-  if (!(await user.promptLogin("登录后才能报名"))) return;
+  if (!user.me || user.needsProfile) {
+    await user.promptLogin("登录后才能报名");
+    return;
+  }
 
   const submitted = {
     name: name.value.trim(),
