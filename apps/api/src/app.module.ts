@@ -12,6 +12,7 @@ import { PaymentsModule } from "./payments/payments.module";
 import { SettlementModule } from "./settlement/settlement.module";
 import { PublicActivitiesModule } from "./public-activities/public-activities.module";
 import { RegistrationsModule } from "./registrations/registrations.module";
+import { SubscribeMessagesModule } from "./subscribe-messages/subscribe-messages.module";
 import { UploadsModule } from "./uploads/uploads.module";
 
 @Module({
@@ -25,6 +26,7 @@ import { UploadsModule } from "./uploads/uploads.module";
     PaymentsModule,
     SettlementModule,
     RegistrationsModule,
+    SubscribeMessagesModule,
     UploadsModule,
     AdminAuthModule,
     AdminUsersModule,
