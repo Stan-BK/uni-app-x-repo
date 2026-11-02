@@ -37,6 +37,30 @@ describe("computeJobDueAt", () => {
     expect(due!.toISOString()).toBe("2030-06-01T12:01:00.000Z");
   });
 
+  it("staggers activity_starting to now+60s when start is only 60.5 minutes away", () => {
+    const startAt = new Date(now.getTime() + 60 * 60 * 1000 + 30 * 1000);
+    const due = computeJobDueAt({
+      kind: SubscribeMessageKind.ActivityStarting,
+      now,
+      startAt,
+    });
+    expect(due).toBeInstanceOf(Date);
+    expect(due!.toISOString()).toBe(new Date(now.getTime() + 60_000).toISOString());
+  });
+
+  it("keeps activity_starting at startAt minus 1h when start is 2 hours away", () => {
+    const startAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    const due = computeJobDueAt({
+      kind: SubscribeMessageKind.ActivityStarting,
+      now,
+      startAt,
+    });
+    expect(due).toBeInstanceOf(Date);
+    expect(due!.toISOString()).toBe(
+      new Date(startAt.getTime() - 60 * 60 * 1000).toISOString(),
+    );
+  });
+
   it("returns null activity_starting without startAt", () => {
     expect(
       computeJobDueAt({

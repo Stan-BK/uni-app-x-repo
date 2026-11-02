@@ -19,5 +19,5 @@ export function computeJobDueAt(input: {
     input.startAt.getTime() - SUBSCRIBE_REMINDER_LEAD_MS,
   );
   const minDue = new Date(input.now.getTime() + SUBSCRIBE_STAGGER_MS);
-  return reminderAt > input.now ? reminderAt : minDue;
+  return reminderAt >= minDue ? reminderAt : minDue;
 }

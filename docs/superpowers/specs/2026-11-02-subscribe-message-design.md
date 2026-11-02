@@ -77,7 +77,7 @@
 
 `registration_confirmed.dueAt = now`。
 
-`activity_starting.dueAt = startAt - 1h`。若该时间不晚于 `registration_confirmed.dueAt`，则改为 `registration_confirmed.dueAt + 60s`。
+`activity_starting.dueAt = startAt - 1h`。若该时间早于 `registration_confirmed.dueAt + 60s`，则改为 `registration_confirmed.dueAt + 60s`。
 
 ### 3.4 作废
 
