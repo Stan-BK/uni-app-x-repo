@@ -3,3 +3,4 @@ export * from "./identity";
 export * from "./activity";
 export * from "./audit";
 export * from "./observability";
+export * from "./subscribe-message";

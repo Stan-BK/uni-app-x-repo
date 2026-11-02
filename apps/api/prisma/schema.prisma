@@ -66,6 +66,18 @@ enum LedgerEntryType {
   settlement_credit
 }
 
+enum SubscribeMessageKind {
+  registration_confirmed
+  activity_starting
+}
+
+enum SubscribeMessageJobStatus {
+  pending
+  sent
+  skipped
+  cancelled
+}
+
 model User {
   id        String     @id @default(cuid())
   nickname  String?
@@ -171,10 +183,28 @@ model Registration {
   activity       Activity        @relation(fields: [activityId], references: [id])
   user           User            @relation(fields: [userId], references: [id])
   paymentOrders  PaymentOrder[]
+  subscribeMessageJobs SubscribeMessageJob[]
 
   @@unique([userId, activityId])
   @@index([activityId, status])
   @@index([userId, createdAt])
+}
+
+model SubscribeMessageJob {
+  id             String                     @id @default(cuid())
+  registrationId String
+  kind           SubscribeMessageKind
+  dueAt          DateTime
+  status         SubscribeMessageJobStatus  @default(pending)
+  attemptCount   Int                        @default(0)
+  lastError      String?
+  sentAt         DateTime?
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+  registration   Registration               @relation(fields: [registrationId], references: [id])
+
+  @@unique([registrationId, kind])
+  @@index([status, dueAt])
 }
 
 /// Partial unique indexes (one pending / one paid per registration) are defined in migration 20261024120000_paid_registration_payment only.
