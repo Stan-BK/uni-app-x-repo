@@ -1,17 +1,65 @@
 <template>
-  <view class="page page-l2">
-    <view class="card">
-      <text class="title">{{ pageTitle }}</text>
-      <text class="desc">{{ pageDesc }}</text>
+  <view
+    class="page page-l2 create-page"
+    :class="{ 'create-page--with-bar': showActionBar }"
+  >
+    <view class="hero">
+      <view class="hero-top">
+        <text class="hero-kicker">活动发布</text>
+        <text v-if="isPublishedEdit" class="hero-tag hero-tag--muted">已发布</text>
+        <text
+          v-else-if="!isNewActivity && lifecycle === 'draft'"
+          class="hero-tag hero-tag--brand"
+          >草稿</text
+        >
+      </view>
+      <text class="hero-title">{{ pageTitle }}</text>
+      <text class="hero-desc">{{ pageDesc }}</text>
+    </view>
 
-      <uni-forms
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        label-position="top"
-        label-width="auto"
-        err-show-type="undertext"
-      >
+    <uni-forms
+      ref="formRef"
+      :model="form"
+      :rules="rules"
+      label-position="top"
+      label-width="auto"
+      err-show-type="undertext"
+    >
+      <view class="section">
+        <view class="section-head">
+          <text class="section-title">封面</text>
+          <text class="section-hint">必填 · 建议 16:9</text>
+        </view>
+        <uni-forms-item name="coverUrl" class="cover-item">
+          <view class="cover-picker" @click="chooseCover">
+            <image
+              v-if="coverPreview"
+              class="cover-img"
+              :src="coverPreview"
+              mode="aspectFill"
+            />
+            <view v-else class="cover-placeholder">
+              <view class="cover-plus">
+                <text class="cover-plus-icon">+</text>
+              </view>
+              <text class="cover-placeholder-title">添加活动封面</text>
+              <text class="cover-placeholder-sub">支持相册 / 拍照，≤5MB</text>
+            </view>
+            <view v-if="coverPreview && !uploadingCover" class="cover-change">
+              <text class="cover-change-text">更换封面</text>
+            </view>
+            <view v-if="uploadingCover" class="cover-mask">
+              <text class="cover-mask-text">封面上传中…</text>
+            </view>
+          </view>
+        </uni-forms-item>
+      </view>
+
+      <view class="section">
+        <view class="section-head">
+          <text class="section-title">基本信息</text>
+        </view>
+
         <uni-forms-item name="title" label="标题" required>
           <uni-easyinput
             v-model="form.title"
@@ -22,22 +70,6 @@
           />
         </uni-forms-item>
 
-        <uni-forms-item name="coverUrl" label="封面" required>
-          <view class="cover-picker" @click="chooseCover">
-            <image
-              v-if="coverPreview"
-              class="cover-img"
-              :src="coverPreview"
-              mode="aspectFill"
-            />
-            <view v-else class="cover-placeholder">
-              <text class="cover-placeholder-title">点击选择封面</text>
-              <text class="cover-placeholder-sub">支持相册 / 拍照，≤5MB</text>
-            </view>
-            <view v-if="uploadingCover" class="cover-mask">上传中…</view>
-          </view>
-        </uni-forms-item>
-
         <uni-forms-item name="category" label="分类" required>
           <uni-data-select
             v-model="form.category"
@@ -46,6 +78,13 @@
             :clear="true"
           />
         </uni-forms-item>
+      </view>
+
+      <view class="section">
+        <view class="section-head">
+          <text class="section-title">时间与地点</text>
+          <text class="section-hint">集合点写清楚，方便报名者到场</text>
+        </view>
 
         <uni-forms-item name="place" label="地点" required>
           <view class="place-picker" @click="choosePlace">
@@ -62,7 +101,10 @@
             :styles="easyinputStyles"
             :clearable="true"
           />
-          <text v-if="form.placeLat != null && form.placeLng != null" class="place-coord">
+          <text
+            v-if="form.placeLat != null && form.placeLng != null"
+            class="place-coord"
+          >
             坐标 {{ form.placeLat.toFixed(5) }}, {{ form.placeLng.toFixed(5) }}
           </text>
         </uni-forms-item>
@@ -94,6 +136,20 @@
           />
           <text class="field-hint">不填则默认为活动开始时间</text>
         </uni-forms-item>
+      </view>
+
+      <view class="section">
+        <view class="section-head">
+          <text class="section-title">报名设置</text>
+          <text class="section-hint">名额与费用</text>
+        </view>
+
+        <uni-forms-item name="capacity" label="名额" required>
+          <view class="inline-row">
+            <uni-number-box v-model="form.capacity" :min="1" :max="9999" />
+            <text class="inline-unit">人</text>
+          </view>
+        </uni-forms-item>
 
         <uni-forms-item name="feeType" label="费用类型" required>
           <uni-data-checkbox
@@ -124,36 +180,42 @@
           class="switch-item"
         >
           <view class="switch-field">
-            <text class="switch-label">可退款</text>
+            <view class="switch-copy">
+              <text class="switch-label">可退款</text>
+              <text class="field-hint">首期不开放在线退款，仅作活动说明预留</text>
+            </view>
             <switch
               :checked="form.refundable"
               color="#1E9B88"
               @change="onRefundableChange"
             />
           </view>
-          <text class="field-hint">首期不开放在线退款，仅作活动说明预留</text>
         </uni-forms-item>
+      </view>
 
-        <uni-forms-item name="capacity" label="名额" required>
-          <uni-number-box v-model="form.capacity" :min="1" :max="9999" />
-        </uni-forms-item>
-
-        <uni-forms-item name="rules" label="活动须知" required>
+      <view class="section">
+        <view class="section-head">
+          <text class="section-title">活动须知</text>
+          <text class="section-hint">报名须知、装备要求等</text>
+        </view>
+        <uni-forms-item name="rules" label="须知内容" required>
           <uni-easyinput
             v-model="form.rules"
             type="textarea"
             :autoHeight="true"
-            placeholder="报名须知、装备要求等"
+            placeholder="写清楚集合方式、装备要求、取消规则等"
             primary-color="#1E9B88"
             :styles="easyinputStyles"
           />
         </uni-forms-item>
-      </uni-forms>
+      </view>
+    </uni-forms>
 
-      <view v-if="canEditContent" class="actions">
+    <view v-if="showActionBar" class="action-bar">
+      <view class="action-row">
         <button
           v-if="!isNewActivity || user.canPublish"
-          class="ed-btn-secondary"
+          class="ed-btn-secondary action-btn"
           hover-class="none"
           :disabled="saving"
           @click="saveDraft"
@@ -162,7 +224,7 @@
         </button>
         <button
           v-if="user.canPublish"
-          class="ed-btn"
+          class="ed-btn action-btn action-btn--primary"
           hover-class="none"
           :disabled="saving"
           @click="publish"
@@ -170,7 +232,6 @@
           发布
         </button>
       </view>
-      <text v-if="msg" class="msg">{{ msg }}</text>
     </view>
   </view>
 </template>
@@ -220,6 +281,12 @@ const isPublishedEdit = computed(() => lifecycle.value === "published");
 const canEditContent = computed(() => {
   if (!editingId.value) return true;
   return lifecycle.value === "draft";
+});
+
+/** 底部固定操作栏：只读或没有任何可执行操作时收起 */
+const showActionBar = computed(() => {
+  if (!canEditContent.value) return false;
+  return !isNewActivity.value || user.canPublish;
 });
 
 const pageTitle = computed(() => {
@@ -738,62 +805,110 @@ onShow(() => {
 </script>
 
 <style scoped lang="scss">
-.card {
-  margin-top: 24rpx;
-  background: $ed-color-surface;
-  border-radius: $ed-radius-card;
-  border: 1rpx solid $ed-color-border;
-  padding: $ed-space-card;
+.create-page {
+  padding-bottom: 48rpx;
 }
 
-.title {
-  display: block;
-  font-size: 38rpx;
-  font-weight: 600;
-  color: $ed-color-text;
+.create-page--with-bar {
+  padding-bottom: calc(168rpx + env(safe-area-inset-bottom));
+}
+
+/* 页头：微型 kicker + 大标题 + 说明，和二级页的编辑部版式一致 */
+.hero {
+  padding: 40rpx 0 28rpx;
+}
+
+.hero-top {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
   margin-bottom: 12rpx;
 }
 
-.desc {
-  display: block;
-  font-size: 24rpx;
-  color: $ed-color-text-secondary;
-  line-height: 1.5;
-  margin-bottom: 20rpx;
-}
-
-.actions {
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-  margin-top: 24rpx;
-}
-
-.actions button {
-  margin: 0;
+.hero-kicker {
+  font-size: 22rpx;
   font-weight: 600;
+  letter-spacing: 2rpx;
+  color: $ed-color-brand-strong;
 }
 
-button[disabled] {
-  opacity: 0.5;
+.hero-tag {
+  margin-left: auto;
+  padding: 6rpx 16rpx;
+  font-size: 20rpx;
+  font-weight: 500;
+  line-height: 1.4;
+  border-radius: $ed-radius-tag;
+  background: $ed-color-btn-secondary;
+  color: $ed-color-text-secondary;
 }
 
-.msg {
-  display: block;
-  margin-top: 16rpx;
+.hero-tag--brand {
+  background: $ed-color-brand-soft;
+  color: $ed-color-brand-strong;
+}
+
+.hero-tag--muted {
+  background: $ed-color-terracotta-soft;
   color: $ed-color-terracotta;
-  font-size: 24rpx;
-  line-height: 1.5;
 }
 
+.hero-title {
+  display: block;
+  margin-bottom: 12rpx;
+  font-size: 44rpx;
+  font-weight: 600;
+  line-height: 1.3;
+  color: $ed-color-text;
+}
+
+.hero-desc {
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.55;
+  color: $ed-color-text-secondary;
+}
+
+/* 表单分组卡片 */
+.section {
+  margin-bottom: 24rpx;
+  padding: 28rpx $ed-space-card 6rpx;
+  background: $ed-color-surface;
+  border: 1rpx solid $ed-color-border;
+  border-radius: $ed-radius-card;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding-bottom: 16rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  line-height: 1.4;
+  color: $ed-color-text;
+}
+
+.section-hint {
+  flex-shrink: 0;
+  font-size: 22rpx;
+  line-height: 1.4;
+  color: $ed-color-text-muted;
+}
+
+/* 封面 */
 .cover-picker {
   position: relative;
   width: 100%;
-  height: 280rpx;
-  border-radius: $ed-radius-input;
+  height: 336rpx;
   overflow: hidden;
   background: $ed-color-brand-soft;
   border: 1rpx solid $ed-color-border;
+  border-radius: $ed-radius-input;
 }
 
 .cover-img {
@@ -802,106 +917,252 @@ button[disabled] {
 }
 
 .cover-placeholder {
-  height: 100%;
   display: flex;
+  height: 100%;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8rpx;
+  gap: 10rpx;
+  box-sizing: border-box;
+  border-radius: $ed-radius-input;
+}
+
+.cover-plus {
+  display: flex;
+  width: 76rpx;
+  height: 76rpx;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4rpx;
+  border-radius: 50%;
   background: $ed-color-brand;
+}
+
+.cover-plus-icon {
+  font-size: 44rpx;
+  font-weight: 300;
+  line-height: 1;
+  color: #ffffff;
 }
 
 .cover-placeholder-title {
   font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.95);
+  font-weight: 500;
+  line-height: 1.4;
+  color: $ed-color-brand-strong;
 }
 
 .cover-placeholder-sub {
   font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.4;
+  color: $ed-color-text-secondary;
+}
+
+.cover-change {
+  position: absolute;
+  right: 16rpx;
+  bottom: 16rpx;
+  padding: 10rpx 24rpx;
+  border-radius: $ed-radius-pill;
+  background: rgba(36, 49, 45, 0.72);
+}
+
+.cover-change-text {
+  font-size: 22rpx;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .cover-mask {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  color: rgba(255, 255, 255, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28rpx;
+  background: rgba(36, 49, 45, 0.55);
 }
 
+.cover-mask-text {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* 地点选择行 */
 .place-picker {
   display: flex;
   align-items: center;
   gap: 16rpx;
-  min-height: 72rpx;
+  min-height: 84rpx;
   padding: 16rpx 20rpx;
+  box-sizing: border-box;
+  background: $ed-color-surface;
   border: 1rpx solid $ed-color-border;
   border-radius: $ed-radius-input;
-  background: $ed-color-surface;
-  box-sizing: border-box;
 }
 
 .place-text {
   flex: 1;
   font-size: 28rpx;
+  line-height: 1.45;
   color: $ed-color-text;
-  line-height: 1.4;
 }
 
 .place-placeholder {
   flex: 1;
-  font-size: 28rpx;
+  font-size: 26rpx;
   color: $ed-color-text-muted;
 }
 
 .place-action {
   flex-shrink: 0;
-  font-size: 24rpx;
-  color: $ed-color-brand;
+  padding: 8rpx 20rpx;
+  font-size: 22rpx;
+  font-weight: 500;
+  line-height: 1.4;
+  color: $ed-color-brand-strong;
+  background: $ed-color-brand-soft;
+  border-radius: $ed-radius-pill;
 }
 
 .place-edit {
   margin-top: 12rpx;
 }
 
-:deep(.uni-forms-item.is-direction-top .uni-forms-item__label:not(.no-label)) {
-  width: auto !important;
-  white-space: nowrap;
+.place-coord {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.4;
+  color: $ed-color-text-muted;
 }
 
-:deep(.switch-item .uni-forms-item__label) {
-  display: none;
-  height: 0;
-  padding: 0;
+/* 名额 / 单位 */
+.inline-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
 }
 
+.inline-unit {
+  font-size: 24rpx;
+  color: $ed-color-text-secondary;
+}
+
+/* 可退款开关行 */
 .switch-field {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  min-height: 64rpx;
+  gap: 20rpx;
+  min-height: 72rpx;
+}
+
+.switch-copy {
+  flex: 1;
 }
 
 .switch-label {
+  display: block;
   font-size: 28rpx;
+  font-weight: 500;
+  line-height: 1.4;
   color: $ed-color-text;
-  line-height: 1.5;
 }
 
-.field-hint,
-.place-coord {
+.field-hint {
   display: block;
-  margin-top: 8rpx;
+  margin-top: 6rpx;
   font-size: 22rpx;
+  line-height: 1.45;
   color: $ed-color-text-muted;
+}
+
+/* 底部固定操作栏 */
+.action-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  padding: 18rpx $ed-space-page-x calc(18rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background: $ed-color-surface;
+  border-top: 1rpx solid $ed-color-border;
+}
+
+.action-row {
+  display: flex;
+  gap: 16rpx;
+}
+
+.action-row button {
+  margin: 0;
+  font-weight: 600;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 0;
+  height: 88rpx;
+  font-size: 28rpx;
+  line-height: 88rpx;
+}
+
+.action-btn--primary {
+  flex: 1.35;
+}
+
+button[disabled] {
+  opacity: 0.5;
+}
+
+/* uni-ui 组件对齐设计 token */
+:deep(.uni-forms) {
+  width: 100%;
+}
+
+:deep(.uni-forms-item) {
+  margin-bottom: 26rpx;
+}
+
+:deep(.uni-forms-item__label) {
+  height: auto;
+  padding: 0 0 12rpx;
+  font-size: 24rpx;
+  font-weight: 500;
   line-height: 1.4;
+  color: $ed-color-text-secondary;
+}
+
+:deep(.uni-forms-item__label.no-label) {
+  height: 0;
+  padding: 0;
+}
+
+:deep(.uni-forms-item__label .is-required) {
+  margin-right: 4rpx;
+  font-weight: 500;
+  color: $ed-color-accent;
+}
+
+/* 错误文案改为文档流内显示，避免盖住控件 */
+:deep(.uni-forms-item__error) {
+  position: static;
+  padding-top: 10rpx;
+  transform: none;
+  font-size: 22rpx;
+  line-height: 1.4;
+  color: $ed-color-terracotta;
+}
+
+:deep(.uni-forms-item__error.msg--active) {
+  transform: none;
 }
 
 :deep(.uni-easyinput__content.is-input-border) {
+  min-height: 84rpx;
+  background-color: $ed-color-surface;
   border-radius: $ed-radius-input !important;
 }
 
@@ -914,21 +1175,100 @@ button[disabled] {
   background-color: $ed-color-surface;
 }
 
-:deep(.uni-select),
-:deep(.uni-date-x),
-:deep(.uni-date-x--border) {
+:deep(.uni-easyinput__content-input) {
+  height: 84rpx;
+  font-size: 28rpx;
+  color: $ed-color-text;
+}
+
+:deep(.uni-easyinput__placeholder-class) {
+  font-size: 26rpx;
+  color: $ed-color-text-muted;
+}
+
+:deep(.uni-easyinput__content-textarea) {
+  min-height: 200rpx;
+  padding: 20rpx 0;
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: $ed-color-text;
+}
+
+:deep(.uni-select) {
+  min-height: 84rpx;
+  padding: 0 20rpx;
   border-radius: $ed-radius-input !important;
   border-color: $ed-color-border !important;
   background-color: $ed-color-surface !important;
 }
 
+:deep(.uni-select__input-text) {
+  font-size: 28rpx;
+  color: $ed-color-text;
+}
+
+:deep(.uni-select__input-text.uni-select__input-placeholder) {
+  font-size: 26rpx;
+  color: $ed-color-text-muted;
+}
+
+:deep(.uni-date-editor--x) {
+  width: 100%;
+}
+
+:deep(.uni-date-x),
+:deep(.uni-date-x--border) {
+  min-height: 84rpx;
+  border-radius: $ed-radius-input !important;
+  border-color: $ed-color-border !important;
+  background-color: $ed-color-surface !important;
+}
+
+:deep(.uni-date__x-input) {
+  height: 82rpx;
+  font-size: 28rpx;
+  line-height: 82rpx;
+  color: $ed-color-text;
+}
+
+:deep(.uni-numbox) {
+  overflow: hidden;
+  background: $ed-color-surface;
+  border: 1rpx solid $ed-color-border;
+  border-radius: $ed-radius-input;
+}
+
+:deep(.uni-numbox-btns) {
+  padding: 0 26rpx;
+  background: $ed-color-btn-secondary;
+}
+
+:deep(.uni-numbox--text) {
+  font-size: 32rpx;
+  line-height: 40rpx;
+  color: $ed-color-text;
+}
+
+:deep(.uni-numbox__value) {
+  width: 96rpx;
+  height: 76rpx;
+  margin: 0;
+  font-size: 28rpx;
+  color: $ed-color-text;
+  background: $ed-color-surface;
+}
+
 :deep(.uni-data-checklist .checklist-group .checklist-box.is--tag) {
-  border-radius: $ed-radius-tag !important;
+  min-height: 72rpx;
+  padding: 0 40rpx;
+  border-radius: $ed-radius-pill !important;
   border-color: $ed-color-border !important;
   background-color: $ed-color-btn-secondary !important;
 }
 
 :deep(.uni-data-checklist .checklist-group .checklist-box.is--tag .checklist-text) {
+  font-size: 26rpx;
+  line-height: 72rpx;
   color: $ed-color-text;
 }
 
@@ -940,4 +1280,11 @@ button[disabled] {
 :deep(.uni-data-checklist .checklist-group .checklist-box.is--tag.is-checked .checklist-text) {
   color: rgba(255, 255, 255, 0.95) !important;
 }
+
+:deep(.switch-item .uni-forms-item__label) {
+  display: none;
+  height: 0;
+  padding: 0;
+}
 </style>
+
