@@ -60,6 +60,7 @@ import {
   getPublicActivity,
   type PublicActivity,
 } from "@/api/public-activities";
+import { requestRegistrationSubscribe } from "@/adapters/subscribe";
 import { createRegistration } from "@/api/registrations";
 import { useUserStore } from "@/stores/user";
 import { contactDiffersFromPrefill } from "@/utils/contact-prefill";
@@ -216,12 +217,24 @@ async function onSubmit() {
     return;
   }
 
+  // 未登录时登录弹窗会打断微信手势，本次点击只登录，用户再点提交时才申请订阅授权
+  if (!user.isLoggedIn) {
+    await user.promptLogin("登录后才能报名");
+    return;
+  }
+  // 已登录仍需走 promptLogin，保留资料未完善时的引导
   if (!(await user.promptLogin("登录后才能报名"))) return;
 
   const submitted = {
     name: name.value.trim(),
     phone: phone.value.trim(),
   };
+
+  try {
+    await requestRegistrationSubscribe();
+  } catch {
+    // 授权失败不阻塞报名
+  }
 
   submitting.value = true;
   try {

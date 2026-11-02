@@ -3,6 +3,8 @@
 interface ImportMetaEnv {
   readonly VITE_API_BASE?: string
   readonly VITE_AUTH_DEV_BYPASS?: string
+  readonly VITE_WEIXIN_SUBSCRIBE_TMPL_REGISTRATION_CONFIRMED?: string
+  readonly VITE_WEIXIN_SUBSCRIBE_TMPL_ACTIVITY_STARTING?: string
 }
 
 interface ImportMeta {
