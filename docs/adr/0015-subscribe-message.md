@@ -1,6 +1,6 @@
 # ADR-0015: 报名成功与活动开始订阅消息
 
-- **状态：** Accepted
+- **状态：** Implemented
 - **日期：** 2026-11-02
 - **关联：** roadmap P1-4、[ADR-0007](./0007-registration-idempotency-and-capacity.md)、[ADR-0010](./0010-backend-ops-stack.md)、[ADR-0014](./0014-paid-registration-and-settlement.md)
 - **设计规格：** [docs/superpowers/specs/2026-11-02-subscribe-message-design.md](../superpowers/specs/2026-11-02-subscribe-message-design.md)
@@ -34,9 +34,30 @@ P1-3 已能收费报名、退款、结算入账，但用户收不到服务通知
 
 - 正面：报名闭环有服务通知；开场前可提醒；不碰支付状态机与提现。
 - 负面 / 跟进：须在微信公众平台申请两个一次性模板；真机才能验弹窗；开发旁路无真实 openId 时只能 `skipped`。
-- 实现完成后本 ADR → `Implemented`。分类筛选、举报、看板仍后置。
+- 实现已合入 `feat/p1-4-subscribe-message`；真机验收见实现备注清单。分类筛选、举报、看板仍后置。
 
 ## 实现备注
 
-- 涉及：`packages/shared`（kind 枚举）；`apps/api`（`SubscribeMessageJob`、入队钩子、扫描器、微信发送端口）；`apps/mp`（`adapters/subscribe.ts`、报名页点击）。Admin 不改。
-- 验收：见规格 §8。
+Admin 不改。验收标准见规格 §8。
+
+### 入口
+
+- shared（kind 枚举）：`packages/shared/src/subscribe-message.ts`
+- job / 扫描 / 发送：`apps/api/src/subscribe-messages/`
+- 免费报名确认入队：`apps/api/src/registrations/registrations.service.ts`
+- 收费报名支付成功入队：`apps/api/src/payments/payments.service.ts`
+- 关闭 / 取消作废 job：`apps/api/src/registrations/prisma-registration-cancel.hook.ts`；退款路径见 `apps/api/src/payments/payments.service.ts`
+- mp：`apps/mp/src/adapters/subscribe.ts`、`apps/mp/src/pages/register/index.vue`
+- 环境变量：`apps/api/.env.example` 中 `WEIXIN_SUBSCRIBE_TMPL_*`（及 `WEIXIN_SUBSCRIBE_MINIPROGRAM_STATE`）；`apps/mp/.env.example` 中 `VITE_WEIXIN_SUBSCRIBE_TMPL_*`
+
+### 待真机/开发者工具验收
+
+以下需在微信开发者工具或真机手测，自动化环境未执行：
+
+1. 微信：配置两个 tmplId，点报名，弹窗同意两个，免费报名后服务通知出现报名成功（扫描约 1 分钟内）。
+2. 只开「开场提醒」：报名成功，无报名成功通知，不报错。
+3. 全拒：报名成功。
+4. 收费：待支付不通知；支付成功后才入队。
+5. H5：无授权弹窗，报名成功。
+6. 取消报名后，开场提醒不再发送。
+7. 模板 ID 留空：报名成功，job 扫描后 `skipped`。

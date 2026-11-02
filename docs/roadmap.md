@@ -163,11 +163,11 @@
 
 ## P1-4 订阅消息（报名成功 / 开场提醒）
 
-**ADR：** [0015](./adr/0015-subscribe-message.md)（Accepted）  
+**ADR：** [0015](./adr/0015-subscribe-message.md)（Implemented）  
 **设计：** [docs/superpowers/specs/2026-11-02-subscribe-message-design.md](./superpowers/specs/2026-11-02-subscribe-message-design.md)
 
-- [ ] 报名点击一次授权两个一次性模板（适配层；H5 空操作）  
-- [ ] `confirmed` 入队 + 进程内扫描发送（开始前 1 小时；失败不挡报名）  
+- [x] 报名点击一次授权两个一次性模板（适配层；H5 空操作）  
+- [x] `confirmed` 入队 + 进程内扫描发送（开始前 1 小时；失败不挡报名）  
 
 **验收：** 见设计规格 §8。支付结果通知、取消/退款通知不做。计划：[docs/superpowers/plans/2026-11-02-subscribe-message.md](./superpowers/plans/2026-11-02-subscribe-message.md)
 

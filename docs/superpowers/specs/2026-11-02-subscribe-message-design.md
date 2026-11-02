@@ -1,7 +1,7 @@
 # 报名成功与活动开始订阅消息设计规格
 
 - **日期：** 2026-11-02
-- **状态：** Accepted（[ADR-0015](../../adr/0015-subscribe-message.md)）
+- **状态：** Implemented（[ADR-0015](../../adr/0015-subscribe-message.md)）
 - **关联 ADR：** [0015](../../adr/0015-subscribe-message.md)
 - **关联：** roadmap P1-4；[ADR-0007](../../adr/0007-registration-idempotency-and-capacity.md)、[ADR-0010](../../adr/0010-backend-ops-stack.md)、[ADR-0014](../../adr/0014-paid-registration-and-settlement.md)
 - **范围：** 微信一次性订阅：报名成功通知、活动开始前 1 小时提醒。授权在报名点击时一次要两个模板。
