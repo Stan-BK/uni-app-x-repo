@@ -172,6 +172,7 @@
 
 ## 9. 文档顺序
 
-写代码前：本规格审阅通过后，将 ADR-0015 改为 `Accepted`。roadmap P1-4 与 PRD D-13 已写入，实现完成后勾选。
+写代码前：本规格审阅通过后，将 ADR-0015 改为 `Accepted`。roadmap P1-4 与 PRD D-13 已写入。
+实现已完成：ADR-0015 为 `Implemented`，roadmap P1-4 已勾选。
 
 分类筛选、举报、看板不在本期。
