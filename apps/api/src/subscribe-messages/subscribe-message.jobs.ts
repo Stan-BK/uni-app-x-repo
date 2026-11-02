@@ -5,10 +5,13 @@ import {
   SubscribeMessageJobStatus,
   SubscribeMessageKind as PrismaSubscribeKind,
 } from "@prisma/client";
+import { PrismaService } from "../prisma/prisma.service";
 import { computeJobDueAt } from "./subscribe-message.schedule";
 
 @Injectable()
 export class SubscribeMessageJobs {
+  constructor(private readonly prisma: PrismaService) {}
+
   async enqueueForConfirmed(
     tx: Prisma.TransactionClient,
     input: { registrationId: string; startAt: Date | null; now: Date },
@@ -55,6 +58,16 @@ export class SubscribeMessageJobs {
     activityId: string,
   ): Promise<void> {
     await tx.subscribeMessageJob.updateMany({
+      where: {
+        status: SubscribeMessageJobStatus.pending,
+        registration: { activityId },
+      },
+      data: { status: SubscribeMessageJobStatus.cancelled },
+    });
+  }
+
+  async cancelPendingForActivityId(activityId: string): Promise<void> {
+    await this.prisma.subscribeMessageJob.updateMany({
       where: {
         status: SubscribeMessageJobStatus.pending,
         registration: { activityId },

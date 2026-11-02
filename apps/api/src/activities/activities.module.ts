@@ -4,12 +4,18 @@ import { CanPublishGuard } from "../common/guards/can-publish.guard";
 import { PaymentsModule } from "../payments/payments.module";
 import { PrismaRegistrationCancelHook } from "../registrations/prisma-registration-cancel.hook";
 import { RegistrationsModule } from "../registrations/registrations.module";
+import { SubscribeMessagesModule } from "../subscribe-messages/subscribe-messages.module";
 import { ActivitiesController } from "./activities.controller";
 import { ActivitiesService } from "./activities.service";
 import { REGISTRATION_CANCEL_HOOK } from "./registration-cancel.hook";
 
 @Module({
-  imports: [AuthModule, RegistrationsModule, PaymentsModule],
+  imports: [
+    AuthModule,
+    RegistrationsModule,
+    PaymentsModule,
+    SubscribeMessagesModule,
+  ],
   controllers: [ActivitiesController],
   providers: [
     ActivitiesService,

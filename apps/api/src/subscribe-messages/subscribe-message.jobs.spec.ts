@@ -10,13 +10,19 @@ describe("SubscribeMessageJobs", () => {
       updateMany: vi.fn(),
     },
   };
-  const jobs = new SubscribeMessageJobs();
+  const prismaMock = {
+    subscribeMessageJob: {
+      updateMany: vi.fn(),
+    },
+  };
+  const jobs = new SubscribeMessageJobs(prismaMock as never);
   const now = new Date("2030-06-01T12:00:00.000Z");
 
   beforeEach(() => {
     vi.clearAllMocks();
     tx.subscribeMessageJob.upsert.mockResolvedValue({});
     tx.subscribeMessageJob.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.subscribeMessageJob.updateMany.mockResolvedValue({ count: 1 });
   });
 
   it("enqueues confirmed and starting when startAt exists", async () => {
@@ -62,6 +68,17 @@ describe("SubscribeMessageJobs", () => {
   it("cancels pending jobs for an activity", async () => {
     await jobs.cancelPendingForActivity(tx as never, "act1");
     expect(tx.subscribeMessageJob.updateMany).toHaveBeenCalledWith({
+      where: {
+        status: SubscribeMessageJobStatus.pending,
+        registration: { activityId: "act1" },
+      },
+      data: { status: SubscribeMessageJobStatus.cancelled },
+    });
+  });
+
+  it("cancels pending jobs for an activity id without tx", async () => {
+    await jobs.cancelPendingForActivityId("act1");
+    expect(prismaMock.subscribeMessageJob.updateMany).toHaveBeenCalledWith({
       where: {
         status: SubscribeMessageJobStatus.pending,
         registration: { activityId: "act1" },

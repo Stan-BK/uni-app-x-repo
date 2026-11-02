@@ -2,6 +2,8 @@ import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { PrismaModule } from "../prisma/prisma.module";
 import { PrismaService } from "../prisma/prisma.service";
+import { SubscribeMessageJobs } from "../subscribe-messages/subscribe-message.jobs";
+import { SubscribeMessagesModule } from "../subscribe-messages/subscribe-messages.module";
 import { FakeWechatPay } from "./fake-wechat-pay";
 import { PaymentExpiryScanner } from "./payment-expiry.scanner";
 import { PaymentsController } from "./payments.controller";
@@ -13,7 +15,7 @@ import {
 import { WECHAT_PAY_PORT, type WechatPayPort } from "./wechat-pay.port";
 
 @Module({
-  imports: [PrismaModule, ConfigModule],
+  imports: [PrismaModule, ConfigModule, SubscribeMessagesModule],
   controllers: [PaymentsController],
   providers: [
     {
@@ -32,8 +34,15 @@ import { WECHAT_PAY_PORT, type WechatPayPort } from "./wechat-pay.port";
         prisma: PrismaService,
         wechatPay: WechatPayPort,
         config: ConfigService,
-      ): PaymentsService => new PaymentsService(prisma, wechatPay, config),
-      inject: [PrismaService, WECHAT_PAY_PORT, ConfigService],
+        subscribeMessageJobs: SubscribeMessageJobs,
+      ): PaymentsService =>
+        new PaymentsService(prisma, wechatPay, config, subscribeMessageJobs),
+      inject: [
+        PrismaService,
+        WECHAT_PAY_PORT,
+        ConfigService,
+        SubscribeMessageJobs,
+      ],
     },
     PaymentExpiryScanner,
   ],

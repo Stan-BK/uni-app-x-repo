@@ -8,6 +8,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PaymentsService } from "../payments/payments.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { SubscribeMessageJobs } from "../subscribe-messages/subscribe-message.jobs";
 import { PrismaRegistrationCancelHook } from "./prisma-registration-cancel.hook";
 
 describe("PrismaRegistrationCancelHook", () => {
@@ -15,6 +16,9 @@ describe("PrismaRegistrationCancelHook", () => {
   const paymentsService = {
     closeUnpaidForActivity: vi.fn(),
     refundPaid: vi.fn(),
+  };
+  const subscribeMessageJobs = {
+    cancelPendingForActivityId: vi.fn(),
   };
   const prisma = {
     registration: { updateMany: vi.fn() },
@@ -28,6 +32,7 @@ describe("PrismaRegistrationCancelHook", () => {
         PrismaRegistrationCancelHook,
         { provide: PrismaService, useValue: prisma },
         { provide: PaymentsService, useValue: paymentsService },
+        { provide: SubscribeMessageJobs, useValue: subscribeMessageJobs },
       ],
     }).compile();
     hook = moduleRef.get(PrismaRegistrationCancelHook);
@@ -52,6 +57,9 @@ describe("PrismaRegistrationCancelHook", () => {
     });
     expect(args.data.status).toBe(RegistrationStatus.cancelled);
     expect(args.data.cancelledAt).toBeInstanceOf(Date);
+    expect(subscribeMessageJobs.cancelPendingForActivityId).toHaveBeenCalledWith(
+      "act-1",
+    );
   });
 
   it("closeActivity closes unpaid, refunds paid without succeeded refund, cancels free confirmed", async () => {
@@ -97,6 +105,9 @@ describe("PrismaRegistrationCancelHook", () => {
         cancelledAt: expect.any(Date),
       },
     });
+    expect(subscribeMessageJobs.cancelPendingForActivityId).toHaveBeenCalledWith(
+      "act-1",
+    );
   });
 
   it("closeActivity throws when paid orders remain without succeeded refund", async () => {
@@ -114,5 +125,8 @@ describe("PrismaRegistrationCancelHook", () => {
       "activity_closed",
     );
     expect(prisma.registration.updateMany).not.toHaveBeenCalled();
+    expect(
+      subscribeMessageJobs.cancelPendingForActivityId,
+    ).not.toHaveBeenCalled();
   });
 });

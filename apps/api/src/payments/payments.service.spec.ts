@@ -8,6 +8,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PrismaService } from "../prisma/prisma.service";
 import { FakeWechatPay } from "./fake-wechat-pay";
+import type { SubscribeMessageJobs } from "../subscribe-messages/subscribe-message.jobs";
 import { PaymentsService } from "./payments.service";
 
 describe("PaymentsService", () => {
@@ -25,6 +26,7 @@ describe("PaymentsService", () => {
     },
     registration: {
       update: vi.fn(),
+      findUnique: vi.fn(),
     },
     refund: {
       update: vi.fn(),
@@ -35,6 +37,13 @@ describe("PaymentsService", () => {
       findUnique: vi.fn(),
     },
   };
+
+  const subscribeMessageJobs = {
+    enqueueForConfirmed: vi.fn(),
+    cancelPendingForRegistration: vi.fn(),
+  };
+
+  const activityStartAt = new Date("2030-07-01T00:00:00.000Z");
 
   const prisma = {
     $transaction: vi.fn(async (fn: (t: typeof tx) => Promise<unknown>) =>
@@ -115,14 +124,19 @@ describe("PaymentsService", () => {
     vi.clearAllMocks();
     tx.activity.findUnique.mockResolvedValue({
       id: "act1",
+      startAt: activityStartAt,
       endAt: futureExpire,
       settlement: null,
+    });
+    tx.registration.findUnique.mockResolvedValue({
+      activity: { startAt: activityStartAt },
     });
     wechatPay = new FakeWechatPay();
     service = new PaymentsService(
       prisma as unknown as PrismaService,
       wechatPay,
       config as unknown as ConfigService,
+      subscribeMessageJobs as unknown as SubscribeMessageJobs,
       { wechatPayMchId: MCH_ID, wechatPayAppId: APP_ID },
     );
   });
@@ -249,6 +263,14 @@ describe("PaymentsService", () => {
           },
         }),
       );
+      expect(subscribeMessageJobs.enqueueForConfirmed).toHaveBeenCalledWith(
+        tx,
+        expect.objectContaining({
+          registrationId: "reg1",
+          startAt: activityStartAt,
+          now: expect.any(Date),
+        }),
+      );
     });
   });
 
@@ -324,6 +346,7 @@ describe("PaymentsService", () => {
       expect(prisma.$transaction).not.toHaveBeenCalled();
       expect(tx.paymentOrder.update).not.toHaveBeenCalled();
       expect(tx.registration.update).not.toHaveBeenCalled();
+      expect(subscribeMessageJobs.enqueueForConfirmed).not.toHaveBeenCalled();
     });
 
     it("ignores amount and mch mismatch when payment is already paid", async () => {
@@ -344,6 +367,7 @@ describe("PaymentsService", () => {
       ).resolves.toBeUndefined();
 
       expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(subscribeMessageJobs.enqueueForConfirmed).not.toHaveBeenCalled();
     });
 
     it("recovers closed payment and cancelled registration on confirmPaid", async () => {
@@ -388,6 +412,33 @@ describe("PaymentsService", () => {
           },
         }),
       );
+      expect(subscribeMessageJobs.enqueueForConfirmed).toHaveBeenCalledWith(
+        tx,
+        expect.objectContaining({
+          registrationId: "reg1",
+          startAt: activityStartAt,
+          now: expect.any(Date),
+        }),
+      );
+    });
+
+    it("does not enqueue when transaction sees order already paid", async () => {
+      prisma.paymentOrder.findUnique.mockResolvedValue(basePaymentOrder);
+      tx.paymentOrder.findUnique.mockResolvedValue({
+        ...basePaymentOrder,
+        status: PaymentOrderStatus.paid,
+      });
+
+      await service.confirmPaid({
+        outTradeNo: "PO-ORIGINAL",
+        amountCents: 100,
+        transactionId: "wx-txn-race",
+        appId: APP_ID,
+        mchId: MCH_ID,
+      });
+
+      expect(tx.registration.update).not.toHaveBeenCalled();
+      expect(subscribeMessageJobs.enqueueForConfirmed).not.toHaveBeenCalled();
     });
   });
 
@@ -458,6 +509,34 @@ describe("PaymentsService", () => {
           }),
         }),
       );
+      expect(subscribeMessageJobs.enqueueForConfirmed).toHaveBeenCalledWith(
+        tx,
+        expect.objectContaining({
+          registrationId: "reg1",
+          startAt: activityStartAt,
+        }),
+      );
+    });
+
+    it("does not enqueue when confirmPaidInTransaction sees already paid", async () => {
+      prisma.paymentOrder.findUnique.mockResolvedValue({
+        ...basePaymentOrder,
+        expireAt: pastExpire,
+      });
+      tx.paymentOrder.findUnique.mockResolvedValue({
+        ...basePaymentOrder,
+        status: PaymentOrderStatus.paid,
+      });
+      vi.spyOn(wechatPay, "query").mockResolvedValue({
+        tradeState: "SUCCESS",
+        transactionId: "wx-txn-1",
+        amountCents: 100,
+      });
+
+      await service.closeIfExpired("pay1", baseNow);
+
+      expect(tx.registration.update).not.toHaveBeenCalled();
+      expect(subscribeMessageJobs.enqueueForConfirmed).not.toHaveBeenCalled();
     });
 
     it("keeps pending_payment when close throws", async () => {
@@ -503,6 +582,9 @@ describe("PaymentsService", () => {
           }),
         }),
       );
+      expect(
+        subscribeMessageJobs.cancelPendingForRegistration,
+      ).toHaveBeenCalledWith(tx, "reg1");
     });
 
     it("reuses existing refund when create hits unique constraint", async () => {
@@ -552,6 +634,9 @@ describe("PaymentsService", () => {
       );
       expect(tx.paymentOrder.update).not.toHaveBeenCalled();
       expect(tx.registration.update).not.toHaveBeenCalled();
+      expect(
+        subscribeMessageJobs.cancelPendingForRegistration,
+      ).not.toHaveBeenCalled();
     });
   });
 });

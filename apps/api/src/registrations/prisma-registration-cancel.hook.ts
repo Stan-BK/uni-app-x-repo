@@ -8,6 +8,7 @@ import {
 import { type RegistrationCancelHook } from "../activities/registration-cancel.hook";
 import { PaymentsService } from "../payments/payments.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { SubscribeMessageJobs } from "../subscribe-messages/subscribe-message.jobs";
 
 const REFUND_INCOMPLETE_MESSAGE = "退款未完成，请稍后重试";
 
@@ -16,6 +17,7 @@ export class PrismaRegistrationCancelHook implements RegistrationCancelHook {
   constructor(
     private readonly prisma: PrismaService,
     private readonly paymentsService: PaymentsService,
+    private readonly subscribeMessageJobs: SubscribeMessageJobs,
   ) {}
 
   async cancelAllForActivity(activityId: string): Promise<void> {
@@ -27,6 +29,7 @@ export class PrismaRegistrationCancelHook implements RegistrationCancelHook {
       },
       data: { status: RegistrationStatus.cancelled, cancelledAt: new Date() },
     });
+    await this.subscribeMessageJobs.cancelPendingForActivityId(activityId);
   }
 
   private paidWithoutSucceededRefund(activityId: string) {
@@ -65,5 +68,6 @@ export class PrismaRegistrationCancelHook implements RegistrationCancelHook {
       },
       data: { status: RegistrationStatus.cancelled, cancelledAt: new Date() },
     });
+    await this.subscribeMessageJobs.cancelPendingForActivityId(activityId);
   }
 }

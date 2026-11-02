@@ -16,6 +16,7 @@ import {
   type PaymentOrder,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { SubscribeMessageJobs } from "../subscribe-messages/subscribe-message.jobs";
 import type { ClientPayParams, WechatPayPort } from "./wechat-pay.port";
 import { WechatOutTradeNoUsedError } from "./wechat-pay.port";
 
@@ -45,6 +46,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly wechatPay: WechatPayPort,
     config: ConfigService,
+    private readonly subscribeMessageJobs: SubscribeMessageJobs,
     options?: PaymentsServiceOptions,
   ) {
     this.wechatPayMchId =
@@ -227,6 +229,15 @@ export class PaymentsService {
           cancelledAt: null,
         },
       });
+      const activity = await tx.activity.findUnique({
+        where: { id: order.registration.activityId },
+        select: { startAt: true },
+      });
+      await this.subscribeMessageJobs.enqueueForConfirmed(tx, {
+        registrationId: order.registrationId,
+        startAt: activity?.startAt ?? null,
+        now,
+      });
     });
   }
 
@@ -309,6 +320,10 @@ export class PaymentsService {
             cancelledAt: now,
           },
         });
+        await this.subscribeMessageJobs.cancelPendingForRegistration(
+          tx,
+          order.registrationId,
+        );
       });
       return;
     }
@@ -580,6 +595,15 @@ export class PaymentsService {
           status: RegistrationStatus.confirmed,
           cancelledAt: null,
         },
+      });
+      const registration = await tx.registration.findUnique({
+        where: { id: order.registrationId },
+        select: { activity: { select: { startAt: true } } },
+      });
+      await this.subscribeMessageJobs.enqueueForConfirmed(tx, {
+        registrationId: order.registrationId,
+        startAt: registration?.activity.startAt ?? null,
+        now: paidAt,
       });
       confirmed = true;
     });
