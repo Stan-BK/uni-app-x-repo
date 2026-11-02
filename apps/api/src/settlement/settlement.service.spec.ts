@@ -22,6 +22,7 @@ import {
 import { FakeWechatPay } from "../payments/fake-wechat-pay";
 import { PaymentsService } from "../payments/payments.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { SubscribeMessageJobs } from "../subscribe-messages/subscribe-message.jobs";
 import { SettlementService } from "./settlement.service";
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -62,6 +63,7 @@ describeDb("SettlementService", () => {
       prisma,
       wechatPay,
       config as unknown as ConfigService,
+      new SubscribeMessageJobs(prisma),
     );
     settlementService = new SettlementService(prisma, paymentsService);
   });
