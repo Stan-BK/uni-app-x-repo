@@ -28,6 +28,7 @@ import { computeDisplayStatus } from "../public-activities/public-activity.mappe
 import { PAYMENT_HOLD_MS } from "../payments/payment.constants";
 import { PaymentsService } from "../payments/payments.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { SubscribeMessageJobs } from "../subscribe-messages/subscribe-message.jobs";
 import {
   toRegistrationDto,
   type CreateRegistrationDto,
@@ -81,6 +82,7 @@ export class RegistrationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly paymentsService: PaymentsService,
+    private readonly subscribeMessageJobs: SubscribeMessageJobs,
   ) {}
 
   async create(userId: string, input: CreateRegistrationInput) {
@@ -191,6 +193,7 @@ export class RegistrationsService {
             name,
             phone,
             existing,
+            activity.startAt,
           ),
         } satisfies CreateTxResult;
       }
@@ -353,6 +356,7 @@ export class RegistrationsService {
           cancelledAt: new Date(),
         },
       });
+      await this.subscribeMessageJobs.cancelPendingForRegistration(tx, id);
       return toRegistrationDto(updated);
     });
   }
@@ -596,6 +600,7 @@ export class RegistrationsService {
     name: string,
     phone: string,
     existing: Registration | null,
+    startAt: Date | null,
   ): Promise<CreateRegistrationDto> {
     if (existing?.status === RegistrationStatus.cancelled) {
       const updated = await tx.registration.update({
@@ -606,6 +611,11 @@ export class RegistrationsService {
           phone,
           cancelledAt: null,
         },
+      });
+      await this.subscribeMessageJobs.enqueueForConfirmed(tx, {
+        registrationId: updated.id,
+        startAt,
+        now: new Date(),
       });
       return this.toCreateDto(updated, {
         alreadyRegistered: false,
@@ -627,6 +637,11 @@ export class RegistrationsService {
       event: BusinessEvent.RegistrationCreate,
       actorId: userId,
       targetId: created.id,
+    });
+    await this.subscribeMessageJobs.enqueueForConfirmed(tx, {
+      registrationId: created.id,
+      startAt,
+      now: new Date(),
     });
     return this.toCreateDto(created, {
       alreadyRegistered: false,

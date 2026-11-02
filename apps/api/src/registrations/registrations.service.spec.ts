@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PAYMENT_HOLD_MS } from "../payments/payment.constants";
 import { PaymentsService } from "../payments/payments.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { SubscribeMessageJobs } from "../subscribe-messages/subscribe-message.jobs";
 import { RegistrationsService } from "./registrations.service";
 
 describe("RegistrationsService", () => {
@@ -20,6 +21,11 @@ describe("RegistrationsService", () => {
     closeIfExpired: vi.fn(),
     refundPaid: vi.fn(),
     isWechatPayConfigured: vi.fn().mockReturnValue(true),
+  };
+  const subscribeMessageJobs = {
+    enqueueForConfirmed: vi.fn(),
+    cancelPendingForRegistration: vi.fn(),
+    cancelPendingForActivity: vi.fn(),
   };
   const tx = {
     $queryRaw: vi.fn(),
@@ -73,6 +79,7 @@ describe("RegistrationsService", () => {
         RegistrationsService,
         { provide: PrismaService, useValue: prisma },
         { provide: PaymentsService, useValue: paymentsService },
+        { provide: SubscribeMessageJobs, useValue: subscribeMessageJobs },
       ],
     }).compile();
     service = mod.get(RegistrationsService);
@@ -130,6 +137,13 @@ describe("RegistrationsService", () => {
       expect(dto.paymentStatus).toBeNull();
       expect(tx.registration.create).toHaveBeenCalled();
       expect(tx.paymentOrder.create).not.toHaveBeenCalled();
+      expect(subscribeMessageJobs.enqueueForConfirmed).toHaveBeenCalledWith(
+        tx,
+        expect.objectContaining({
+          registrationId: "r1",
+          startAt: publishedFree.startAt,
+        }),
+      );
       const payload = JSON.parse(String(spy.mock.calls.at(-1)?.[0]));
       expect(payload.event).toBe(BusinessEvent.RegistrationCreate);
       expect(payload.targetId).toBe("r1");
@@ -220,8 +234,10 @@ describe("RegistrationsService", () => {
         phone: "13900139000",
       });
       expect(dto.id).toBe("r1");
+      expect(dto.alreadyRegistered).toBe(true);
       expect(tx.registration.create).not.toHaveBeenCalled();
       expect(tx.registration.update).not.toHaveBeenCalled();
+      expect(subscribeMessageJobs.enqueueForConfirmed).not.toHaveBeenCalled();
       const events = spy.mock.calls
         .map((c) => {
           try {
@@ -279,6 +295,13 @@ describe("RegistrationsService", () => {
         }),
       );
       expect(tx.registration.create).not.toHaveBeenCalled();
+      expect(subscribeMessageJobs.enqueueForConfirmed).toHaveBeenCalledWith(
+        tx,
+        expect.objectContaining({
+          registrationId: "r1",
+          startAt: publishedFree.startAt,
+        }),
+      );
       const events = spy.mock.calls
         .map((c) => {
           try {
@@ -440,6 +463,7 @@ describe("RegistrationsService", () => {
           }),
         }),
       );
+      expect(subscribeMessageJobs.enqueueForConfirmed).not.toHaveBeenCalled();
       expect(tx.paymentOrder.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
@@ -841,6 +865,9 @@ describe("RegistrationsService", () => {
     const dto = await service.cancel("u1", "r1");
     expect(dto.status).toBe("cancelled");
     expect(tx.user.update).not.toHaveBeenCalled();
+    expect(
+      subscribeMessageJobs.cancelPendingForRegistration,
+    ).toHaveBeenCalledWith(tx, expect.any(String));
   });
 
   it("cancel forbidden for other user", async () => {
