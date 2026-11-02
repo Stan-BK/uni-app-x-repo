@@ -161,10 +161,22 @@
 
 ---
 
+## P1-4 订阅消息（报名成功 / 开场提醒）
+
+**ADR：** [0015](./adr/0015-subscribe-message.md)（Accepted）  
+**设计：** [docs/superpowers/specs/2026-11-02-subscribe-message-design.md](./superpowers/specs/2026-11-02-subscribe-message-design.md)
+
+- [ ] 报名点击一次授权两个一次性模板（适配层；H5 空操作）  
+- [ ] `confirmed` 入队 + 进程内扫描发送（开始前 1 小时；失败不挡报名）  
+
+**验收：** 见设计规格 §8。支付结果通知、取消/退款通知不做。计划：[docs/superpowers/plans/2026-11-02-subscribe-message.md](./superpowers/plans/2026-11-02-subscribe-message.md)
+
+---
+
 ## P1（后置）
 
-分类等高级筛选、订阅消息、举报、统计看板、活动开始提醒。  
-（标题搜索与开始/发布时间排序已纳入 P0-3；用户取消报名已纳入 P0-4；展示资料见 P1-1；报名预填见 P1-2。）
+分类等高级筛选、举报、统计看板。  
+（标题搜索与开始/发布时间排序已纳入 P0-3；用户取消报名已纳入 P0-4；展示资料见 P1-1；报名预填见 P1-2；订阅消息与开场提醒见 P1-4。）
 
 ## P2 / 独立里程碑
 
