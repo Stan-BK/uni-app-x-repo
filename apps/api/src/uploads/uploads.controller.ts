@@ -9,24 +9,27 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
-import { extname, join } from "path";
+import { join } from "path";
 import { randomUUID } from "crypto";
 import type { Request } from "express";
 import { mkdirSync } from "fs";
 import { UserJwtGuard } from "../common/guards/user-jwt.guard";
 import { CanPublishGuard } from "../common/guards/can-publish.guard";
 
-const ALLOWED_MIME = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-]);
+const MIME_EXT: Record<string, string> = {
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+  "image/gif": ".gif",
+};
+const ALLOWED_MIME = new Set(Object.keys(MIME_EXT));
 
 const coversDir = join(process.cwd(), "uploads", "covers");
 const avatarsDir = join(process.cwd(), "uploads", "avatars");
+const communityDir = join(process.cwd(), "uploads", "community");
 mkdirSync(coversDir, { recursive: true });
 mkdirSync(avatarsDir, { recursive: true });
+mkdirSync(communityDir, { recursive: true });
 
 function publicApiBase(req: Request): string {
   return (
@@ -41,7 +44,8 @@ function imageInterceptor(dir: string, maxBytes: number) {
     storage: diskStorage({
       destination: dir,
       filename: (_req, file, cb) => {
-        const ext = extname(file.originalname || "").toLowerCase() || ".jpg";
+        // 扩展名由已通过 fileFilter 的 MIME 决定，不信任客户端 originalname
+        const ext = MIME_EXT[file.mimetype] ?? ".jpg";
         cb(null, `${randomUUID()}${ext}`);
       },
     }),
@@ -81,5 +85,17 @@ export class UploadsController {
       throw new BadRequestException("请选择头像图片");
     }
     return { url: `${publicApiBase(req)}/uploads/avatars/${file.filename}` };
+  }
+
+  @Post("community")
+  @UseInterceptors(imageInterceptor(communityDir, 2 * 1024 * 1024))
+  uploadCommunity(
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() req: Request,
+  ) {
+    if (!file) {
+      throw new BadRequestException("请选择社区动态图片");
+    }
+    return { url: `${publicApiBase(req)}/uploads/community/${file.filename}` };
   }
 }

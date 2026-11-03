@@ -34,6 +34,24 @@ export function getActivityShareMessage(
   return msg;
 }
 
+export type PostShareSource = {
+  id: string;
+  body: string;
+  images?: { url: string }[];
+};
+
+export function buildPostSharePath(id: string): string {
+  return `/pages/community/detail?id=${encodeURIComponent(id)}`;
+}
+
+export function getPostShareMessage(post: PostShareSource): MpShareMessage {
+  const title = (post.body || "").trim().slice(0, 30) || "社区动态";
+  const msg: MpShareMessage = { title, path: buildPostSharePath(post.id) };
+  const cover = post.images?.[0]?.url?.trim();
+  if (cover) msg.imageUrl = cover;
+  return msg;
+}
+
 function buildH5ShareUrl(id: string): string {
   // #ifdef H5
   const path = buildActivitySharePath(id);

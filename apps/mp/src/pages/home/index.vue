@@ -1,6 +1,14 @@
 <template>
   <view class="page page-l1">
     <EdLeafDeco />
+    <view v-if="user.isLoggedIn" class="home-head">
+      <view class="bell" hover-class="none" @click="goNotifications">
+        <view class="ico-bell" />
+        <view v-if="unreadCount > 0" class="bell-badge">
+          <text class="bell-badge-text">{{ unreadCount > 99 ? "99+" : unreadCount }}</text>
+        </view>
+      </view>
+    </view>
     <EdHotDeck
       v-if="hotItems.length >= 3"
       :items="hotItems"
@@ -181,6 +189,7 @@ import { onPageScroll, onReachBottom, onShow } from "@dcloudio/uni-app";
 import EdTabBar from "@/components/ed-tab-bar/ed-tab-bar.vue";
 import EdHotDeck from "@/components/ed-hot-deck/ed-hot-deck.vue";
 import EdLeafDeco from "@/components/ed-leaf-deco/ed-leaf-deco.vue";
+import { getCommunityUnreadCount } from "@/api/community";
 import {
   listHotPublicActivities,
   listPublicActivities,
@@ -220,6 +229,24 @@ const masonryCols = computed(() => {
   return cols;
 });
 const showEntryFab = ref(false);
+const unreadCount = ref(0);
+
+async function refreshUnread() {
+  if (!user.isLoggedIn) {
+    unreadCount.value = 0;
+    return;
+  }
+  try {
+    unreadCount.value = (await getCommunityUnreadCount()).count;
+  } catch (e) {
+    // 401 时 request 已清 token；其余失败静默保留旧值，避免铃铛打扰首页
+    if (e instanceof ApiError && e.status === 401) unreadCount.value = 0;
+  }
+}
+
+function goNotifications() {
+  uni.navigateTo({ url: "/pages/community/notifications" });
+}
 
 function syncEntryFab() {
   uni
@@ -412,6 +439,7 @@ onShow(() => {
   }
   void loadHot();
   void load({ reset: true });
+  void refreshUnread();
   syncEntryFab();
   setTimeout(syncEntryFab, 50);
   setTimeout(syncEntryFab, 240);
@@ -427,6 +455,64 @@ onReachBottom(() => {
 <style scoped lang="scss">
 $ed-motion-duration: 0.2s !default;
 $ed-motion-ease: cubic-bezier(0.32, 0.72, 0, 1) !default;
+
+.home-head {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8rpx;
+}
+
+.bell {
+  position: relative;
+  width: 72rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: $ed-color-surface;
+  border: 1rpx solid $ed-color-border;
+  color: $ed-color-text-secondary;
+}
+
+.ico-bell {
+  width: 38rpx;
+  height: 38rpx;
+  background-color: currentColor;
+  -webkit-mask-image: url("/static/ico/bell.svg");
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  mask-image: url("/static/ico/bell.svg");
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
+.bell-badge {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  min-width: 32rpx;
+  height: 32rpx;
+  padding: 0 8rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16rpx;
+  background: $ed-color-accent;
+  border: 2rpx solid $ed-color-surface;
+}
+
+.bell-badge-text {
+  font-size: 20rpx;
+  line-height: 1;
+  font-weight: 700;
+  color: #ffffff;
+}
 
 .toolbar {
   margin-bottom: 24rpx;

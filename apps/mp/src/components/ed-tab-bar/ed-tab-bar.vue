@@ -30,11 +30,12 @@ import { onShow } from "@dcloudio/uni-app";
 type TabItem = {
   path: string;
   text: string;
-  icon: "ticket" | "mine";
+  icon: "ticket" | "community" | "mine";
 };
 
 const tabs: TabItem[] = [
   { path: "/pages/home/index", text: "首页", icon: "ticket" },
+  { path: "/pages/community/index", text: "社区", icon: "community" },
   { path: "/pages/mine/registrations", text: "我的", icon: "mine" },
 ];
 
@@ -220,6 +221,31 @@ onShow(() => {
   border-bottom: 0;
   border-radius: 14rpx 14rpx 0 0;
   box-sizing: border-box;
+}
+
+.ed-tab__glyph.is-community {
+  width: 54rpx;
+  height: 44rpx;
+  border: 4rpx solid currentColor;
+  border-radius: 14rpx;
+}
+
+.ed-tab__glyph.is-community::before {
+  content: "";
+  position: absolute;
+  left: 8rpx;
+  right: 8rpx;
+  top: 10rpx;
+  height: 4rpx;
+  background: currentColor;
+  border-radius: 2rpx;
+  box-shadow: 0 10rpx 0 currentColor;
+}
+
+.ed-tab__glyph.is-flat.is-community {
+  width: 46rpx;
+  height: 36rpx;
+  margin-bottom: 10rpx;
 }
 
 .ed-tab__glyph.is-flat.is-ticket {

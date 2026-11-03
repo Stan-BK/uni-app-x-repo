@@ -4,3 +4,4 @@ export * from "./activity";
 export * from "./audit";
 export * from "./observability";
 export * from "./subscribe-message";
+export * from "./community";
