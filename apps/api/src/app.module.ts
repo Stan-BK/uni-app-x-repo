@@ -6,6 +6,7 @@ import { AdminAuditLogsModule } from "./admin-audit-logs/admin-audit-logs.module
 import { AdminAuthModule } from "./admin-auth/admin-auth.module";
 import { AdminUsersModule } from "./admin-users/admin-users.module";
 import { AuthModule } from "./auth/auth.module";
+import { CommunityModule } from "./community/community.module";
 import { HealthModule } from "./health/health.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { PaymentsModule } from "./payments/payments.module";
@@ -28,6 +29,7 @@ import { UploadsModule } from "./uploads/uploads.module";
     RegistrationsModule,
     SubscribeMessagesModule,
     UploadsModule,
+    CommunityModule,
     AdminAuthModule,
     AdminUsersModule,
     AdminActivitiesModule,
