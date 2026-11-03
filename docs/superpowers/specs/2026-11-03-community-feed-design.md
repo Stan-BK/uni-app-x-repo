@@ -1,7 +1,7 @@
 # 社区动态设计规格
 
 - **日期：** 2026-11-03
-- **状态：** Accepted（配套 [ADR-0016](../../adr/0016-community-feed.md)；实现计划见下）
+- **状态：** Implemented（配套 [ADR-0016](../../adr/0016-community-feed.md)；实现计划见下）
 - **实现计划：** [动态基座](../plans/2026-11-03-community-feed-posts.md)、[互动与通知](../plans/2026-11-03-community-feed-engagement.md)
 - **关联 ADR：** [0016](../../adr/0016-community-feed.md)；活动可见性 [0006](../../adr/0006-activity-discovery-and-public-visibility.md)；上传基线 [0012](../../adr/0012-user-profile-display.md)；运维 [0010](../../adr/0010-backend-ops-stack.md)
 - **关联：** roadmap **P1-5**
@@ -294,8 +294,10 @@ Admin 列表 UI 后置打磨；API 本期必备。
 
 ## 9. 实现落点（指导，非本期文档任务）
 
-- `packages/shared`：社区枚举、热度常量、DTO
-- `apps/api`：`community` 模块 + Prisma models + uploads/community
-- `apps/mp`：社区页面、tabBar、首页铃铛、我的入口、share 适配
+- `packages/shared/src/community.ts`：社区枚举、热度常量、DTO
+- `apps/api/src/community/`：动态、评论、点赞、通知模块；`apps/api/src/admin-community/`：运营软删；`apps/api/prisma/schema.prisma`：数据模型
+- `apps/mp/src/pages/community/`：Feed、发布、详情互动、我的动态、通知；`apps/mp/src/pages/home/index.vue`：首页铃铛；`apps/mp/src/adapters/share.ts`：微信分享
 - `apps/admin`：可选最小删帖页
 - 实现前 ADR-0016 须为 **Accepted**
+
+自动化验收已于 2026-11-03 完成：API 全量测试 248 passed、16 skipped，API 类型检查通过。微信开发者工具手测仍待人工执行，范围见 §8 AT-COM-01～12。

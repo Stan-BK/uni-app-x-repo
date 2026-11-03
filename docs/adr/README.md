@@ -28,6 +28,6 @@
 | [0013](./0013-registration-contact-prefill.md) | 报名联系人资料与表单预填 | Implemented |
 | [0014](./0014-paid-registration-and-settlement.md) | 收费报名支付与结算入账 | Implemented |
 | [0015](./0015-subscribe-message.md) | 报名成功与活动开始订阅消息 | Implemented |
-| [0016](./0016-community-feed.md) | 社区动态（Feed / 互动 / 站内通知） | Accepted |
+| [0016](./0016-community-feed.md) | 社区动态（Feed / 互动 / 站内通知） | Implemented |
 
 状态说明：`Proposed` → `Accepted` → `Implemented`；废弃用 `Superseded` / `Rejected`。

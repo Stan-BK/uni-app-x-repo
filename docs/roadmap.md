@@ -175,20 +175,20 @@
 
 ## P1-5 社区动态
 
-**ADR：** [0016](./adr/0016-community-feed.md)（Accepted）  
+**ADR：** [0016](./adr/0016-community-feed.md)（Implemented）
 **设计：** [docs/superpowers/specs/2026-11-03-community-feed-design.md](./superpowers/specs/2026-11-03-community-feed-design.md)  
 **计划：** [动态基座](./superpowers/plans/2026-11-03-community-feed-posts.md)、[互动与通知](./superpowers/plans/2026-11-03-community-feed-engagement.md)
 
 - [x] Tab 社区 Feed（最新 / 时间衰减热门）+ FAB 发布 + 编辑页
 - [x] 动态三区面板；文字≤200 + 图≤3；`#` 关联 0～3 可发现活动；作者/Admin 软删
 - [x] 微信分享（无站内转发）
-- [ ] 点赞（动态/评论）、两级评论（文≤100 + 图≤1）
+- [x] 点赞（动态/评论）、两级评论（文≤100 + 图≤1）
 - [x] 「我的动态」入口
-- [ ] 首页铃铛站内通知（赞/评/回复）与跳转锚点
+- [x] 首页铃铛站内通知（赞/评/回复）与跳转锚点
 - [x] shared 类型 + 本地 `uploads/community`（OSS 后置）
 
 **验收：** 见设计规格 §8（AT-COM-01～12）。实现前 ADR-0016 须 Accepted。  
-**动态基座验收状态（2026-11-03）：** API 自动化测试与类型检查已通过；微信开发者工具手测待人工执行。
+**验收状态（2026-11-03）：** API 全量自动化测试（248 passed，16 skipped）与类型检查已通过；微信开发者工具手测（含 AT-COM-01～12、通知跳转、自赞无通知、Admin 删评）待人工执行。
 **本期不做：** 举报、关注/@、站内转发、通知聚合、社区订阅消息、未登录浏览。
 
 ---

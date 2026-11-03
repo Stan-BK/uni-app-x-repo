@@ -1,6 +1,6 @@
 # ADR-0016: 社区动态（Feed / 互动 / 站内通知）
 
-- **状态：** Accepted
+- **状态：** Implemented
 - **日期：** 2026-11-03
 - **关联：** roadmap P1-5；[ADR-0006](./0006-activity-discovery-and-public-visibility.md)、[ADR-0008](./0008-operational-governance-audit-logs.md)、[ADR-0010](./0010-backend-ops-stack.md)、[ADR-0012](./0012-user-profile-display.md)
 - **设计规格：** [docs/superpowers/specs/2026-11-03-community-feed-design.md](../superpowers/specs/2026-11-03-community-feed-design.md)
@@ -41,6 +41,8 @@ P0～P1-4 已覆盖活动发现、报名、支付结算与订阅消息。产品�
 ## 实现备注
 
 - 验收：规格 §8（AT-COM-01～12）。
-- 指导落点：规格 §9。
-- 枚举/热度常量：`packages/shared`。
+- API 入口：`apps/api/src/community/`（动态、评论、点赞、通知）与 `apps/api/src/admin-community/`（运营软删）。
+- 小程序入口：`apps/mp/src/pages/community/`（Feed、发布、详情互动、我的动态、通知）及 `apps/mp/src/pages/home/index.vue`（通知铃铛）。
+- 共享枚举/热度常量：`packages/shared/src/community.ts`；数据模型：`apps/api/prisma/schema.prisma`。
+- 2026-11-03 自动验收：API 全量测试 248 passed、16 skipped，API 类型检查通过；微信开发者工具手测（AT-COM-01～12，含通知跳转、自赞无通知、Admin 删评）待人工执行。
 - 实现计划：[动态基座](../superpowers/plans/2026-11-03-community-feed-posts.md)、[互动与通知](../superpowers/plans/2026-11-03-community-feed-engagement.md)。
