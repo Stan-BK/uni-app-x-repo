@@ -9,10 +9,71 @@ import {
   CommunityDeletedBy,
   CommunityPostSort,
 } from "@activity/shared";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PrismaService } from "../prisma/prisma.service";
 import { communityHotScore } from "./community-hot-score";
-import { PostsService } from "./posts.service";
+import { isCommunityUploadUrl, PostsService } from "./posts.service";
+
+describe("isCommunityUploadUrl", () => {
+  const UUID = "123e4567-e89b-12d3-a456-426614174000";
+  const originalBase = process.env.PUBLIC_API_BASE;
+
+  afterEach(() => {
+    if (originalBase === undefined) delete process.env.PUBLIC_API_BASE;
+    else process.env.PUBLIC_API_BASE = originalBase;
+  });
+
+  it("合法 community URL 通过（含 /api 前缀与无前缀）", () => {
+    delete process.env.PUBLIC_API_BASE;
+    expect(
+      isCommunityUploadUrl(`http://localhost:3000/api/uploads/community/${UUID}.png`),
+    ).toBe(true);
+    expect(
+      isCommunityUploadUrl(`https://cdn.example.com/uploads/community/${UUID}.JPEG`),
+    ).toBe(true);
+  });
+
+  it("恶意主机路径中含 /uploads/community/ 仍拒绝（配置 PUBLIC_API_BASE 时）", () => {
+    process.env.PUBLIC_API_BASE = "https://api.example.com/api";
+    expect(
+      isCommunityUploadUrl(`https://evil.com/api/uploads/community/${UUID}.png`),
+    ).toBe(false);
+    expect(
+      isCommunityUploadUrl(`https://api.example.com/api/uploads/community/${UUID}.png`),
+    ).toBe(true);
+  });
+
+  it("evil.com/.../uploads/community/ 路径子串不通过", () => {
+    delete process.env.PUBLIC_API_BASE;
+    expect(
+      isCommunityUploadUrl("https://evil.com/x/uploads/community/a.png"),
+    ).toBe(false);
+    expect(
+      isCommunityUploadUrl(`https://evil.com/evil/api/uploads/community/${UUID}.png`),
+    ).toBe(false);
+  });
+
+  it("javascript: / data: / ftp: 协议拒绝", () => {
+    expect(
+      isCommunityUploadUrl(`javascript:alert(1)//api/uploads/community/${UUID}.png`),
+    ).toBe(false);
+    expect(isCommunityUploadUrl("data:text/html,<script>")).toBe(false);
+    expect(
+      isCommunityUploadUrl(`ftp://h/api/uploads/community/${UUID}.png`),
+    ).toBe(false);
+  });
+
+  it("错误路径/扩展名/非 UUID 文件名拒绝", () => {
+    delete process.env.PUBLIC_API_BASE;
+    expect(isCommunityUploadUrl(`http://h/api/uploads/covers/${UUID}.png`)).toBe(false);
+    expect(isCommunityUploadUrl(`http://h/api/uploads/community/${UUID}.svg`)).toBe(false);
+    expect(isCommunityUploadUrl("http://h/api/uploads/community/a.png")).toBe(false);
+    expect(
+      isCommunityUploadUrl(`http://h/api/uploads/community/../${UUID}.png`),
+    ).toBe(false);
+    expect(isCommunityUploadUrl(`http://h/api/uploads/community/${UUID}.png?x=1`)).toBe(false);
+  });
+});
 
 type PostFixture = {
   id: string;
@@ -34,7 +95,8 @@ type PostFixture = {
 };
 
 const HOUR = 3600 * 1000;
-const IMG = "http://localhost:3000/api/uploads/community/a.png";
+const IMG =
+  "http://localhost:3000/api/uploads/community/123e4567-e89b-12d3-a456-426614174000.png";
 
 function makePost(over: Partial<PostFixture> & { id: string }): PostFixture {
   const createdAt = over.createdAt ?? new Date();

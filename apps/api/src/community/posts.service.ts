@@ -19,7 +19,6 @@ import { communityHotScore } from "./community-hot-score";
 import type { CreatePostDto } from "./dto/create-post.dto";
 import { mapPost, POST_INCLUDE, type PostRow } from "./posts.mapper";
 
-const COMMUNITY_UPLOAD_PATH = "/uploads/community/";
 const HOT_WINDOW_MS = 30 * 24 * 3600 * 1000;
 const HOT_CANDIDATE_LIMIT = 200;
 const HOUR_MS = 3600 * 1000;
@@ -32,12 +31,38 @@ export type ListPostsInput = {
   pageSize?: number;
 };
 
+/**
+ * 上传接口返回 `{publicApiBase}/uploads/community/{uuid}.{ext}`，
+ * 默认 publicApiBase 以 `/api` 结尾；兼容 PUBLIC_API_BASE 省略 `/api` 的部署。
+ */
+const COMMUNITY_UPLOAD_PATH_RE =
+  /^(?:\/api)?\/uploads\/community\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:jpe?g|png|webp|gif)$/i;
+
 export function isCommunityUploadUrl(url: string): boolean {
+  let parsed: URL;
   try {
-    return new URL(url).pathname.includes(COMMUNITY_UPLOAD_PATH);
+    parsed = new URL(url);
   } catch {
     return false;
   }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return false;
+  }
+  if (parsed.username || parsed.password || parsed.search || parsed.hash) {
+    return false;
+  }
+  if (!COMMUNITY_UPLOAD_PATH_RE.test(parsed.pathname)) {
+    return false;
+  }
+  const base = process.env.PUBLIC_API_BASE?.trim();
+  if (base) {
+    try {
+      if (parsed.origin !== new URL(base).origin) return false;
+    } catch {
+      return false;
+    }
+  }
+  return true;
 }
 
 function normalizePaging(input: { page?: number; pageSize?: number }) {
