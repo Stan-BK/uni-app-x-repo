@@ -93,6 +93,11 @@ model User {
   registrations Registration[]
   wallet        WalletAccount?
   settlements   ActivitySettlement[]
+  posts         Post[]
+  comments      Comment[]
+  likes         Like[]
+  notificationsReceived Notification[]       @relation("NotificationRecipient")
+  notificationsActed    Notification[]       @relation("NotificationActor")
 }
 
 model UserIdentity {
@@ -138,6 +143,7 @@ model Activity {
   owner          User              @relation(fields: [ownerUserId], references: [id])
   registrations  Registration[]
   settlement     ActivitySettlement?
+  postLinks      PostActivityLink[]
 
   @@index([ownerUserId, lifecycle])
   @@index([lifecycle, startAt])
@@ -277,4 +283,114 @@ model ActivitySettlement {
   createdAt     DateTime @default(now())
   activity      Activity @relation(fields: [activityId], references: [id])
   owner         User     @relation(fields: [ownerUserId], references: [id])
+}
+
+enum CommunityDeletedBy {
+  author
+  admin
+}
+
+enum LikeTargetType {
+  post
+  comment
+}
+
+enum NotificationType {
+  like_post
+  like_comment
+  comment_post
+  reply_comment
+}
+
+model Post {
+  id            String              @id @default(cuid())
+  authorId      String
+  body          String              @default("")
+  likeCount     Int                 @default(0)
+  commentCount  Int                 @default(0)
+  deletedAt     DateTime?
+  deletedBy     CommunityDeletedBy?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  author        User                @relation(fields: [authorId], references: [id])
+  images        PostImage[]
+  activityLinks PostActivityLink[]
+  comments      Comment[]
+  notifications Notification[]
+
+  @@index([deletedAt, createdAt])
+  @@index([authorId, deletedAt, createdAt])
+}
+
+model PostImage {
+  id        String @id @default(cuid())
+  postId    String
+  url       String
+  sortOrder Int    @default(0)
+  post      Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
+model PostActivityLink {
+  id         String   @id @default(cuid())
+  postId     String
+  activityId String
+  sortOrder  Int      @default(0)
+  post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  activity   Activity @relation(fields: [activityId], references: [id])
+
+  @@unique([postId, activityId])
+  @@index([activityId])
+}
+
+model Comment {
+  id            String              @id @default(cuid())
+  postId        String
+  authorId      String
+  parentId      String?
+  body          String              @default("")
+  imageUrl      String?
+  likeCount     Int                 @default(0)
+  deletedAt     DateTime?
+  deletedBy     CommunityDeletedBy?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  post          Post                @relation(fields: [postId], references: [id])
+  author        User                @relation(fields: [authorId], references: [id])
+  parent        Comment?            @relation("CommentReplies", fields: [parentId], references: [id])
+  replies       Comment[]           @relation("CommentReplies")
+  notifications Notification[]
+
+  @@index([postId, deletedAt, createdAt])
+  @@index([parentId])
+}
+
+model Like {
+  id         String         @id @default(cuid())
+  userId     String
+  targetType LikeTargetType
+  targetId   String
+  createdAt  DateTime       @default(now())
+  user       User           @relation(fields: [userId], references: [id])
+
+  @@unique([userId, targetType, targetId])
+  @@index([targetType, targetId])
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String
+  actorId     String
+  type        NotificationType
+  postId      String
+  commentId   String?
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+  recipient   User             @relation("NotificationRecipient", fields: [recipientId], references: [id])
+  actor       User             @relation("NotificationActor", fields: [actorId], references: [id])
+  post        Post             @relation(fields: [postId], references: [id])
+  comment     Comment?         @relation(fields: [commentId], references: [id])
+
+  @@index([recipientId, readAt, createdAt])
 }
