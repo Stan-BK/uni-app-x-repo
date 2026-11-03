@@ -11,31 +11,33 @@
       <button class="ed-btn" @click="goCommunity">回到社区</button>
     </view>
     <template v-else-if="post">
-      <view class="card">
+      <view class="hero">
+        <view class="hero-deco" aria-hidden="true" />
         <view class="head">
-          <image
-            v-if="post.author.avatarUrl"
-            class="avatar"
-            :src="post.author.avatarUrl"
-            mode="aspectFill"
-          />
-          <view v-else class="avatar avatar-fallback">
-            <view class="avatar-head" />
-            <view class="avatar-body" />
+          <view class="avatar-ring">
+            <image
+              v-if="post.author.avatarUrl"
+              class="avatar"
+              :src="post.author.avatarUrl"
+              mode="aspectFill"
+            />
+            <view v-else class="avatar avatar-fallback">
+              <view class="avatar-head" />
+              <view class="avatar-body" />
+            </view>
           </view>
           <view class="head-meta">
             <text class="nickname">{{ post.author.nickname }}</text>
             <text class="time">{{ formatPostTime(post.createdAt) }}</text>
           </view>
+          <view v-if="isAuthor" class="hero-del" hover-class="hero-del-pressed" @click="onDelete">
+            删除
+          </view>
         </view>
 
         <text v-if="post.body" class="body">{{ post.body }}</text>
 
-        <view
-          v-if="post.images.length"
-          class="images"
-          :class="{ 'is-single': post.images.length === 1 }"
-        >
+        <view v-if="post.images.length" class="images" :class="imageLayoutClass">
           <image
             v-for="(img, index) in post.images"
             :key="`${img.url}-${index}`"
@@ -47,37 +49,48 @@
         </view>
 
         <view v-if="post.activities.length" class="tags">
-          <text
+          <view
             v-for="act in post.activities"
             :key="act.id"
-            class="ed-tag ed-tag-open tag"
+            class="tag"
+            hover-class="tag-pressed"
             @click="goActivity(act.id)"
-          >{{ act.title }}</text>
+          >
+            <EdIcon name="calendar" size="24rpx" />
+            <text class="tag-text">{{ act.title }}</text>
+          </view>
         </view>
       </view>
 
-      <view class="card engage">
+      <view class="engage">
         <view
           class="engage-item"
           :class="{ 'is-on': post.likedByMe }"
-          hover-class="none"
+          hover-class="engage-pressed"
           @click="onTogglePostLike"
         >
-          <text class="engage-label">{{ post.likedByMe ? "已赞" : "赞" }} {{ post.likeCount }}</text>
+          <EdIcon :name="post.likedByMe ? 'like-active' : 'like'" size="36rpx" />
+          <text class="engage-label">{{ post.likedByMe ? "已赞" : "点赞" }}</text>
+          <text class="engage-count">{{ post.likeCount }}</text>
         </view>
-        <view class="engage-item" hover-class="none" @click="onReplyPost">
-          <text class="engage-label">评论 {{ post.commentCount }}</text>
+        <view class="engage-item" hover-class="engage-pressed" @click="onReplyPost">
+          <EdIcon name="comment" size="36rpx" />
+          <text class="engage-label">评论</text>
+          <text class="engage-count">{{ post.commentCount }}</text>
         </view>
-        <button class="engage-item share-btn" open-type="share" hover-class="none">
+        <button class="engage-item share-btn" open-type="share" hover-class="engage-pressed">
+          <EdIcon name="share" size="36rpx" />
           <text class="engage-label">分享</text>
         </button>
-        <text v-if="isAuthor" class="engage-del" @click="onDelete">删除动态</text>
       </view>
 
       <view class="card comments">
         <view class="section-head">
+          <view class="section-ico">
+            <EdIcon name="comment" size="30rpx" />
+          </view>
           <text class="section-title">评论</text>
-          <text class="section-sub">{{ post.commentCount }}</text>
+          <text class="section-count">{{ post.commentCount }}</text>
         </view>
         <view v-if="commentsLoading && !comments.length" class="c-state">加载中…</view>
         <view v-else-if="commentsError && !comments.length" class="c-state" @click="loadComments({ reset: true })">
@@ -115,11 +128,22 @@
                   @click="previewCommentImage(c.imageUrl)"
                 />
                 <view class="c-actions">
-                  <text class="c-act" :class="{ 'is-on': c.likedByMe }" @click="onToggleCommentLike(c)">
-                    {{ c.likedByMe ? "已赞" : "赞" }} {{ c.likeCount }}
-                  </text>
-                  <text class="c-act" @click="onReply(c)">回复</text>
-                  <text v-if="isMine(c)" class="c-act c-del" @click="onDeleteComment(c)">删除</text>
+                  <view
+                    class="c-act"
+                    :class="{ 'is-on': c.likedByMe }"
+                    hover-class="c-act-pressed"
+                    @click="onToggleCommentLike(c)"
+                  >
+                    <EdIcon :name="c.likedByMe ? 'like-active' : 'like'" size="26rpx" />
+                    <text class="c-act-text">{{ c.likeCount || "赞" }}</text>
+                  </view>
+                  <view class="c-act" hover-class="c-act-pressed" @click="onReply(c)">
+                    <EdIcon name="reply" size="26rpx" />
+                    <text class="c-act-text">回复</text>
+                  </view>
+                  <view v-if="isMine(c)" class="c-act c-del" @click="onDeleteComment(c)">
+                    <text class="c-act-text">删除</text>
+                  </view>
                 </view>
               </view>
             </view>
@@ -156,11 +180,22 @@
                     @click="previewCommentImage(r.imageUrl)"
                   />
                   <view class="c-actions">
-                    <text class="c-act" :class="{ 'is-on': r.likedByMe }" @click="onToggleCommentLike(r)">
-                      {{ r.likedByMe ? "已赞" : "赞" }} {{ r.likeCount }}
-                    </text>
-                    <text class="c-act" @click="onReply(r)">回复</text>
-                    <text v-if="isMine(r)" class="c-act c-del" @click="onDeleteComment(r)">删除</text>
+                    <view
+                      class="c-act"
+                      :class="{ 'is-on': r.likedByMe }"
+                      hover-class="c-act-pressed"
+                      @click="onToggleCommentLike(r)"
+                    >
+                      <EdIcon :name="r.likedByMe ? 'like-active' : 'like'" size="26rpx" />
+                      <text class="c-act-text">{{ r.likeCount || "赞" }}</text>
+                    </view>
+                    <view class="c-act" hover-class="c-act-pressed" @click="onReply(r)">
+                      <EdIcon name="reply" size="26rpx" />
+                      <text class="c-act-text">回复</text>
+                    </view>
+                    <view v-if="isMine(r)" class="c-act c-del" @click="onDeleteComment(r)">
+                      <text class="c-act-text">删除</text>
+                    </view>
                   </view>
                 </view>
               </view>
@@ -237,6 +272,7 @@ import {
   type CommunityLikeTargetType,
   type CommunityPost,
 } from "@/api/community";
+import EdIcon from "@/components/ed-icon/ed-icon.vue";
 import { useUserStore } from "@/stores/user";
 import { formatPostTime } from "@/utils/community";
 import { ApiError } from "@/utils/request";
@@ -276,6 +312,9 @@ const isAuthor = computed(
   () => Boolean(post.value && user.me && user.me.id === post.value.author.id),
 );
 const hasMoreComments = computed(() => comments.value.length < commentsTotal.value);
+const imageLayoutClass = computed(() =>
+  post.value ? `count-${Math.min(post.value.images.length, 3)}` : "count-1",
+);
 const canSend = computed(
   () => Boolean(commentBody.value.trim() || commentImage.value) && !sending.value && !uploading.value,
 );
@@ -647,14 +686,45 @@ onShareAppMessage(() => {
   margin-top: 24rpx;
 }
 
+.hero {
+  position: relative;
+  overflow: hidden;
+  margin-top: 24rpx;
+  padding: $ed-space-card;
+  background: linear-gradient(160deg, #fffefb 0%, #fdfaf3 58%, #f3f8f2 100%);
+  border: 1rpx solid $ed-color-border;
+  border-radius: $ed-radius-card;
+  box-shadow: 0 4rpx 16rpx rgba(36, 49, 45, 0.06);
+}
+
+.hero-deco {
+  position: absolute;
+  top: -110rpx;
+  right: -80rpx;
+  width: 320rpx;
+  height: 320rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(30, 155, 136, 0.14) 0%, rgba(30, 155, 136, 0) 68%);
+  pointer-events: none;
+}
+
 .head {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 20rpx;
   margin-bottom: 24rpx;
 }
 
+.avatar-ring {
+  flex-shrink: 0;
+  padding: 4rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, $ed-color-brand-soft, rgba(229, 111, 62, 0.24));
+}
+
 .avatar {
+  display: block;
   width: 88rpx;
   height: 88rpx;
   border-radius: 50%;
@@ -690,6 +760,20 @@ onShareAppMessage(() => {
   min-width: 0;
 }
 
+.hero-del {
+  flex-shrink: 0;
+  padding: 8rpx 20rpx;
+  border-radius: $ed-radius-pill;
+  background: $ed-color-terracotta-soft;
+  color: $ed-color-terracotta;
+  font-size: 22rpx;
+  line-height: 1.3;
+}
+
+.hero-del-pressed {
+  opacity: 0.72;
+}
+
 .nickname {
   display: block;
   font-size: 30rpx;
@@ -714,6 +798,7 @@ onShareAppMessage(() => {
 }
 
 .images {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 12rpx;
@@ -721,15 +806,24 @@ onShareAppMessage(() => {
 }
 
 .img {
-  width: 190rpx;
-  height: 190rpx;
   border-radius: $ed-radius-tag;
   background: $ed-color-border;
 }
 
-.images.is-single .img {
-  width: 500rpx;
-  height: 380rpx;
+.images.count-1 .img {
+  width: 100%;
+  height: 440rpx;
+  border-radius: 24rpx;
+}
+
+.images.count-2 .img {
+  width: calc(50% - 6rpx);
+  height: 300rpx;
+}
+
+.images.count-3 .img {
+  width: calc(33.33% - 8rpx);
+  height: 210rpx;
 }
 
 .tags {
@@ -740,59 +834,100 @@ onShareAppMessage(() => {
 }
 
 .tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  max-width: 100%;
+  padding: 10rpx 20rpx;
+  border-radius: $ed-radius-pill;
+  background: $ed-color-brand-soft;
+  color: $ed-color-brand-strong;
+}
+
+.tag-pressed {
+  background: #c4ece2;
+}
+
+.tag-text {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 24rpx;
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 .engage {
   display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 12rpx 16rpx;
+  align-items: stretch;
+  gap: 16rpx;
+  margin-top: 24rpx;
+  padding: 20rpx;
+  background: $ed-color-surface;
+  border: 1rpx solid $ed-color-border;
+  border-radius: $ed-radius-card;
+  box-shadow: 0 2rpx 10rpx rgba(36, 49, 45, 0.05);
 }
 
 .engage-item {
+  flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 72rpx;
-  padding: 0 20rpx;
+  gap: 6rpx;
+  height: 124rpx;
   margin: 0;
-  background: transparent;
+  padding: 0;
+  background: $ed-color-canvas;
   border: none;
-  line-height: 1;
-  font-size: 26rpx;
+  border-radius: 24rpx;
+  line-height: 1.2;
   color: $ed-color-text-secondary;
+  transition: background-color 0.2s $ed-motion-ease, color 0.2s $ed-motion-ease;
 }
 
 .engage-item::after {
   border: none;
 }
 
-.engage-item.is-on .engage-label {
+.engage-pressed {
+  background: $ed-color-btn-secondary;
+}
+
+.engage-item.is-on {
+  background: $ed-color-brand-soft;
   color: $ed-color-brand-strong;
-  font-weight: 700;
 }
 
 .engage-label {
-  font-size: 26rpx;
-  color: $ed-color-text-secondary;
+  font-size: 24rpx;
+  color: currentColor;
 }
 
-.engage-del {
-  margin-left: auto;
-  padding: 0 16rpx;
-  font-size: 24rpx;
-  color: $ed-color-terracotta;
+.engage-count {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: currentColor;
 }
 
 .section-head {
   display: flex;
-  align-items: baseline;
-  gap: 12rpx;
+  align-items: center;
+  gap: 14rpx;
   margin-bottom: 8rpx;
+}
+
+.section-ico {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  background: $ed-color-brand-soft;
+  color: $ed-color-brand-strong;
 }
 
 .section-title {
@@ -801,9 +936,13 @@ onShareAppMessage(() => {
   color: $ed-color-text;
 }
 
-.section-sub {
-  font-size: 24rpx;
-  color: $ed-color-text-muted;
+.section-count {
+  padding: 2rpx 16rpx;
+  border-radius: $ed-radius-pill;
+  background: $ed-color-btn-secondary;
+  font-size: 22rpx;
+  font-weight: 600;
+  color: $ed-color-text-secondary;
 }
 
 .c-state {
@@ -814,7 +953,7 @@ onShareAppMessage(() => {
 }
 
 .c-thread {
-  padding: 24rpx 0;
+  padding: 28rpx 0;
   border-bottom: 1rpx solid $ed-color-border;
 }
 
@@ -913,30 +1052,51 @@ onShareAppMessage(() => {
 .c-actions {
   display: flex;
   align-items: center;
-  gap: 32rpx;
-  margin-top: 10rpx;
+  gap: 8rpx;
+  margin-top: 12rpx;
 }
 
 .c-act {
-  padding: 8rpx 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  height: 48rpx;
+  padding: 0 16rpx;
+  border-radius: $ed-radius-pill;
   font-size: 24rpx;
   color: $ed-color-text-muted;
 }
 
+.c-act-pressed {
+  background: $ed-color-canvas;
+}
+
 .c-act.is-on {
   color: $ed-color-brand-strong;
+}
+
+.c-act.is-on .c-act-text {
   font-weight: 700;
 }
 
+.c-act-text {
+  font-size: 24rpx;
+  color: currentColor;
+  line-height: 1;
+}
+
 .c-del {
+  margin-left: 8rpx;
   color: $ed-color-terracotta;
 }
 
 .replies {
-  margin: 16rpx 0 0 80rpx;
-  padding: 16rpx 20rpx;
+  position: relative;
+  margin: 18rpx 0 0 80rpx;
+  padding: 18rpx 22rpx;
   background: $ed-color-canvas;
   border-radius: $ed-radius-tag;
+  border-left: 6rpx solid $ed-color-brand-soft;
 }
 
 .replies .c-item + .c-item {
@@ -951,18 +1111,20 @@ onShareAppMessage(() => {
 }
 
 .composer-gap {
-  height: calc(140rpx + env(safe-area-inset-bottom));
+  height: calc(180rpx + env(safe-area-inset-bottom));
 }
 
 .composer {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 24rpx;
+  right: 24rpx;
+  bottom: calc(20rpx + env(safe-area-inset-bottom));
   z-index: 100;
-  padding: 16rpx $ed-space-page-x calc(16rpx + env(safe-area-inset-bottom));
+  padding: 18rpx 20rpx;
   background: $ed-color-surface;
-  border-top: 1rpx solid $ed-color-border;
+  border: 1rpx solid $ed-color-border;
+  border-radius: 40rpx;
+  box-shadow: 0 14rpx 40rpx rgba(36, 49, 45, 0.14);
   box-sizing: border-box;
 }
 
@@ -1042,11 +1204,12 @@ onShareAppMessage(() => {
 .composer-input {
   flex: 1;
   min-width: 0;
-  height: 72rpx;
+  height: 76rpx;
   padding: 0 28rpx;
   box-sizing: border-box;
   background: $ed-color-canvas;
-  border-radius: 36rpx;
+  border: 1rpx solid $ed-color-border;
+  border-radius: 38rpx;
   font-size: 28rpx;
   color: $ed-color-text;
 }
@@ -1057,15 +1220,16 @@ onShareAppMessage(() => {
 
 .send {
   flex-shrink: 0;
-  height: 72rpx;
-  line-height: 72rpx;
+  height: 76rpx;
+  line-height: 76rpx;
   margin: 0;
-  padding: 0 32rpx;
-  border-radius: 36rpx;
+  padding: 0 36rpx;
+  border-radius: 38rpx;
   font-size: 28rpx;
   font-weight: 600;
   background: $ed-color-brand;
   color: #ffffff;
+  box-shadow: 0 6rpx 14rpx rgba(30, 155, 136, 0.24);
 }
 
 .send::after {

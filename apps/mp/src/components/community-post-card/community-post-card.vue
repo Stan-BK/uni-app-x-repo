@@ -1,15 +1,19 @@
 <template>
-  <view class="post card" @click="emit('open', post.id)">
+  <view class="post" hover-class="post-pressed" @click="emit('open', post.id)">
+    <view class="post-deco" aria-hidden="true" />
+
     <view class="head">
-      <image
-        v-if="post.author.avatarUrl"
-        class="avatar"
-        :src="post.author.avatarUrl"
-        mode="aspectFill"
-      />
-      <view v-else class="avatar avatar-fallback">
-        <view class="avatar-head" />
-        <view class="avatar-body" />
+      <view class="avatar-ring">
+        <image
+          v-if="post.author.avatarUrl"
+          class="avatar"
+          :src="post.author.avatarUrl"
+          mode="aspectFill"
+        />
+        <view v-else class="avatar avatar-fallback">
+          <view class="avatar-head" />
+          <view class="avatar-body" />
+        </view>
       </view>
       <view class="head-meta">
         <text class="nickname">{{ post.author.nickname }}</text>
@@ -17,13 +21,12 @@
       </view>
     </view>
 
-    <text v-if="post.body" class="body">{{ post.body }}</text>
+    <view v-if="!post.images.length && post.body" class="quote-deco" aria-hidden="true">“</view>
 
-    <view
-      v-if="post.images.length"
-      class="images"
-      :class="{ 'is-single': post.images.length === 1 }"
-    >
+    <text v-if="post.body" class="body" :class="{ 'is-clamped': clamped }">{{ post.body }}</text>
+    <text v-if="clamped" class="expand" @click.stop="expanded = true">展开全文</text>
+
+    <view v-if="post.images.length" class="images" :class="imageLayoutClass">
       <image
         v-for="(img, index) in post.images"
         :key="`${img.url}-${index}`"
@@ -35,36 +38,50 @@
     </view>
 
     <view v-if="post.activities.length" class="tags">
-      <text
+      <view
         v-for="act in post.activities"
         :key="act.id"
-        class="ed-tag ed-tag-open tag"
+        class="tag"
+        hover-class="tag-pressed"
         @click.stop="emit('open-activity', act.id)"
-      >{{ act.title }}</text>
+      >
+        <EdIcon name="calendar" size="22rpx" />
+        <text class="tag-text">{{ act.title }}</text>
+      </view>
     </view>
 
     <view class="foot">
-      <view class="foot-item" hover-class="none" @click.stop="emit('open', post.id)">
-        <text class="foot-label">赞 {{ post.likeCount }}</text>
+      <view
+        class="act"
+        :class="{ 'is-on': post.likedByMe }"
+        hover-class="act-pressed"
+        @click.stop="emit('open', post.id)"
+      >
+        <EdIcon :name="post.likedByMe ? 'like-active' : 'like'" size="30rpx" />
+        <text class="act-label">{{ post.likeCount || "点赞" }}</text>
       </view>
-      <view class="foot-item" hover-class="none" @click.stop="emit('open', post.id)">
-        <text class="foot-label">评论 {{ post.commentCount }}</text>
+      <view class="act" hover-class="act-pressed" @click.stop="emit('open', post.id)">
+        <EdIcon name="comment" size="30rpx" />
+        <text class="act-label">{{ post.commentCount || "评论" }}</text>
       </view>
       <button
-        class="foot-item share-btn"
+        class="act act-share"
         open-type="share"
-        hover-class="none"
+        hover-class="act-pressed"
         :data-id="post.id"
         @click.stop
       >
-        <text class="foot-label">分享</text>
+        <EdIcon name="share" size="30rpx" />
+        <text class="act-label">分享</text>
       </button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from "vue";
 import type { CommunityPost } from "@/api/community";
+import EdIcon from "@/components/ed-icon/ed-icon.vue";
 import { formatPostTime } from "@/utils/community";
 
 const props = defineProps<{ post: CommunityPost }>();
@@ -72,6 +89,14 @@ const emit = defineEmits<{
   (e: "open", id: string): void;
   (e: "open-activity", id: string): void;
 }>();
+
+const COLLAPSE_LIMIT = 120;
+
+const expanded = ref(false);
+
+const isLong = computed(() => props.post.body.length > COLLAPSE_LIMIT);
+const clamped = computed(() => isLong.value && !expanded.value);
+const imageLayoutClass = computed(() => `count-${Math.min(props.post.images.length, 3)}`);
 
 function previewImage(current: number) {
   uni.previewImage({
@@ -82,27 +107,55 @@ function previewImage(current: number) {
 </script>
 
 <style lang="scss" scoped>
-.card {
+.post {
+  position: relative;
+  overflow: hidden;
   background: $ed-color-surface;
   border-radius: $ed-radius-card;
   border: 1rpx solid $ed-color-border;
-  box-shadow: 0 2rpx 8rpx rgba(36, 49, 45, 0.06);
+  box-shadow: 0 2rpx 10rpx rgba(36, 49, 45, 0.05);
   padding: $ed-space-card;
   margin-bottom: 24rpx;
+  transition: transform 0.2s $ed-motion-ease, box-shadow 0.2s $ed-motion-ease;
+}
+
+.post-pressed {
+  transform: scale(0.994);
+  box-shadow: 0 1rpx 6rpx rgba(36, 49, 45, 0.04);
+}
+
+/* 右上角淡青绿光晕，给纯白卡片一点编辑部氛围 */
+.post-deco {
+  position: absolute;
+  top: -90rpx;
+  right: -70rpx;
+  width: 260rpx;
+  height: 260rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(30, 155, 136, 0.12) 0%, rgba(30, 155, 136, 0) 68%);
+  pointer-events: none;
 }
 
 .head {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 20rpx;
   margin-bottom: 20rpx;
 }
 
+.avatar-ring {
+  flex-shrink: 0;
+  padding: 4rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, $ed-color-brand-soft, rgba(229, 111, 62, 0.22));
+}
+
 .avatar {
+  display: block;
   width: 72rpx;
   height: 72rpx;
   border-radius: 50%;
-  flex-shrink: 0;
   background: $ed-color-brand-soft;
 }
 
@@ -146,81 +199,153 @@ function previewImage(current: number) {
 
 .time {
   display: block;
-  margin-top: 4rpx;
+  margin-top: 6rpx;
   font-size: 22rpx;
   color: $ed-color-text-muted;
 }
 
+.quote-deco {
+  position: absolute;
+  top: 118rpx;
+  right: 26rpx;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 132rpx;
+  line-height: 1;
+  color: rgba(30, 155, 136, 0.09);
+  pointer-events: none;
+}
+
 .body {
+  position: relative;
   display: block;
-  font-size: 28rpx;
-  line-height: 1.6;
+  font-size: 29rpx;
+  line-height: 1.65;
   color: $ed-color-text;
   word-break: break-all;
   white-space: pre-wrap;
+}
+
+.body.is-clamped {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.expand {
+  display: inline-block;
+  margin-top: 8rpx;
+  padding: 4rpx 0;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: $ed-color-brand;
 }
 
 .images {
   display: flex;
   flex-wrap: wrap;
   gap: 12rpx;
-  margin-top: 20rpx;
+  margin-top: 22rpx;
 }
 
 .img {
-  width: 190rpx;
-  height: 190rpx;
   border-radius: $ed-radius-tag;
   background: $ed-color-border;
 }
 
-.images.is-single .img {
-  width: 400rpx;
+.images.count-1 .img {
+  width: 100%;
+  height: 400rpx;
+  border-radius: 24rpx;
+}
+
+.images.count-2 .img {
+  width: calc(50% - 6rpx);
   height: 300rpx;
+}
+
+.images.count-3 .img {
+  width: calc(33.33% - 8rpx);
+  height: 190rpx;
 }
 
 .tags {
   display: flex;
   flex-wrap: wrap;
   gap: 12rpx;
-  margin-top: 20rpx;
+  margin-top: 22rpx;
 }
 
 .tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  max-width: 100%;
+  padding: 8rpx 18rpx;
+  border-radius: $ed-radius-pill;
+  background: $ed-color-brand-soft;
+  color: $ed-color-brand-strong;
+}
+
+.tag-pressed {
+  background: #c4ece2;
+}
+
+.tag-text {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 22rpx;
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 .foot {
+  position: relative;
   display: flex;
   align-items: center;
+  gap: 8rpx;
   margin-top: 24rpx;
-  padding-top: 20rpx;
+  padding-top: 16rpx;
   border-top: 1rpx solid $ed-color-border;
 }
 
-.foot-item {
+.act {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: none;
+  gap: 10rpx;
+  height: 64rpx;
   margin: 0;
   padding: 0;
-  height: 56rpx;
-  line-height: 56rpx;
-  border-radius: 0;
+  border: none;
+  border-radius: $ed-radius-pill;
+  background: transparent;
+  line-height: 1;
+  color: $ed-color-text-secondary;
+  transition: background-color 0.2s $ed-motion-ease, color 0.2s $ed-motion-ease;
 }
 
-.share-btn::after {
+.act::after {
   border: none;
 }
 
-.foot-label {
+.act-pressed {
+  background: $ed-color-canvas;
+}
+
+.act.is-on {
+  color: $ed-color-brand-strong;
+}
+
+.act.is-on .act-label {
+  font-weight: 600;
+}
+
+.act-label {
   font-size: 24rpx;
-  color: $ed-color-text-secondary;
+  color: currentColor;
 }
 </style>
