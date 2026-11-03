@@ -32,3 +32,19 @@ export class ListActivityCandidatesQuery {
   @Min(1)
   page?: number;
 }
+
+/** 评论 / 通知列表通用分页（无 sort） */
+export class PagingQuery {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  pageSize?: number;
+}

@@ -70,6 +70,7 @@ describe("CommentsService", () => {
   let comments: CommentRow[];
   let notifications: NotificationRow[];
   let seq: number;
+  let likedIds: string[];
   let clock: number;
 
   const withAuthor = (c: CommentRow) => ({
@@ -208,8 +209,15 @@ describe("CommentsService", () => {
     comments = [];
     notifications = [];
     const db = buildDb();
+    likedIds = [];
     const prisma = {
       ...db,
+      like: {
+        findMany: async (args: { where: { targetId: { in: string[] } } }) =>
+          likedIds
+            .filter((id) => args.where.targetId.in.includes(id))
+            .map((targetId) => ({ targetId })),
+      },
       $transaction: async (fn: (t: typeof db) => Promise<unknown>) => fn(db),
     };
     const moduleRef = await Test.createTestingModule({
@@ -449,6 +457,24 @@ describe("CommentsService", () => {
       ]);
       expect(list.items[1].replies).toEqual([]);
       expect(list.items[0].replies[0].author.nickname).toBe("用户");
+    });
+
+    it("传 userId 时按批量查赞设置一级与回复的 likedByMe", async () => {
+      seedComment({ id: "t1" });
+      seedComment({ id: "t2" });
+      seedComment({ id: "t1-r1", parentId: "t1", authorId: "u2" });
+      seedComment({ id: "t1-r2", parentId: "t1", authorId: "u3" });
+      likedIds = ["t2", "t1-r2"];
+
+      const list = await service.listForPost("p1", {}, "u2");
+      expect(list.items.map((i) => i.likedByMe)).toEqual([false, true]);
+      expect(list.items[0].replies.map((r) => r.likedByMe)).toEqual([
+        false,
+        true,
+      ]);
+
+      const anon = await service.listForPost("p1");
+      expect(anon.items.every((i) => !i.likedByMe)).toBe(true);
     });
 
     it("分页", async () => {

@@ -10,10 +10,12 @@ import {
 } from "@activity/shared";
 import {
   CommunityDeletedBy as PrismaCommunityDeletedBy,
+  LikeTargetType as PrismaLikeTargetType,
   Prisma,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type { CreateCommentDto } from "./dto/create-comment.dto";
+import { findLikedTargetIds } from "./likes.lookup";
 import { authorDisplayName } from "./posts.mapper";
 import { isCommunityUploadUrl, normalizePaging } from "./posts.service";
 
@@ -115,7 +117,11 @@ export class CommentsService {
     return mapComment(row);
   }
 
-  async listForPost(postId: string, input: ListCommentsInput = {}) {
+  async listForPost(
+    postId: string,
+    input: ListCommentsInput = {},
+    userId?: string,
+  ) {
     const post = await this.prisma.post.findUnique({
       where: { id: postId },
       select: { id: true, deletedAt: true },
@@ -142,9 +148,18 @@ export class CommentsService {
       }),
       this.prisma.comment.count({ where }),
     ]);
+    // 一级 + 回复合并为一次批量查赞
+    const liked = await findLikedTargetIds(
+      this.prisma,
+      userId,
+      PrismaLikeTargetType.comment,
+      rows.flatMap((row) => [row.id, ...row.replies.map((r) => r.id)]),
+    );
     const items: CommentWithRepliesDto[] = rows.map((row) => ({
-      ...mapComment(row),
-      replies: row.replies.map((r) => mapComment(r)),
+      ...mapComment(row, { likedByMe: liked.has(row.id) }),
+      replies: row.replies.map((r) =>
+        mapComment(r, { likedByMe: liked.has(r.id) }),
+      ),
     }));
     return { items, total, page, pageSize };
   }

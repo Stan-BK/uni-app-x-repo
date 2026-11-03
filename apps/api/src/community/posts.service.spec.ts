@@ -128,6 +128,7 @@ describe("PostsService", () => {
       fn(tx),
     ),
     activity: { findMany: vi.fn(), count: vi.fn() },
+    like: { findMany: vi.fn() },
     post: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -201,6 +202,7 @@ describe("PostsService", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     store = [];
+    prisma.like.findMany.mockResolvedValue([]);
     wireStore();
     const mod = await Test.createTestingModule({
       providers: [PostsService, { provide: PrismaService, useValue: prisma }],
@@ -431,6 +433,37 @@ describe("PostsService", () => {
       const res = await service.getById("p1");
       expect(res.id).toBe("p1");
       expect(res.author.nickname).toBe("小明");
+    });
+
+    it("getById 存在点赞记录时 likedByMe=true；无记录/未传 userId 为 false", async () => {
+      store = [makePost({ id: "p1" })];
+      prisma.like.findMany.mockResolvedValue([{ targetId: "p1" }]);
+
+      const liked = await service.getById("p1", "u2");
+      expect(liked.likedByMe).toBe(true);
+      expect(prisma.like.findMany).toHaveBeenCalledWith({
+        where: { userId: "u2", targetType: "post", targetId: { in: ["p1"] } },
+        select: { targetId: true },
+      });
+
+      prisma.like.findMany.mockResolvedValue([]);
+      expect((await service.getById("p1", "u3")).likedByMe).toBe(false);
+
+      prisma.like.findMany.mockClear();
+      expect((await service.getById("p1")).likedByMe).toBe(false);
+      expect(prisma.like.findMany).not.toHaveBeenCalled();
+    });
+
+    it("list 批量查赞：仅赞过的动态 likedByMe=true，且只查询一次", async () => {
+      store = [makePost({ id: "a" }), makePost({ id: "b" })];
+      prisma.like.findMany.mockResolvedValue([{ targetId: "b" }]);
+
+      const res = await service.list({}, "u2");
+      const byId = Object.fromEntries(
+        res.items.map((i) => [i.id, i.likedByMe]),
+      );
+      expect(byId).toEqual({ a: false, b: true });
+      expect(prisma.like.findMany).toHaveBeenCalledTimes(1);
     });
 
     it("getById 不存在 → NotFound", async () => {

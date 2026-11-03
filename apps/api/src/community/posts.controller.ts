@@ -26,8 +26,11 @@ export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
   @Get("posts")
-  list(@Query() query: ListPostsQuery) {
-    return this.postsService.list(query);
+  list(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query() query: ListPostsQuery,
+  ) {
+    return this.postsService.list(query, user.userId);
   }
 
   // 静态路由须声明在 posts/:id 之前，避免 "mine" 被当作 id
@@ -45,8 +48,8 @@ export class PostsController {
   }
 
   @Get("posts/:id")
-  getById(@Param("id") id: string) {
-    return this.postsService.getById(id);
+  getById(@CurrentUser() user: CurrentUserPayload, @Param("id") id: string) {
+    return this.postsService.getById(id, user.userId);
   }
 
   @Post("posts")

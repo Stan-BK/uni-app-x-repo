@@ -13,10 +13,12 @@ import {
 import {
   ActivityLifecycle,
   CommunityDeletedBy as PrismaCommunityDeletedBy,
+  LikeTargetType as PrismaLikeTargetType,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { communityHotScore } from "./community-hot-score";
 import type { CreatePostDto } from "./dto/create-post.dto";
+import { findLikedTargetIds } from "./likes.lookup";
 import { mapPost, POST_INCLUDE, type PostRow } from "./posts.mapper";
 
 const HOT_WINDOW_MS = 30 * 24 * 3600 * 1000;
@@ -129,7 +131,7 @@ export class PostsService {
     return mapPost(row);
   }
 
-  async list(input: ListPostsInput) {
+  async list(input: ListPostsInput, userId?: string) {
     const sort = input.sort ?? CommunityPostSort.Latest;
     if (sort !== CommunityPostSort.Latest && sort !== CommunityPostSort.Hot) {
       throw new BadRequestException("Invalid sort");
@@ -137,24 +139,30 @@ export class PostsService {
     const { page, pageSize } = normalizePaging(input);
 
     if (sort === CommunityPostSort.Latest) {
-      return this.listLatest({ deletedAt: null }, page, pageSize);
+      return this.listLatest({ deletedAt: null }, page, pageSize, userId);
     }
-    return this.listHot(page, pageSize);
+    return this.listHot(page, pageSize, userId);
   }
 
   async listMine(authorId: string, input: ListPostsInput) {
     const { page, pageSize } = normalizePaging(input);
-    return this.listLatest({ deletedAt: null, authorId }, page, pageSize);
+    return this.listLatest(
+      { deletedAt: null, authorId },
+      page,
+      pageSize,
+      authorId,
+    );
   }
 
-  async getById(id: string) {
+  async getById(id: string, userId?: string) {
     const row = await this.prisma.post.findUnique({
       where: { id },
       include: POST_INCLUDE,
     });
     if (!row) throw new NotFoundException("动态不存在");
     if (row.deletedAt) throw new NotFoundException("动态已删除");
-    return mapPost(row);
+    const liked = await this.likedPostIds(userId, [row.id]);
+    return mapPost(row, { likedByMe: liked.has(row.id) });
   }
 
   async softDelete(userId: string, id: string) {
@@ -202,6 +210,7 @@ export class PostsService {
     where: { deletedAt: null; authorId?: string },
     page: number,
     pageSize: number,
+    userId?: string,
   ) {
     const [rows, total] = await Promise.all([
       this.prisma.post.findMany({
@@ -213,11 +222,20 @@ export class PostsService {
       }),
       this.prisma.post.count({ where }),
     ]);
-    return { items: rows.map((r) => mapPost(r)), total, page, pageSize };
+    const liked = await this.likedPostIds(
+      userId,
+      rows.map((r) => r.id),
+    );
+    return {
+      items: rows.map((r) => mapPost(r, { likedByMe: liked.has(r.id) })),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   /** 候选窗内存算分后分页；total 为候选窗内条数（≤200） */
-  private async listHot(page: number, pageSize: number) {
+  private async listHot(page: number, pageSize: number, userId?: string) {
     const now = Date.now();
     const rows = await this.prisma.post.findMany({
       where: {
@@ -242,12 +260,27 @@ export class PostsService {
         b.row.createdAt.getTime() - a.row.createdAt.getTime(),
     );
     const start = (page - 1) * pageSize;
+    const pageRows = scored.slice(start, start + pageSize).map((s) => s.row);
+    // 仅对当前页批量查赞，而非整个候选窗
+    const liked = await this.likedPostIds(
+      userId,
+      pageRows.map((r) => r.id),
+    );
     return {
-      items: scored.slice(start, start + pageSize).map((s) => mapPost(s.row)),
+      items: pageRows.map((r) => mapPost(r, { likedByMe: liked.has(r.id) })),
       total: scored.length,
       page,
       pageSize,
     };
+  }
+
+  private likedPostIds(userId: string | undefined, ids: string[]) {
+    return findLikedTargetIds(
+      this.prisma,
+      userId,
+      PrismaLikeTargetType.post,
+      ids,
+    );
   }
 
   /** 与 PublicActivitiesService.publicListWhere 一致（ADR-0006） */
