@@ -3,7 +3,8 @@ name: running-mp-weixin-test-env
 description: >-
   Starts the WeChat mini-program local test stack (API + mp-weixin compile + 微信开发者工具).
   Use when the user asks to 跑测试, 启动测试环境, 打开小程序, 微信开发者工具, 联调小程序,
-  verify mp-weixin, or run the mini-program test environment.
+  verify mp-weixin, run the mini-program test environment, 局域网, 局域网服务,
+  真机预览, or 切到局域网 IP.
   Do not use for API-only vitest, Admin-only, or production deploy.
 ---
 
@@ -48,7 +49,7 @@ pnpm dev:api
 | 场景 | `VITE_API_BASE` |
 | --- | --- |
 | 开发者工具模拟器 | `http://127.0.0.1:3000/api` 或本机局域网 IP 均可 |
-| 真机预览 | 必须是电脑局域网 IP，禁止 `127.0.0.1` |
+| 真机预览 / 局域网 | 必须是电脑局域网 IP，禁止 `127.0.0.1`（见下一节） |
 
 `VITE_AUTH_DEV_BYPASS=true`。改过 env 必须重启 `dev:mp-weixin` 才会打进产物。
 
@@ -60,9 +61,54 @@ pnpm dev:mp-weixin
 
 同样长驻、`all`。日志里应出现 `UNI_OUTPUT_DIR=.../.mp-preview/mp-weixin`，随后 `打开微信开发者工具: ...`。等到 `.mp-preview/mp-weixin/app.json` 存在即视为启动完成。若仍有旧的 `uni -p mp-weixin` 在往 `dist/dev` 写，只停那一个，再启本脚本。脚本已负责打开 IDE，不要再单独跑 `cli open`，除非日志写了找不到 CLI 或打开失败。
 
-导入的是 **主仓 `.mp-preview/mp-weixin`**，不是 `apps/mp`，也不是某个 worktree 的 `dist`。`project.private.config.json` 已关域名校验（`urlCheck: false`）。换分支后不要重导，刷新或等热更新即可。若 `cli open` 失败，让用户开「设置 → 安全设置 → 服务端口」。
+导入的是 **主仓 `.mp-preview/mp-weixin`**，不是 `apps/mp`，也不是某个 worktree 的 `dist`。`project.private.config.json` 已关域名校验（`urlCheck: false`）。换分支后不要重导，刷新或等热更新即可。若 `cli open` 失败，让用户开「设置 → 安全设置 → 服务端口」；也可用 `open -a wechatwebdevtools <产物路径>` 兜底，仍失败则让用户手动导入该目录。
 
-**启动到此结束。** 不要截图、不要 Computer Use、不要点模拟器。把 API / 编译 / 产物路径告诉用户即可。
+**启动到此结束（仅模拟器 / 127.0.0.1）。** 不要截图、不要 Computer Use、不要点模拟器。把 API / 编译 / 产物路径告诉用户即可。
+
+用户说「局域网」「真机预览」「启动局域网服务」时，还要做下一节，不能只起 127.0.0.1。
+
+## 局域网 / 真机预览
+
+手机与电脑须同一 Wi-Fi。真机请求 `127.0.0.1` 会打到手机自己，必须改成电脑局域网 IP。
+
+1. **解析本机局域网 IP**（取默认路由网卡，勿用 utun / 127.0.0.1）：
+
+```bash
+LAN="$(ipconfig getifaddr "$(route -n get default | awk '/interface:/{print $2}')")"
+echo "$LAN"
+```
+
+拿不到再试 `ipconfig getifaddr en0`。
+
+2. **改 API env**（`apps/api/.env`，勿提交）：
+
+```bash
+# HOST 须 0.0.0.0，否则局域网访问不到
+HOST=0.0.0.0
+PORT=3000
+PUBLIC_API_BASE=http://$LAN:3000/api
+AUTH_DEV_BYPASS=true
+```
+
+`PUBLIC_API_BASE` 影响上传返回的图片 URL；与 mp 的 base 主机保持一致。
+
+3. **改 mp env**（`apps/mp/.env.development`，勿提交）：
+
+```bash
+VITE_API_BASE=http://$LAN:3000/api
+VITE_AUTH_DEV_BYPASS=true
+```
+
+4. **重启进程**（改 env 后 nest watch / uni 不一定热更 env）：
+
+- 只停**本 worktree** 的 `dev:api` / `uni -p mp-weixin`（按 PID / 命令行路径匹配），不要 `pkill -f node`。
+- 再 `pnpm dev:api`，等 `API listening`。
+- 用局域网探活：`curl -sS http://$LAN:3000/api/health` 须 ok。
+- 再 `pnpm dev:mp-weixin`（必须重启才会把新 `VITE_API_BASE` 打进产物）。
+
+5. **告诉用户**：当前 LAN IP、`VITE_API_BASE` / `PUBLIC_API_BASE`、产物路径；真机用开发者工具「预览」。IP 变更（换 Wi-Fi）时重复本节。
+
+模拟器可继续用局域网 IP（一般也可）；若只要模拟器且用户未提局域网，可用 `127.0.0.1`，少一次重启。
 
 ## 手测（仅当用户明确要求验证页面 / 手测 / 点模拟器）
 
