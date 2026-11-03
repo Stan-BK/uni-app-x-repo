@@ -15,6 +15,36 @@
       }
     },
     {
+      "path": "pages/community/index",
+      "style": {
+        "navigationBarTitleText": "社区",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/community/compose",
+      "style": {
+        "navigationBarTitleText": "发动态"
+      }
+    },
+    {
+      "path": "pages/community/detail",
+      "style": {
+        "navigationBarTitleText": "动态详情",
+        "enableShareAppMessage": true
+      }
+    },
+    {
+      "path": "pages/community/mine",
+      "style": {
+        "navigationBarTitleText": "我的动态",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
       "path": "pages/activity/detail",
       "style": {
         "navigationBarTitleText": "活动详情",
@@ -83,6 +113,12 @@
         "text": "首页",
         "iconPath": "static/tab-home.png",
         "selectedIconPath": "static/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/community/index",
+        "text": "社区",
+        "iconPath": "static/tab-community.png",
+        "selectedIconPath": "static/tab-community-active.png"
       },
       {
         "pagePath": "pages/mine/registrations",

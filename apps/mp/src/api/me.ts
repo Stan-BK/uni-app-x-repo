@@ -20,10 +20,18 @@ export function patchMe(body: {
 
 /** 本地选图后上传头像，返回可公网访问的 URL */
 export function uploadAvatar(filePath: string): Promise<{ url: string }> {
+  return uploadImageFile("/me/uploads/avatar", filePath);
+}
+
+/** multipart 单文件上传（字段名 file），返回服务端公网 URL。头像、社区配图共用。 */
+export function uploadImageFile(
+  path: string,
+  filePath: string,
+): Promise<{ url: string }> {
   const token = getUserToken();
   return new Promise((resolve, reject) => {
     uni.uploadFile({
-      url: `${getApiBase()}/me/uploads/avatar`,
+      url: `${getApiBase()}${path}`,
       filePath,
       name: "file",
       header: token ? { Authorization: `Bearer ${token}` } : {},

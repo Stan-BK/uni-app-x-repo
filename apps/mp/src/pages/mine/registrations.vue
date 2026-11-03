@@ -49,6 +49,10 @@
         <view class="ico ico-list" />
         <text>我的活动</text>
       </view>
+      <view class="entry entry-tertiary" hover-class="none" @click="goCommunityMine">
+        <view class="ico ico-post" />
+        <text>我的动态</text>
+      </view>
       <view class="entry entry-primary" hover-class="none" @click="goProfile">
         <view class="ico ico-person" />
         <text>我的信息</text>
@@ -373,6 +377,10 @@ function goProfile() {
   uni.navigateTo({ url: "/pages/mine/profile" });
 }
 
+function goCommunityMine() {
+  uni.navigateTo({ url: "/pages/community/mine" });
+}
+
 function goHome() {
   uni.switchTab({ url: "/pages/home/index" });
 }
@@ -566,6 +574,12 @@ $ed-color-accent: #e56f3e !default;
   box-shadow: 0 8rpx 20rpx rgba(229, 111, 62, 0.3);
 }
 
+.entry-tertiary {
+  background: $ed-color-navy;
+  color: #ffffff;
+  box-shadow: 0 8rpx 20rpx rgba(58, 90, 120, 0.28);
+}
+
 .entry-secondary {
   background: $ed-color-brand;
   color: #ffffff;
@@ -579,6 +593,7 @@ $ed-color-accent: #e56f3e !default;
 }
 
 .ico-list,
+.ico-post,
 .ico-person {
   width: 32rpx;
   height: 32rpx;
@@ -594,6 +609,11 @@ $ed-color-accent: #e56f3e !default;
 .ico-list {
   -webkit-mask-image: url("/static/ico/person-list.png");
   mask-image: url("/static/ico/person-list.png");
+}
+
+.ico-post {
+  -webkit-mask-image: url("/static/ico/doc.svg");
+  mask-image: url("/static/ico/doc.svg");
 }
 
 .ico-person {
