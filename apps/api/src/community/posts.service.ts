@@ -65,7 +65,7 @@ export function isCommunityUploadUrl(url: string): boolean {
   return true;
 }
 
-function normalizePaging(input: { page?: number; pageSize?: number }) {
+export function normalizePaging(input: { page?: number; pageSize?: number }) {
   const page = Math.max(1, Number(input.page) || 1);
   const pageSize = Math.min(
     MAX_PAGE_SIZE,
