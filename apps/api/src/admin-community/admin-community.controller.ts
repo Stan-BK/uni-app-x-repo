@@ -22,4 +22,12 @@ export class AdminCommunityController {
   ): Promise<void> {
     await this.adminCommunityService.softDeletePost(id, admin.adminId);
   }
+
+  @Delete("comments/:id")
+  async softDeleteComment(
+    @Param("id") id: string,
+    @CurrentAdmin() admin: CurrentAdminPayload,
+  ): Promise<void> {
+    await this.adminCommunityService.softDeleteComment(id, admin.adminId);
+  }
 }
