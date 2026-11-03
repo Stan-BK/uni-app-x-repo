@@ -703,11 +703,7 @@ async function saveOrCreate(): Promise<string> {
 }
 
 async function saveDraft() {
-  if (editingId.value) {
-    if (!ensureLoggedIn()) return;
-  } else if (!(await ensureCanPublish())) {
-    return;
-  }
+  if (saving.value) return;
   if (!form.title.trim()) {
     showError("保存草稿至少填写标题");
     return;
@@ -716,6 +712,11 @@ async function saveDraft() {
   saving.value = true;
   msg.value = "";
   try {
+    if (editingId.value) {
+      if (!ensureLoggedIn()) return;
+    } else if (!(await ensureCanPublish())) {
+      return;
+    }
     await saveOrCreate();
     msg.value = "草稿已保存";
     uni.showToast({ title: "已保存", icon: "success" });
@@ -727,16 +728,23 @@ async function saveDraft() {
 }
 
 async function publish() {
-  if (!(await ensureCanPublish())) return;
+  if (saving.value) return;
   if (isPublishedEdit.value) {
     showError("已发布活动不可直接修改，请先退回草稿");
     return;
   }
-  const ok = await validateForm();
-  if (!ok) return;
   saving.value = true;
   msg.value = "";
   try {
+    if (!(await ensureCanPublish())) {
+      saving.value = false;
+      return;
+    }
+    const ok = await validateForm();
+    if (!ok) {
+      saving.value = false;
+      return;
+    }
     const id = await saveOrCreate();
     await publishActivity(id);
     lifecycle.value = "published";
@@ -751,7 +759,6 @@ async function publish() {
     }, 500);
   } catch (e) {
     showError(errMessage(e));
-  } finally {
     saving.value = false;
   }
 }

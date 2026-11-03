@@ -623,9 +623,12 @@ async function onSubmit() {
     uni.showToast({ title: "写点什么或添加图片吧", icon: "none" });
     return;
   }
-  if (!(await user.promptLogin("登录后即可发布动态"))) return;
   submitting.value = true;
   try {
+    if (!(await user.promptLogin("登录后即可发布动态"))) {
+      submitting.value = false;
+      return;
+    }
     await createCommunityPost({
       body: text,
       imageUrls: images.value.map((i) => i.url),
@@ -639,7 +642,6 @@ async function onSubmit() {
     }, 600);
   } catch (e) {
     uni.showToast({ title: errMessage(e), icon: "none" });
-  } finally {
     submitting.value = false;
   }
 }
