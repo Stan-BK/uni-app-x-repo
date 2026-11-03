@@ -37,6 +37,14 @@
       }
     },
     {
+      "path": "pages/community/notifications",
+      "style": {
+        "navigationBarTitleText": "通知",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
       "path": "pages/community/mine",
       "style": {
         "navigationBarTitleText": "我的动态",

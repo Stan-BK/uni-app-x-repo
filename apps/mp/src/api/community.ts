@@ -88,3 +88,117 @@ export function listActivityCandidates(
 export function uploadCommunityImage(filePath: string): Promise<{ url: string }> {
   return uploadImageFile("/me/uploads/community", filePath);
 }
+
+export type CommunityComment = {
+  id: string;
+  postId: string;
+  parentId: string | null;
+  body: string;
+  imageUrl: string | null;
+  author: { id: string; nickname: string; avatarUrl: string | null };
+  likeCount: number;
+  likedByMe: boolean;
+  createdAt: string;
+};
+
+export type CommunityCommentWithReplies = CommunityComment & {
+  replies: CommunityComment[];
+};
+
+export type CommunityCommentPage = {
+  items: CommunityCommentWithReplies[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type CommunityLikeTargetType = "post" | "comment";
+
+export type CommunityNotificationType =
+  | "like_post"
+  | "like_comment"
+  | "comment_post"
+  | "reply_comment";
+
+export type CommunityNotification = {
+  id: string;
+  type: CommunityNotificationType;
+  postId: string;
+  commentId: string | null;
+  actor: { id: string; nickname: string; avatarUrl: string | null };
+  readAt: string | null;
+  createdAt: string;
+};
+
+export type CommunityNotificationPage = {
+  items: CommunityNotification[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export function listCommunityComments(
+  postId: string,
+  params: { page?: number; pageSize?: number } = {},
+) {
+  return request<CommunityCommentPage>(
+    `/community/posts/${encodeURIComponent(postId)}/comments${toQuery(params)}`,
+  );
+}
+
+export function createCommunityComment(
+  postId: string,
+  body: { body?: string; imageUrl?: string; parentId?: string },
+) {
+  return request<CommunityComment>(
+    `/community/posts/${encodeURIComponent(postId)}/comments`,
+    { method: "POST", data: body },
+  );
+}
+
+export function deleteCommunityComment(id: string) {
+  return request<void>(`/community/comments/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export function likeCommunityTarget(
+  targetType: CommunityLikeTargetType,
+  targetId: string,
+) {
+  return request<{ liked: boolean; likeCount: number }>("/community/likes", {
+    method: "POST",
+    data: { targetType, targetId },
+  });
+}
+
+export function unlikeCommunityTarget(
+  targetType: CommunityLikeTargetType,
+  targetId: string,
+) {
+  return request<{ liked: boolean; likeCount: number }>("/community/likes", {
+    method: "DELETE",
+    data: { targetType, targetId },
+  });
+}
+
+export function listCommunityNotifications(
+  params: { page?: number; pageSize?: number } = {},
+) {
+  return request<CommunityNotificationPage>(
+    `/community/notifications${toQuery(params)}`,
+  );
+}
+
+export function getCommunityUnreadCount() {
+  return request<{ count: number }>("/community/notifications/unread-count");
+}
+
+export function markCommunityNotificationsRead(
+  body: { ids?: string[]; all?: boolean },
+) {
+  return request<{ updated: number }>("/community/notifications/read", {
+    method: "POST",
+    data: body,
+  });
+}

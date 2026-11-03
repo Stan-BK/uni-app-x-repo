@@ -12,3 +12,14 @@ export function formatPostTime(iso?: string | null, now = Date.now()): string {
     ? md
     : `${d.getFullYear()}-${md}`;
 }
+
+const NOTIFICATION_TEXT: Record<string, string> = {
+  like_post: "赞了你的动态",
+  like_comment: "赞了你的评论",
+  comment_post: "评论了你的动态",
+  reply_comment: "回复了你的评论",
+};
+
+export function notificationText(type: string): string {
+  return NOTIFICATION_TEXT[type] ?? "有新的互动";
+}
