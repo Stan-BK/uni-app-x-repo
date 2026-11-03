@@ -25,8 +25,10 @@ const ALLOWED_MIME = new Set([
 
 const coversDir = join(process.cwd(), "uploads", "covers");
 const avatarsDir = join(process.cwd(), "uploads", "avatars");
+const communityDir = join(process.cwd(), "uploads", "community");
 mkdirSync(coversDir, { recursive: true });
 mkdirSync(avatarsDir, { recursive: true });
+mkdirSync(communityDir, { recursive: true });
 
 function publicApiBase(req: Request): string {
   return (
@@ -81,5 +83,17 @@ export class UploadsController {
       throw new BadRequestException("请选择头像图片");
     }
     return { url: `${publicApiBase(req)}/uploads/avatars/${file.filename}` };
+  }
+
+  @Post("community")
+  @UseInterceptors(imageInterceptor(communityDir, 2 * 1024 * 1024))
+  uploadCommunity(
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() req: Request,
+  ) {
+    if (!file) {
+      throw new BadRequestException("请选择社区动态图片");
+    }
+    return { url: `${publicApiBase(req)}/uploads/community/${file.filename}` };
   }
 }
