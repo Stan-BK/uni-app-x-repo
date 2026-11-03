@@ -173,10 +173,27 @@
 
 ---
 
+## P1-5 社区动态
+
+**ADR：** [0016](./adr/0016-community-feed.md)（Accepted）  
+**设计：** [docs/superpowers/specs/2026-11-03-community-feed-design.md](./superpowers/specs/2026-11-03-community-feed-design.md)  
+**计划：** [动态基座](./superpowers/plans/2026-11-03-community-feed-posts.md)、[互动与通知](./superpowers/plans/2026-11-03-community-feed-engagement.md)
+
+- [ ] Tab 社区 Feed（最新 / 时间衰减热门）+ FAB 发布 + 编辑页  
+- [ ] 动态三区面板；文字≤200 + 图≤3；`#` 关联 0～3 可发现活动；作者/Admin 软删  
+- [ ] 点赞（动态/评论）、微信分享（无站内转发）、两级评论（文≤100 + 图≤1）  
+- [ ] 「我的动态」入口；首页铃铛站内通知（赞/评/回复）与跳转锚点  
+- [ ] shared 类型 + 本地 `uploads/community`（OSS 后置）  
+
+**验收：** 见设计规格 §8（AT-COM-01～12）。实现前 ADR-0016 须 Accepted。  
+**本期不做：** 举报、关注/@、站内转发、通知聚合、社区订阅消息、未登录浏览。
+
+---
+
 ## P1（后置）
 
 分类等高级筛选、举报、统计看板。  
-（标题搜索与开始/发布时间排序已纳入 P0-3；用户取消报名已纳入 P0-4；展示资料见 P1-1；报名预填见 P1-2；订阅消息与开场提醒见 P1-4。）
+（标题搜索与开始/发布时间排序已纳入 P0-3；用户取消报名已纳入 P0-4；展示资料见 P1-1；报名预填见 P1-2；订阅消息与开场提醒见 P1-4；社区动态见 P1-5。）
 
 ## P2 / 独立里程碑
 
