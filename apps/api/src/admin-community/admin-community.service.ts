@@ -7,23 +7,29 @@ import { PrismaService } from "../prisma/prisma.service";
 export class AdminCommunityService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Admin 软删动态；不存在或已删均返回 404 */
+  /**
+   * Admin 软删动态；不存在或已删均返回 404。
+   * 用 `deletedAt: null` 条件更新做并发闸门，仅更新成功的请求才写审计，避免双写。
+   */
   async softDeletePost(id: string, adminId: string): Promise<void> {
-    const post = await this.prisma.post.findUnique({
-      where: { id },
-      select: { id: true, deletedAt: true },
-    });
-    if (!post) throw new NotFoundException("动态不存在");
-    if (post.deletedAt) throw new NotFoundException("动态已删除");
-
     await this.prisma.$transaction(async (tx) => {
-      await tx.post.update({
-        where: { id },
+      const { count } = await tx.post.updateMany({
+        where: { id, deletedAt: null },
         data: {
           deletedAt: new Date(),
           deletedBy: CommunityDeletedBy.admin,
         },
       });
+
+      if (count === 0) {
+        const post = await tx.post.findUnique({
+          where: { id },
+          select: { id: true },
+        });
+        if (!post) throw new NotFoundException("动态不存在");
+        throw new NotFoundException("动态已删除");
+      }
+
       await tx.auditLog.create({
         data: {
           actorType: "admin",

@@ -11,7 +11,7 @@ describe("AdminCommunityService", () => {
   const prisma = {
     post: {
       findUnique: vi.fn(),
-      update: vi.fn(),
+      updateMany: vi.fn(),
     },
     $transaction: vi.fn(),
   };
@@ -30,16 +30,17 @@ describe("AdminCommunityService", () => {
     service = moduleRef.get(AdminCommunityService);
   });
 
-  it("softDeletePost 标记 deletedBy=admin 并写审计", async () => {
-    prisma.post.findUnique.mockResolvedValue({ id: "p1", deletedAt: null });
-    prisma.post.update.mockResolvedValue({ id: "p1" });
+  it("softDeletePost 条件更新 deletedAt:null、标记 deletedBy=admin 并写审计", async () => {
+    prisma.post.updateMany.mockResolvedValue({ count: 1 });
 
     await service.softDeletePost("p1", "admin-1");
 
-    const updateArg = prisma.post.update.mock.calls[0][0];
-    expect(updateArg.where).toEqual({ id: "p1" });
+    const updateArg = prisma.post.updateMany.mock.calls[0][0];
+    expect(updateArg.where).toEqual({ id: "p1", deletedAt: null });
     expect(updateArg.data.deletedBy).toBe(CommunityDeletedBy.admin);
     expect(updateArg.data.deletedAt).toBeInstanceOf(Date);
+    expect(prisma.post.findUnique).not.toHaveBeenCalled();
+    expect(auditLogCreate).toHaveBeenCalledTimes(1);
     expect(auditLogCreate).toHaveBeenCalledWith({
       data: {
         actorType: "admin",
@@ -51,26 +52,38 @@ describe("AdminCommunityService", () => {
     });
   });
 
-  it("动态不存在 → 404，不写审计", async () => {
+  it("动态不存在（更新 0 行） → 404 动态不存在，不写审计", async () => {
+    prisma.post.updateMany.mockResolvedValue({ count: 0 });
     prisma.post.findUnique.mockResolvedValue(null);
 
-    await expect(service.softDeletePost("nope", "admin-1")).rejects.toBeInstanceOf(
-      NotFoundException,
+    await expect(service.softDeletePost("nope", "admin-1")).rejects.toThrow(
+      new NotFoundException("动态不存在"),
     );
-    expect(prisma.post.update).not.toHaveBeenCalled();
     expect(auditLogCreate).not.toHaveBeenCalled();
   });
 
-  it("重复删除已删动态 → 404，不写审计", async () => {
-    prisma.post.findUnique.mockResolvedValue({
-      id: "p1",
-      deletedAt: new Date(),
-    });
+  it("更新 0 行且动态已删 → 404 动态已删除，不写审计", async () => {
+    prisma.post.updateMany.mockResolvedValue({ count: 0 });
+    prisma.post.findUnique.mockResolvedValue({ id: "p1" });
 
-    await expect(service.softDeletePost("p1", "admin-1")).rejects.toBeInstanceOf(
+    await expect(service.softDeletePost("p1", "admin-1")).rejects.toThrow(
+      new NotFoundException("动态已删除"),
+    );
+    expect(auditLogCreate).not.toHaveBeenCalled();
+  });
+
+  it("连续两次软删：第二次 404，审计只写一次", async () => {
+    prisma.post.updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 });
+    prisma.post.findUnique.mockResolvedValue({ id: "p1" });
+
+    await service.softDeletePost("p1", "admin-1");
+    await expect(service.softDeletePost("p1", "admin-2")).rejects.toBeInstanceOf(
       NotFoundException,
     );
-    expect(prisma.post.update).not.toHaveBeenCalled();
-    expect(auditLogCreate).not.toHaveBeenCalled();
+
+    expect(auditLogCreate).toHaveBeenCalledTimes(1);
+    expect(auditLogCreate.mock.calls[0][0].data.actorId).toBe("admin-1");
   });
 });
