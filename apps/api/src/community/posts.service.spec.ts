@@ -117,6 +117,7 @@ function makePost(over: Partial<PostFixture> & { id: string }): PostFixture {
 }
 
 describe("PostsService", () => {
+  const originalPublicApiBase = process.env.PUBLIC_API_BASE;
   let service: PostsService;
   let store: PostFixture[];
 
@@ -200,6 +201,8 @@ describe("PostsService", () => {
   }
 
   beforeEach(async () => {
+    // 与 IMG 同源，避免本机 .env 的局域网 PUBLIC_API_BASE 导致配图校验失败
+    process.env.PUBLIC_API_BASE = "http://localhost:3000/api";
     vi.clearAllMocks();
     store = [];
     prisma.like.findMany.mockResolvedValue([]);
@@ -208,6 +211,14 @@ describe("PostsService", () => {
       providers: [PostsService, { provide: PrismaService, useValue: prisma }],
     }).compile();
     service = mod.get(PostsService);
+  });
+
+  afterEach(() => {
+    if (originalPublicApiBase === undefined) {
+      delete process.env.PUBLIC_API_BASE;
+    } else {
+      process.env.PUBLIC_API_BASE = originalPublicApiBase;
+    }
   });
 
   describe("create", () => {

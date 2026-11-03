@@ -9,12 +9,13 @@ import {
   CommunityDeletedBy,
   NotificationType,
 } from "@activity/shared";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PrismaService } from "../prisma/prisma.service";
 import { CommentsService } from "./comments.service";
 
 const UUID = "123e4567-e89b-12d3-a456-426614174000";
 const IMG = `http://localhost:3000/api/uploads/community/${UUID}.png`;
+const originalPublicApiBase = process.env.PUBLIC_API_BASE;
 
 type PostRow = {
   id: string;
@@ -199,6 +200,7 @@ describe("CommentsService", () => {
   }
 
   beforeEach(async () => {
+    process.env.PUBLIC_API_BASE = "http://localhost:3000/api";
     seq = 0;
     clock = 0;
     posts = [
@@ -224,6 +226,14 @@ describe("CommentsService", () => {
       providers: [CommentsService, { provide: PrismaService, useValue: prisma }],
     }).compile();
     service = moduleRef.get(CommentsService);
+  });
+
+  afterEach(() => {
+    if (originalPublicApiBase === undefined) {
+      delete process.env.PUBLIC_API_BASE;
+    } else {
+      process.env.PUBLIC_API_BASE = originalPublicApiBase;
+    }
   });
 
   describe("create 校验", () => {
