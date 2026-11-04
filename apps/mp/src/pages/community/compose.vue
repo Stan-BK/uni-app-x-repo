@@ -58,7 +58,6 @@
         </view>
         <view class="section-titles">
           <text class="section-title">关联活动</text>
-          <text class="section-sub">点击活动查看详情，再选择关联</text>
         </view>
         <text class="section-count" :class="{ 'is-full': selected.length >= ACTIVITIES_MAX }">
           {{ selected.length }}/{{ ACTIVITIES_MAX }}
@@ -124,19 +123,21 @@
             class="cand"
             :class="{ 'is-selected': isSelected(act.id) }"
             hover-class="cand-pressed"
-            @click="openActivityDetail(act)"
+            @click="toggleActivity(act)"
           >
             <view class="cand-icon">
               <EdIcon name="calendar" size="30rpx" />
             </view>
             <view class="cand-main">
               <text class="cand-title">{{ act.title }}</text>
-              <text class="cand-sub">{{
-                isSelected(act.id) ? "已加入关联" : "点击查看活动详情"
-              }}</text>
             </view>
-            <view class="cand-pill" :class="{ 'is-on': isSelected(act.id) }">
-              <text class="cand-pill-text">{{ isSelected(act.id) ? "已选" : "详情" }}</text>
+            <view
+              class="cand-pill"
+              :class="{ 'is-on': isSelected(act.id) }"
+              hover-class="none"
+              @click.stop="openActivityDetail(act)"
+            >
+              <text class="cand-pill-text">详情</text>
             </view>
           </view>
           <view :style="{ height: `${spacerBottom}rpx` }" />
@@ -252,8 +253,7 @@
           hover-class="none"
           @click="onConfirmSelection"
         >
-          <EdIcon :name="sheetSelected ? 'check' : 'send'" size="28rpx" />
-          <text class="sheet-btn-text">{{ sheetSelected ? "取消关联" : "选择关联" }}</text>
+          {{ sheetSelected ? "取消关联" : "选择关联" }}
         </button>
       </view>
     </view>
@@ -849,13 +849,6 @@ onMounted(() => {
   color: $ed-color-text;
 }
 
-.section-sub {
-  display: block;
-  margin-top: 4rpx;
-  font-size: 22rpx;
-  color: $ed-color-text-muted;
-}
-
 .section-count {
   flex-shrink: 0;
   padding: 4rpx 18rpx;
@@ -1023,13 +1016,6 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.cand-sub {
-  display: block;
-  margin-top: 6rpx;
-  font-size: 22rpx;
-  color: $ed-color-text-muted;
 }
 
 .cand-pill {
@@ -1323,7 +1309,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10rpx;
   height: 84rpx;
   margin: 0;
   font-size: 28rpx;
@@ -1332,12 +1317,6 @@ onMounted(() => {
 
 .sheet-btn.is-off {
   opacity: 0.45;
-}
-
-.sheet-btn-text {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #ffffff;
 }
 
 @keyframes sheet-mask-in {
