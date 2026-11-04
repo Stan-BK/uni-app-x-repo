@@ -460,7 +460,7 @@ $ed-motion-ease: cubic-bezier(0.32, 0.72, 0, 1) !default;
   position: relative;
   z-index: 2;
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   margin-bottom: 8rpx;
 }
 

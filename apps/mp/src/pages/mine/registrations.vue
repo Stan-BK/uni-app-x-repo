@@ -49,11 +49,11 @@
         <view class="ico ico-list" />
         <text>我的活动</text>
       </view>
-      <view class="entry entry-tertiary" hover-class="none" @click="goCommunityMine">
+      <view class="entry entry-primary" hover-class="none" @click="goCommunityMine">
         <view class="ico ico-post" />
         <text>我的动态</text>
       </view>
-      <view class="entry entry-primary" hover-class="none" @click="goProfile">
+      <view class="entry entry-tertiary" hover-class="none" @click="goProfile">
         <view class="ico ico-person" />
         <text>我的信息</text>
       </view>

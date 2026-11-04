@@ -2,7 +2,6 @@
   <view class="page page-l1">
     <EdLeafDeco />
     <view class="header">
-      <text class="page-title">社区</text>
       <view class="sort">
         <view
           class="sort-item"
@@ -197,14 +196,8 @@ onShareAppMessage((res: { target?: { dataset?: Record<string, string> } }) => {
 .header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   margin-bottom: 24rpx;
-}
-
-.page-title {
-  font-size: 40rpx;
-  font-weight: 700;
-  color: $ed-color-text;
 }
 
 .sort {
