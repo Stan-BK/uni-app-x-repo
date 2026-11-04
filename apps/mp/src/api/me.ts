@@ -1,4 +1,10 @@
-import { ApiError, getApiBase, getUserToken, request } from "../utils/request";
+import {
+  ApiError,
+  apiErrorFromResponse,
+  getApiBase,
+  getUserToken,
+  request,
+} from "../utils/request";
 
 export type MeResult = {
   id: string;
@@ -50,14 +56,13 @@ export function uploadImageFile(
           }
         }
         if (res.statusCode < 200 || res.statusCode >= 300) {
-          const msg =
-            typeof body === "object" &&
-            body !== null &&
-            "message" in body &&
-            (body as { message: unknown }).message != null
-              ? String((body as { message: string }).message)
-              : `上传失败 HTTP ${res.statusCode}`;
-          reject(new ApiError(res.statusCode, msg));
+          reject(
+            apiErrorFromResponse(
+              res.statusCode,
+              body,
+              `上传失败 HTTP ${res.statusCode}`,
+            ),
+          );
           return;
         }
         const url = (body as { url?: string }).url;

@@ -36,6 +36,8 @@ services:
       - "80:80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # 维护开关：存在 maintenance.on 时 /api 对外 503（见 default.conf）
+      - ./nginx/runtime:/etc/nginx/runtime:ro
     depends_on:
       api:
         condition: service_healthy
