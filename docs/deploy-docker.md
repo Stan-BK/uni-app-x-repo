@@ -29,7 +29,28 @@ cp deploy/.env.example deploy/.env
 
 若宿主机 80 已被占用，先停掉占用进程，不要改 compose 端口。
 
-## 3. 初次部署
+## 3. API 镜像构建
+
+`apps/api/Dockerfile` 用 BuildKit 缓存挂载（`RUN --mount=type=cache`）保存 pnpm store，构建需要 BuildKit：
+
+- `./deploy/ctl.sh` 和 `docker compose build`（Compose V2）默认走 BuildKit，不用额外开关。
+- 直接 `docker build` 时加上 `DOCKER_BUILDKIT=1`（Docker 23+ 默认已开启）。`DOCKER_BUILDKIT=0` 会在解析 `--mount` 时失败。
+
+镜像里的 `pnpm install` / `corepack prepare` 默认使用 `https://registry.npmmirror.com`（构建参数 `NPM_REGISTRY`）。`deploy/npmrc` 只在镜像构建时复制为 `/app/.npmrc`，用来指定 pnpm store 和 `deploy-all-files`。仓库根 `.npmrc` 不改，本机 `pnpm install` 不会被切到国内源。
+
+换源示例：
+
+```bash
+DOCKER_BUILDKIT=1 docker build -f apps/api/Dockerfile \
+  --build-arg NPM_REGISTRY=https://registry.npmjs.org \
+  -t activity-api .
+```
+
+依赖清单不变时，安装层会命中 Docker 层缓存，不再访问 registry。安装层需要重跑时，BuildKit 挂载的 pnpm store 仍复用已下载的包。这份 store 不进镜像层：换一台新 ECS 时第一次构建仍会下载（走上面的源），之后再构建会变快。`docker builder prune` 会清掉层缓存和这份 store。
+
+运行阶段不再做第二次 `pnpm install`。构建期 `pnpm deploy` 产出 `/app/apps/api`（含 devDependency 中的 Prisma CLI）。容器启动仍由 `deploy/api-entrypoint.sh` 执行 `prisma migrate deploy`，HEALTHCHECK 不变。
+
+## 4. 初次部署
 
 ```bash
 ./deploy/ctl.sh bootstrap
@@ -39,7 +60,7 @@ cp deploy/.env.example deploy/.env
 
 期望：脚本退出 0；`curl -sS http://127.0.0.1/` 为 `ok`；`/api/health` 含 `"status":"ok"`。
 
-## 4. 发版（短停机 + 维护码）
+## 5. 发版（短停机 + 维护码）
 
 ```bash
 ./deploy/ctl.sh release
@@ -65,7 +86,7 @@ cp deploy/.env.example deploy/.env
 ./deploy/ctl.sh maintenance off  # 确认已就绪后手动恢复
 ```
 
-## 5. 常用命令
+## 6. 常用命令
 
 ```bash
 ./deploy/ctl.sh help
@@ -78,7 +99,7 @@ cp deploy/.env.example deploy/.env
 
 可选环境变量：`PUBLIC_PROBE_BASE`（默认 `http://127.0.0.1`）、`WAIT_TIMEOUT_SEC`（默认 300）。
 
-## 6. 可选冒烟
+## 7. 可选冒烟
 
 需本机 Node / pnpm，且临时打开 `AUTH_DEV_BYPASS=true` 后重启 api：
 
@@ -90,7 +111,7 @@ API_BASE=http://127.0.0.1/api pnpm --filter @activity/api smoke
 
 跑完把 `AUTH_DEV_BYPASS` 改回空并 `./deploy/ctl.sh up`。
 
-## 7. 等价底层命令（排障）
+## 8. 等价底层命令（排障）
 
 ```bash
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
