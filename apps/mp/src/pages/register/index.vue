@@ -4,10 +4,27 @@
     <view v-else-if="!activity" class="state">{{ errorMessage || "活动不存在" }}</view>
     <template v-else>
       <view class="banner">
-        <text class="banner-title">{{ activity.title }}</text>
-        <text class="banner-meta"
-          >{{ formatTime(activity.startAt) }} · {{ activity.place || "—" }}</text
-        >
+        <image
+          v-if="activity.coverUrl && !bannerBroken"
+          class="banner-img"
+          :src="activity.coverUrl"
+          mode="aspectFill"
+          @error="bannerBroken = true"
+        />
+        <view v-else class="banner-img banner-placeholder">
+          <EdIcon name="calendar" size="72rpx" />
+        </view>
+        <view class="banner-scrim" />
+        <view class="banner-body">
+          <text class="banner-title">{{ activity.title }}</text>
+          <view class="banner-meta">
+            <EdIcon name="clock" size="24rpx" />
+            <text class="banner-meta-text">{{ formatTime(activity.startAt) }}</text>
+            <text class="banner-dot">·</text>
+            <EdIcon name="pin" size="24rpx" />
+            <text class="banner-meta-text">{{ activity.place || "—" }}</text>
+          </view>
+        </view>
       </view>
 
       <view class="form">
@@ -62,6 +79,7 @@ import {
 } from "@/api/public-activities";
 import { requestRegistrationSubscribe } from "@/adapters/subscribe";
 import { createRegistration } from "@/api/registrations";
+import EdIcon from "@/components/ed-icon/ed-icon.vue";
 import { useUserStore } from "@/stores/user";
 import { contactDiffersFromPrefill } from "@/utils/contact-prefill";
 import {
@@ -75,6 +93,7 @@ import { ApiError } from "@/utils/request";
 const user = useUserStore();
 const activity = ref<PublicActivity | null>(null);
 const activityId = ref("");
+const bannerBroken = ref(false);
 const name = ref("");
 const phone = ref("");
 const loading = ref(true);
@@ -125,6 +144,7 @@ async function load(id: string) {
   loading.value = true;
   errorMessage.value = "";
   activity.value = null;
+  bannerBroken.value = false;
   try {
     activity.value = await getPublicActivity(id);
     uni.setNavigationBarTitle({ title: "报名" });
@@ -318,27 +338,78 @@ async function onSubmit() {
 }
 
 .banner {
+  position: relative;
+  height: 340rpx;
   margin-top: 24rpx;
-  background: $ed-color-brand;
-  border-radius: $ed-radius-card;
-  padding: $ed-space-card;
   margin-bottom: 24rpx;
+  border-radius: $ed-radius-card;
+  overflow: hidden;
+  background: linear-gradient(135deg, $ed-color-brand, $ed-color-brand-strong);
+}
+
+.banner-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+.banner-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, $ed-color-brand, $ed-color-brand-strong);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.banner-scrim {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(36, 49, 45, 0.06) 18%,
+    rgba(36, 49, 45, 0.68) 100%
+  );
+}
+
+.banner-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 28rpx 32rpx 26rpx;
 }
 
 .banner-title {
   display: block;
-  color: rgba(255, 255, 255, 0.95);
+  color: #ffffff;
   font-size: 38rpx;
-  font-weight: 600;
-  margin-bottom: 12rpx;
-  line-height: 1.35;
+  font-weight: 700;
+  line-height: 1.32;
+  text-shadow: 0 2rpx 12rpx rgba(36, 49, 45, 0.35);
 }
 
 .banner-meta {
-  display: block;
-  color: rgba(255, 255, 255, 0.78);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 14rpx;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.banner-meta-text {
   font-size: 24rpx;
-  line-height: 1.45;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.banner-dot {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .form {

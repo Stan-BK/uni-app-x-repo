@@ -1,5 +1,5 @@
 <template>
-  <view class="page page-l2">
+  <view class="page page-l2 detail-page" :class="{ 'detail-page--with-bar': showActionBar }">
     <view v-if="loading" class="state">加载中…</view>
     <view v-else-if="!activity" class="state">活动不存在或无权查看</view>
     <view v-else class="card">
@@ -98,29 +98,72 @@
         </view>
         <text v-else class="people-empty">暂无报名，点此查看名单</text>
       </view>
-      <button
-        v-if="canEdit"
-        class="ed-btn-secondary"
-        hover-class="none"
-        @click="goEdit"
-      >
-        编辑活动
-      </button>
+    </view>
+
+    <view v-if="showActionBar" class="action-bar">
+      <view class="action-row">
+        <template v-if="isDraft">
+          <button
+            class="ed-btn-secondary action-btn"
+            hover-class="none"
+            :disabled="acting"
+            @click="goEdit"
+          >
+            编辑
+          </button>
+          <button
+            v-if="user.canPublish"
+            class="ed-btn action-btn action-btn--primary"
+            hover-class="none"
+            :disabled="acting"
+            @click="onPublish"
+          >
+            发布
+          </button>
+        </template>
+        <template v-else-if="isPublished">
+          <button
+            class="ed-btn-secondary action-btn"
+            hover-class="none"
+            :disabled="acting"
+            @click="onUnpublish"
+          >
+            退回草稿
+          </button>
+          <button
+            class="action-btn action-btn--danger"
+            hover-class="none"
+            :disabled="acting"
+            @click="onTakeDown"
+          >
+            下架
+          </button>
+        </template>
+      </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { onLoad } from "@dcloudio/uni-app";
-import { getActivity, type Activity } from "@/api/activities";
+import { onLoad, onShow } from "@dcloudio/uni-app";
+import {
+  cancelActivity,
+  getActivity,
+  publishActivity,
+  unpublishActivity,
+  type Activity,
+} from "@/api/activities";
 import {
   listOrganizerRegistrations,
   type Registration,
 } from "@/api/registrations";
+import { useUserStore } from "@/stores/user";
 import { ApiError } from "@/utils/request";
 
+const user = useUserStore();
 const loading = ref(true);
+const acting = ref(false);
 const activity = ref<Activity | null>(null);
 const activityId = ref("");
 const people = ref<Registration[]>([]);
@@ -134,7 +177,16 @@ const LIFECYCLE_LABEL: Record<string, string> = {
   ended: "已结束",
 };
 
-const canEdit = computed(() => activity.value?.lifecycle === "draft");
+const ERR_MAP: Record<string, string> = {
+  "Only draft can be published": "仅草稿状态可发布",
+  "Only published can unpublish to draft": "仅已发布活动可退回草稿",
+  "Cannot cancel from current state": "当前状态不可下架",
+  "Publish permission frozen": "发布权限已关闭",
+};
+
+const isDraft = computed(() => activity.value?.lifecycle === "draft");
+const isPublished = computed(() => activity.value?.lifecycle === "published");
+const showActionBar = computed(() => isDraft.value || isPublished.value);
 
 function lifecycleLabel(lifecycle: string) {
   return LIFECYCLE_LABEL[lifecycle] ?? lifecycle;
@@ -161,6 +213,12 @@ function feeText(a: Activity) {
   return `¥${(a.feeCents / 100).toFixed(2)}`;
 }
 
+function errMessage(e: unknown): string {
+  if (e instanceof ApiError) return ERR_MAP[e.message] ?? e.message;
+  if (e instanceof Error) return ERR_MAP[e.message] ?? e.message;
+  return "操作失败";
+}
+
 function goEdit() {
   if (!activityId.value) return;
   uni.navigateTo({
@@ -181,6 +239,63 @@ function goRegistrations() {
   uni.navigateTo({
     url: `/pages/organizer/registrations?activityId=${encodeURIComponent(activityId.value)}`,
   });
+}
+
+async function onPublish() {
+  if (!activityId.value || acting.value) return;
+  if (!user.canPublish) {
+    uni.showToast({ title: "发布权限已关闭", icon: "none" });
+    return;
+  }
+  acting.value = true;
+  try {
+    activity.value = await publishActivity(activityId.value);
+    uni.showToast({ title: "已发布", icon: "success" });
+    await loadPeople(activityId.value);
+  } catch (e) {
+    uni.showToast({ title: errMessage(e), icon: "none" });
+  } finally {
+    acting.value = false;
+  }
+}
+
+async function onUnpublish() {
+  if (!activityId.value || acting.value) return;
+  const res = await uni.showModal({
+    title: "退回草稿",
+    content: "退回后活动将下架，已确认报名会被取消。确定退回草稿？",
+  });
+  if (!res.confirm) return;
+  acting.value = true;
+  try {
+    activity.value = await unpublishActivity(activityId.value);
+    uni.showToast({ title: "已退回草稿", icon: "success" });
+    await loadPeople(activityId.value);
+  } catch (e) {
+    uni.showToast({ title: errMessage(e), icon: "none" });
+  } finally {
+    acting.value = false;
+  }
+}
+
+/** 所有者「下架」走取消活动（cancelled），与运营 removed 区分。 */
+async function onTakeDown() {
+  if (!activityId.value || acting.value) return;
+  const res = await uni.showModal({
+    title: "下架活动",
+    content: "下架后不可再上架，已确认报名会被取消。确定下架该活动？",
+  });
+  if (!res.confirm) return;
+  acting.value = true;
+  try {
+    activity.value = await cancelActivity(activityId.value);
+    uni.showToast({ title: "已下架", icon: "success" });
+    await loadPeople(activityId.value);
+  } catch (e) {
+    uni.showToast({ title: errMessage(e), icon: "none" });
+  } finally {
+    acting.value = false;
+  }
 }
 
 async function loadPeople(id: string) {
@@ -207,13 +322,7 @@ async function load(id: string) {
     await loadPeople(id);
   } catch (e) {
     activity.value = null;
-    const msg =
-      e instanceof ApiError
-        ? e.message
-        : e instanceof Error
-          ? e.message
-          : "加载失败";
-    uni.showToast({ title: msg, icon: "none" });
+    uni.showToast({ title: errMessage(e), icon: "none" });
   } finally {
     loading.value = false;
   }
@@ -222,15 +331,25 @@ async function load(id: string) {
 onLoad((query) => {
   const id = String(query?.id ?? "").trim();
   activityId.value = id;
-  if (id) void load(id);
-  else {
+  if (!id) {
     loading.value = false;
     activity.value = null;
   }
 });
+
+onShow(() => {
+  void user.refreshIdentity().catch(() => {
+    /* 网络失败时保留本地态 */
+  });
+  if (activityId.value) void load(activityId.value);
+});
 </script>
 
 <style scoped lang="scss">
+.detail-page--with-bar {
+  padding-bottom: calc(168rpx + env(safe-area-inset-bottom));
+}
+
 .state {
   margin-top: 24rpx;
   padding: 120rpx 0;
@@ -418,9 +537,53 @@ onLoad((query) => {
   padding: 8rpx 0 12rpx;
 }
 
-button.ed-btn,
-button.ed-btn-secondary {
-  margin: 16rpx 0 0;
+.action-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  padding: 18rpx $ed-space-page-x calc(18rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background: $ed-color-surface;
+  border-top: 1rpx solid $ed-color-border;
+}
+
+.action-row {
+  display: flex;
+  gap: 16rpx;
+}
+
+.action-row button {
+  margin: 0;
   font-weight: 600;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 0;
+  height: 88rpx;
+  font-size: 28rpx;
+  line-height: 88rpx;
+}
+
+.action-btn--primary {
+  flex: 1.35;
+}
+
+.action-btn--danger {
+  flex: 1;
+  background: $ed-color-terracotta-soft;
+  color: $ed-color-terracotta;
+  border: none;
+  border-radius: $ed-radius-pill;
+}
+
+.action-btn--danger::after {
+  border: none;
+}
+
+button[disabled] {
+  opacity: 0.5;
 }
 </style>
