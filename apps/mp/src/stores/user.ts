@@ -45,7 +45,7 @@ export const useUserStore = defineStore("user", {
       setUserToken(result.accessToken);
       await this.refreshIdentity();
     },
-    /** 未登录时弹窗确认，用户点「去登录」才换 JWT。已登录则直接通过。
+    /** 未登录时弹窗确认，用户点「登录」才换 JWT。已登录则直接通过。
      * 登录后若缺头像/昵称会跳转资料页，并返回 false 以便调用方暂停后续动作。 */
     async promptLogin(message = "请先登录微信账号后再继续") {
       if (this.isLoggedIn) {
@@ -57,7 +57,7 @@ export const useUserStore = defineStore("user", {
       const res = await uni.showModal({
         title: "需要登录",
         content: message,
-        confirmText: "去登录",
+        confirmText: "登录",
         cancelText: "取消",
       });
       if (!res.confirm) return false;

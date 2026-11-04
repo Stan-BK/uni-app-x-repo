@@ -83,7 +83,7 @@ const page = ref(1);
 const loading = ref(false);
 const errorText = ref("");
 let loadGen = 0;
-let prompting = false;
+let loggingIn = false;
 
 const hasMore = computed(() => items.value.length < total.value);
 
@@ -130,20 +130,24 @@ async function load(opts: { reset?: boolean } = {}) {
   }
 }
 
-/** 登录闸：游客弹窗确认后登录；取消则停留在登录引导态。 */
-async function ensureLogin() {
-  if (user.isLoggedIn || prompting) return;
-  prompting = true;
-  try {
-    await user.promptLogin("登录后即可浏览与发布社区动态");
-  } finally {
-    prompting = false;
-  }
-}
-
+/** 页内登录 CTA：已有引导态，直接换 JWT，不再套一层弹窗。 */
 async function onLogin() {
-  await ensureLogin();
-  if (user.isLoggedIn) await load({ reset: true });
+  if (user.isLoggedIn || loggingIn) return;
+  loggingIn = true;
+  try {
+    await user.login();
+    if (!user.guideProfileIfNeeded("login")) {
+      uni.showToast({ title: "登录成功", icon: "none" });
+    }
+    await load({ reset: true });
+  } catch (e) {
+    uni.showToast({
+      title: e instanceof Error ? e.message : "登录失败",
+      icon: "none",
+    });
+  } finally {
+    loggingIn = false;
+  }
 }
 
 function setSort(next: CommunityPostSortKey) {
@@ -168,7 +172,7 @@ async function goCompose() {
 }
 
 onShow(async () => {
-  await ensureLogin();
+  // 游客只展示页内登录引导，不弹「需要登录」
   if (user.isLoggedIn) await load({ reset: true });
 });
 
