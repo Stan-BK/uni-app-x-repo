@@ -1,0 +1,8 @@
+# 仅由 apps/api/Dockerfile COPY 为镜像内 /app/.npmrc，pnpm 不会读取仓库里的这个路径。
+# 本机开发继续用根目录 .npmrc，不会被切到国内源。
+
+store-dir=/pnpm/store
+# 与 BuildKit cache mount 配合：包从 store 复制进镜像层，避免硬链接指向挂载点导致运行时丢文件。
+package-import-method=copy
+# 根 .gitignore 忽略了 dist。默认 deploy 按 pack 规则会丢掉 apps/api/dist 和 packages/shared/dist。
+deploy-all-files=true
