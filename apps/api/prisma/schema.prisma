@@ -95,6 +95,7 @@ model User {
   settlements   ActivitySettlement[]
   posts         Post[]
   comments      Comment[]
+  commentReplyTargets Comment[] @relation("CommentReplyToAuthor")
   likes         Like[]
   notificationsReceived Notification[]       @relation("NotificationRecipient")
   notificationsActed    Notification[]       @relation("NotificationActor")
@@ -345,22 +346,25 @@ model PostActivityLink {
 }
 
 model Comment {
-  id            String              @id @default(cuid())
-  postId        String
-  authorId      String
-  parentId      String?
-  body          String              @default("")
-  imageUrl      String?
-  likeCount     Int                 @default(0)
-  deletedAt     DateTime?
-  deletedBy     CommunityDeletedBy?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  post          Post                @relation(fields: [postId], references: [id])
-  author        User                @relation(fields: [authorId], references: [id])
-  parent        Comment?            @relation("CommentReplies", fields: [parentId], references: [id])
-  replies       Comment[]           @relation("CommentReplies")
-  notifications Notification[]
+  id               String              @id @default(cuid())
+  postId           String
+  authorId         String
+  parentId         String?
+  /** 被回复的评论作者；二级挂一级时仍保留真实回复对象，用于「回复 xxx：」展示 */
+  replyToAuthorId  String?
+  body             String              @default("")
+  imageUrl         String?
+  likeCount        Int                 @default(0)
+  deletedAt        DateTime?
+  deletedBy        CommunityDeletedBy?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  post             Post                @relation(fields: [postId], references: [id])
+  author           User                @relation(fields: [authorId], references: [id])
+  replyToAuthor    User?               @relation("CommentReplyToAuthor", fields: [replyToAuthorId], references: [id])
+  parent           Comment?            @relation("CommentReplies", fields: [parentId], references: [id])
+  replies          Comment[]           @relation("CommentReplies")
+  notifications    Notification[]
 
   @@index([postId, deletedAt, createdAt])
   @@index([parentId])

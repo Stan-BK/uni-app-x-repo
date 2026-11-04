@@ -28,6 +28,7 @@ type CommentRow = {
   postId: string;
   authorId: string;
   parentId: string | null;
+  replyToAuthorId: string | null;
   body: string;
   imageUrl: string | null;
   likeCount: number;
@@ -77,6 +78,9 @@ describe("CommentsService", () => {
   const withAuthor = (c: CommentRow) => ({
     ...c,
     author: { id: c.authorId, ...USERS[c.authorId] },
+    replyToAuthor: c.replyToAuthorId
+      ? { id: c.replyToAuthorId, ...USERS[c.replyToAuthorId] }
+      : null,
   });
 
   function seedComment(p: Partial<CommentRow> & { id: string }) {
@@ -84,6 +88,7 @@ describe("CommentsService", () => {
       postId: "p1",
       authorId: "u1",
       parentId: null,
+      replyToAuthorId: null,
       body: "x",
       imageUrl: null,
       likeCount: 0,
@@ -146,6 +151,7 @@ describe("CommentsService", () => {
             postId: data.postId!,
             authorId: data.authorId!,
             parentId: data.parentId ?? null,
+            replyToAuthorId: data.replyToAuthorId ?? null,
             body: data.body ?? "",
             imageUrl: data.imageUrl ?? null,
             likeCount: 0,
@@ -279,7 +285,7 @@ describe("CommentsService", () => {
   });
 
   describe("create 挂载", () => {
-    it("parentId 指向二级回复 → 挂到该回复的一级祖先", async () => {
+    it("parentId 指向二级回复 → 挂到该回复的一级祖先，replyTo 为被点作者", async () => {
       seedComment({ id: "root" });
       seedComment({ id: "reply", parentId: "root", authorId: "u3" });
       const c = await service.create("u2", "p1", {
@@ -287,12 +293,22 @@ describe("CommentsService", () => {
         parentId: "reply",
       });
       expect(c.parentId).toBe("root");
+      expect(c.replyTo).toEqual({
+        id: "u3",
+        nickname: "第三人",
+        avatarUrl: null,
+      });
     });
 
-    it("parentId 指向一级 → 直接挂载", async () => {
-      seedComment({ id: "root" });
+    it("parentId 指向一级 → 直接挂载，replyTo 为一级作者", async () => {
+      seedComment({ id: "root", authorId: "u1" });
       const c = await service.create("u2", "p1", { body: "回", parentId: "root" });
       expect(c.parentId).toBe("root");
+      expect(c.replyTo).toEqual({
+        id: "u1",
+        nickname: "作者",
+        avatarUrl: null,
+      });
     });
 
     it("parentId 属于其他动态 → 400", async () => {

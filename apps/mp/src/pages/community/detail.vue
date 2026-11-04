@@ -167,11 +167,15 @@
                   <view class="avatar-body xs" />
                 </view>
                 <view class="c-main">
-                  <view class="c-meta">
-                    <text class="c-name">{{ r.author.nickname }}</text>
-                    <text class="c-time">{{ formatPostTime(r.createdAt) }}</text>
-                  </view>
-                  <text v-if="r.body" class="c-body">{{ r.body }}</text>
+                <view class="c-meta">
+                  <text class="c-name">{{ r.author.nickname }}</text>
+                  <text class="c-time">{{ formatPostTime(r.createdAt) }}</text>
+                </view>
+                <text v-if="r.replyTo || r.body" class="c-body">
+                  <text v-if="r.replyTo" class="c-reply-to"
+                    >回复 {{ r.replyTo.nickname }}：</text
+                  >{{ r.body }}
+                </text>
                   <image
                     v-if="r.imageUrl"
                     class="c-img"
@@ -1038,6 +1042,10 @@ onShareAppMessage(() => {
   color: $ed-color-text;
   word-break: break-all;
   white-space: pre-wrap;
+}
+
+.c-reply-to {
+  color: $ed-color-text-secondary;
 }
 
 .c-img {

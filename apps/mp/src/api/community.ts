@@ -89,13 +89,21 @@ export function uploadCommunityImage(filePath: string): Promise<{ url: string }>
   return uploadImageFile("/me/uploads/community", filePath);
 }
 
+export type CommunityCommentAuthor = {
+  id: string;
+  nickname: string;
+  avatarUrl: string | null;
+};
+
 export type CommunityComment = {
   id: string;
   postId: string;
   parentId: string | null;
   body: string;
   imageUrl: string | null;
-  author: { id: string; nickname: string; avatarUrl: string | null };
+  author: CommunityCommentAuthor;
+  /** 回复对象；一级评论为 null */
+  replyTo: CommunityCommentAuthor | null;
   likeCount: number;
   likedByMe: boolean;
   createdAt: string;

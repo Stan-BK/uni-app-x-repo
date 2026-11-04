@@ -19,24 +19,50 @@ import { findLikedTargetIds } from "./likes.lookup";
 import { authorDisplayName } from "./posts.mapper";
 import { isCommunityUploadUrl, normalizePaging } from "./posts.service";
 
+const AUTHOR_SELECT = {
+  id: true,
+  nickname: true,
+  avatarUrl: true,
+} as const;
+
 const COMMENT_INCLUDE = {
-  author: { select: { id: true, nickname: true, avatarUrl: true } },
+  author: { select: AUTHOR_SELECT },
+  replyToAuthor: { select: AUTHOR_SELECT },
 } satisfies Prisma.CommentInclude;
 
 type CommentRow = Prisma.CommentGetPayload<{ include: typeof COMMENT_INCLUDE }>;
 
-export function mapComment(row: CommentRow, opts: { likedByMe?: boolean } = {}) {
+function mapAuthor(user: {
+  id: string;
+  nickname: string | null;
+  avatarUrl: string | null;
+}) {
+  return {
+    id: user.id,
+    nickname: authorDisplayName(user.nickname),
+    avatarUrl: user.avatarUrl,
+  };
+}
+
+export function mapComment(
+  row: CommentRow,
+  opts: {
+    likedByMe?: boolean;
+    /** 历史数据无 replyToAuthorId 时，用一级作者兜底 */
+    replyToFallback?: { id: string; nickname: string; avatarUrl: string | null };
+  } = {},
+) {
+  const replyTo = row.replyToAuthor
+    ? mapAuthor(row.replyToAuthor)
+    : opts.replyToFallback ?? null;
   return {
     id: row.id,
     postId: row.postId,
     parentId: row.parentId,
     body: row.body,
     imageUrl: row.imageUrl,
-    author: {
-      id: row.author.id,
-      nickname: authorDisplayName(row.author.nickname),
-      avatarUrl: row.author.avatarUrl,
-    },
+    author: mapAuthor(row.author),
+    replyTo,
     likeCount: row.likeCount,
     likedByMe: opts.likedByMe ?? false,
     createdAt: row.createdAt.toISOString(),
@@ -87,6 +113,7 @@ export class CommentsService {
           postId,
           authorId,
           parentId: rootParentId,
+          replyToAuthorId: target?.authorId ?? null,
           body,
           imageUrl,
         },
@@ -155,12 +182,19 @@ export class CommentsService {
       PrismaLikeTargetType.comment,
       rows.flatMap((row) => [row.id, ...row.replies.map((r) => r.id)]),
     );
-    const items: CommentWithRepliesDto[] = rows.map((row) => ({
-      ...mapComment(row, { likedByMe: liked.has(row.id) }),
-      replies: row.replies.map((r) =>
-        mapComment(r, { likedByMe: liked.has(r.id) }),
-      ),
-    }));
+    const items: CommentWithRepliesDto[] = rows.map((row) => {
+      const root = mapComment(row, { likedByMe: liked.has(row.id) });
+      return {
+        ...root,
+        replies: row.replies.map((r) =>
+          mapComment(r, {
+            likedByMe: liked.has(r.id),
+            // 旧回复未写 replyToAuthorId 时，兜底为一级评论作者
+            replyToFallback: root.author,
+          }),
+        ),
+      };
+    });
     return { items, total, page, pageSize };
   }
 
