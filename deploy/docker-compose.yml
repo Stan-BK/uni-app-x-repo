@@ -25,6 +25,10 @@ services:
     build:
       context: ..
       dockerfile: apps/api/Dockerfile
+      # 与 apps/api/Dockerfile 的 ARG NODE_IMAGE 默认值一致。
+      # 直连 Docker Hub：NODE_IMAGE=node:20-bookworm-slim
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-docker.m.daocloud.io/library/node:20-bookworm-slim}
     env_file:
       - .env
     environment:
