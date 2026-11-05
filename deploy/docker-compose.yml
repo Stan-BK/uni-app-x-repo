@@ -16,7 +16,7 @@ services:
 
   api:
     # 未设置 API_IMAGE 时用本地标签，release 仍走 build。
-    # 设为 registry.cn-shenzhen.aliyuncs.com/<命名空间>/deploy-api:<tag> 后，ctl.sh 改为 pull。
+    # 设为 VPC 引用 crpi-zpeirnr1a18s4043-vpc.cn-shenzhen.personal.cr.aliyuncs.com/juyouu/deploy-api:<tag> 后，ctl.sh 改为 pull。
     image: ${API_IMAGE:-activity-api:local}
     # 默认 never：不要去仓库拉 activity-api:local。
     # pull 模式由 ctl.sh 把 API_PULL_POLICY 设为 always（pull）再设回 never（up --no-build）。

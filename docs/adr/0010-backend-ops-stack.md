@@ -18,7 +18,7 @@
 1. **起步按 MVP**；架构路径为 **轻量托管 → 生产增强**（先单体可运维，再多副本与中间件）。  
 2. **运行时：** Node.js + **NestJS**，代码在 **`apps/api`**（monorepo，不另建 `server/`）。  
 3. **云厂商默认阿里云。**  
-4. **部署：** 先 **Docker + Nginx 单机**；稳定运营升 **容器服务 ≥2 副本跨 AZ**。单机阶段镜像可以在 ECS 上构建，也可以由云效 Flow 构建后推到 ACR（`registry.cn-shenzhen.aliyuncs.com`，个人版即可），ECS 只拉取再启动。未配置镜像引用时保持在服务器上构建。  
+4. **部署：** 先 **Docker + Nginx 单机**；稳定运营升 **容器服务 ≥2 副本跨 AZ**。单机阶段镜像可以在 ECS 上构建，也可以由云效 Flow 构建后推到 ACR 个人版公网 `crpi-zpeirnr1a18s4043.cn-shenzhen.personal.cr.aliyuncs.com/juyouu/deploy-api`，同地域 ECS 从 VPC 域名 `crpi-zpeirnr1a18s4043-vpc.cn-shenzhen.personal.cr.aliyuncs.com/juyouu/deploy-api` 拉取再启动。未配置镜像引用时保持在服务器上构建。  
 5. **数据：** **PostgreSQL 单主**（已用 Prisma）；需要时再主从 + PITR。  
 6. **MVP 不上 Redis、不上 MQ**；会话用 JWT/DB；异步用进程内。支付/对账阶段再评估引入。  
 7. **对象存储：** 阿里云 **OSS + CDN**（业务闭环阶段接入）。  

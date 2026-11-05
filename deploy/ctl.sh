@@ -101,9 +101,9 @@ resolve_deploy_mode() {
   fi
 
   if [[ "$DEPLOY_MODE" == "pull" ]]; then
-    [[ -n "$RESOLVED_API_IMAGE" ]] || die "pull 模式需要 API_IMAGE。示例: registry.cn-shenzhen.aliyuncs.com/<命名空间>/deploy-api:<tag>"
+    [[ -n "$RESOLVED_API_IMAGE" ]] || die "pull 模式需要 API_IMAGE。示例: crpi-zpeirnr1a18s4043-vpc.cn-shenzhen.personal.cr.aliyuncs.com/juyouu/deploy-api:<tag>"
     [[ "$RESOLVED_API_IMAGE" == */* ]] || die "API_IMAGE 应为带仓库路径的镜像引用（含 /），当前: $RESOLVED_API_IMAGE"
-    [[ "$RESOLVED_API_IMAGE" != *"<"* && "$RESOLVED_API_IMAGE" != *">"* && "$RESOLVED_API_IMAGE" != *" "* && "$RESOLVED_API_IMAGE" != *$'\t'* ]] || die "API_IMAGE 仍是占位符或含空白。请换成真实命名空间与标签，例如 registry.cn-shenzhen.aliyuncs.com/my-ns/deploy-api:20261105120000"
+    [[ "$RESOLVED_API_IMAGE" != *"<"* && "$RESOLVED_API_IMAGE" != *">"* && "$RESOLVED_API_IMAGE" != *" "* && "$RESOLVED_API_IMAGE" != *$'\t'* ]] || die "API_IMAGE 仍是占位符或含空白。请换成真实标签，例如 crpi-zpeirnr1a18s4043-vpc.cn-shenzhen.personal.cr.aliyuncs.com/juyouu/deploy-api:20261105120000"
     if [[ "$RESOLVED_API_IMAGE" != *:* ]]; then
       echo "警告: API_IMAGE 没有标签，Docker 会按 latest 拉取。发版建议使用云效 DATETIME 标签。" >&2
     fi
@@ -320,11 +320,12 @@ cmd_help() {
   --pull                    强制 pull；未设置 API_IMAGE 时失败（不会退回本机构建）
   --build                   强制本机构建，即使 .env 里写了 API_IMAGE
 
-API_IMAGE 例:
-  registry.cn-shenzhen.aliyuncs.com/<命名空间>/deploy-api:20261105120000
+API_IMAGE 例（ECS 拉取用 VPC 域名）:
+  crpi-zpeirnr1a18s4043-vpc.cn-shenzhen.personal.cr.aliyuncs.com/juyouu/deploy-api:20261105120000
   当前 shell 中的 API_IMAGE 优先于 deploy/.env。生产流水线请带 --pull，
-  或用 ./deploy/ecs-pull-release.sh。ECS 需事先 docker login
-  registry.cn-shenzhen.aliyuncs.com。详见 docs/yunxiao-acr.md。
+  或用 ./deploy/ecs-pull-release.sh。ECS 需事先
+  docker login --username=stan_bk crpi-zpeirnr1a18s4043-vpc.cn-shenzhen.personal.cr.aliyuncs.com
+  云效推送用公网域名。详见 docs/yunxiao-acr.md。
 
 环境变量（可选）:
   API_IMAGE           预构建镜像引用。空则本机构建

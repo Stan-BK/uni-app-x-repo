@@ -45,8 +45,8 @@ cp deploy/.env.example deploy/.env
 # 现有路径：ECS / 本机编译
 ./deploy/ctl.sh release
 
-# 云效已把镜像推到 ACR 之后（没有 API_IMAGE 会失败，不会退回本机构建）
-API_IMAGE=registry.cn-shenzhen.aliyuncs.com/<命名空间>/deploy-api:<tag> \
+# 云效已把镜像推到 ACR 之后。ECS 用 VPC 域名拉取（没有 API_IMAGE 会失败，不会退回本机构建）
+API_IMAGE=crpi-zpeirnr1a18s4043-vpc.cn-shenzhen.personal.cr.aliyuncs.com/juyouu/deploy-api:<tag> \
   ./deploy/ctl.sh release --pull
 ```
 
@@ -88,7 +88,7 @@ DOCKER_BUILDKIT=1 docker build -f apps/api/Dockerfile \
 已设置 `API_IMAGE` 时改为拉取该镜像再启动。bootstrap 会先关掉维护窗。首次上机器也可以：
 
 ```bash
-API_IMAGE=registry.cn-shenzhen.aliyuncs.com/<命名空间>/deploy-api:<tag> \
+API_IMAGE=crpi-zpeirnr1a18s4043-vpc.cn-shenzhen.personal.cr.aliyuncs.com/juyouu/deploy-api:<tag> \
   ./deploy/ctl.sh bootstrap --pull
 ```
 
@@ -158,10 +158,10 @@ API_BASE=http://127.0.0.1/api pnpm --filter @activity/api smoke
 API_PULL_POLICY=never docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
 ```
 
-从 ACR 拉取（先在 ECS 上 `docker login registry.cn-shenzhen.aliyuncs.com`）：
+从 ACR 拉取。cn-shenzhen 的 ECS 用 VPC 域名（先 `docker login --username=stan_bk crpi-zpeirnr1a18s4043-vpc.cn-shenzhen.personal.cr.aliyuncs.com`，密码不要写入仓库）。云效推送用公网域名，见 [yunxiao-acr.md](./yunxiao-acr.md)。
 
 ```bash
-export API_IMAGE=registry.cn-shenzhen.aliyuncs.com/<命名空间>/deploy-api:<tag>
+export API_IMAGE=crpi-zpeirnr1a18s4043-vpc.cn-shenzhen.personal.cr.aliyuncs.com/juyouu/deploy-api:<tag>
 API_PULL_POLICY=always docker compose -f deploy/docker-compose.yml --env-file deploy/.env pull api
 docker pull "$API_IMAGE"
 API_PULL_POLICY=never docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --no-build
