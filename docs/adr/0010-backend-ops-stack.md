@@ -3,6 +3,7 @@
 - **状态：** Accepted
 - **日期：** 2026-10-18
 - **修订：** 2026-10-24 入金（微信 JSAPI 收费报名、结束前退款）与活动结算入账随产品 **P1-3** 开放，见 [ADR-0014](./0014-paid-registration-and-settlement.md)；**发布者提现**仍不在本切片。P1-3 **仍不要求 Redis/MQ**，支付回调与名额幂等靠 Postgres。
+- **修订：** 2026-11-05 单机发版可以改为云效 Flow 构建 API 镜像并推送 **ACR（cn-shenzhen，个人版即可）**，ECS 只 pull 后启动。未设置 `API_IMAGE` 时仍在 ECS 上 `up --build`。不引入 Redis / MQ / 多副本。
 - **决策人：** 产品方确认（聊天选型）
 - **关联：** [docs/backend-ops-roadmap.md](../backend-ops-roadmap.md)、ADR-0001、`docs/roadmap.md`、PRD 摘要
 
@@ -17,7 +18,7 @@
 1. **起步按 MVP**；架构路径为 **轻量托管 → 生产增强**（先单体可运维，再多副本与中间件）。  
 2. **运行时：** Node.js + **NestJS**，代码在 **`apps/api`**（monorepo，不另建 `server/`）。  
 3. **云厂商默认阿里云。**  
-4. **部署：** 先 **Docker + Nginx 单机**；稳定运营升 **容器服务 ≥2 副本跨 AZ**。  
+4. **部署：** 先 **Docker + Nginx 单机**；稳定运营升 **容器服务 ≥2 副本跨 AZ**。单机阶段镜像可以在 ECS 上构建，也可以由云效 Flow 构建后推到 ACR（`registry.cn-shenzhen.aliyuncs.com`，个人版即可），ECS 只拉取再启动。未配置镜像引用时保持在服务器上构建。  
 5. **数据：** **PostgreSQL 单主**（已用 Prisma）；需要时再主从 + PITR。  
 6. **MVP 不上 Redis、不上 MQ**；会话用 JWT/DB；异步用进程内。支付/对账阶段再评估引入。  
 7. **对象存储：** 阿里云 **OSS + CDN**（业务闭环阶段接入）。  
@@ -44,5 +45,5 @@
 
 ## 实现备注
 
-- 涉及目录：`deploy/`（compose / Nginx / `.env.example`）、`apps/api/Dockerfile`、手册 `docs/deploy-docker.md`。OSS / CDN / Sentry 仍属阶段 B 后续切片。  
-- 验收要点：阶段切换时核对 `backend-ops-roadmap.md` §3 表格；未开放阶段不得合并可收款代码。空机器按手册 `compose up` 后 `GET /api/health` 为 200。
+- 涉及目录：`deploy/`（compose / Nginx / `.env.example` / `ctl.sh`）、`apps/api/Dockerfile`、手册 `docs/deploy-docker.md`、云效清单 `docs/yunxiao-acr.md`。OSS / CDN / Sentry 仍属阶段 B 后续切片。  
+- 验收要点：阶段切换时核对 `backend-ops-roadmap.md` §3 表格；未开放阶段不得合并可收款代码。空机器按手册 `compose up` 后 `GET /api/health` 为 200。未设置 `API_IMAGE` 时 `./deploy/ctl.sh release` 仍是 `up -d --build`；设置后为 pull，且 `up` 不带 `--build`。

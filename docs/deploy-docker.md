@@ -29,7 +29,34 @@ cp deploy/.env.example deploy/.env
 
 若宿主机 80 已被占用，先停掉占用进程，不要改 compose 端口。
 
-## 3. API 镜像构建
+## 3. 镜像从哪来
+
+`api` 服务同时写了 `image` 和 `build`。`./deploy/ctl.sh` 的 `bootstrap` / `release` / `up` 按下面规则二选一：
+
+| 条件 | 行为 |
+| --- | --- |
+| 未设置 `API_IMAGE`（默认） | 本机 **build**：`up -d --build`。与原来的发版相同 |
+| `API_IMAGE` 为仓库引用，或显式 `--pull` | **pull**：`compose pull api` → `docker pull` → `up -d --no-build` |
+| 显式 `--build` | 即使 `.env` 里有 `API_IMAGE`，也在本机构建 |
+
+`API_IMAGE` 写在当前 shell 时，优先于 `deploy/.env`。留空示例见 `deploy/.env.example`。
+
+```bash
+# 现有路径：ECS / 本机编译
+./deploy/ctl.sh release
+
+# 云效已把镜像推到 ACR 之后（没有 API_IMAGE 会失败，不会退回本机构建）
+API_IMAGE=registry.cn-shenzhen.aliyuncs.com/<命名空间>/deploy-api:<tag> \
+  ./deploy/ctl.sh release --pull
+```
+
+生产流水线用 `--pull` 或 `./deploy/ecs-pull-release.sh`。不要在变量可能没注入时裸跑 `./deploy/ctl.sh release`，否则会退回在 ECS 上构建。
+
+拉取步骤、ACR 登录和云效 Flow 字段见 [yunxiao-acr.md](./yunxiao-acr.md)。
+
+本机构建时镜像会打上本地标签 `activity-api:local`（设置了 `API_IMAGE` 时，标签就是该引用，且不会 push）。`pull_policy` 默认 `never`，避免去仓库拉这个本地标签。`up --build` 仍会重新构建。
+
+## 4. API 镜像构建（本机 / ECS）
 
 `apps/api/Dockerfile` 用 BuildKit 缓存挂载（`RUN --mount=type=cache`）保存 pnpm store，构建需要 BuildKit：
 
@@ -50,17 +77,24 @@ DOCKER_BUILDKIT=1 docker build -f apps/api/Dockerfile \
 
 运行阶段不再做第二次 `pnpm install`。构建期 `pnpm deploy` 产出 `/app/apps/api`（含 devDependency 中的 Prisma CLI）。容器启动仍由 `deploy/api-entrypoint.sh` 执行 `prisma migrate deploy`，HEALTHCHECK 不变。
 
-## 4. 初次部署
+## 5. 初次部署
 
 ```bash
 ./deploy/ctl.sh bootstrap
 ```
 
-流程：确保维护窗关闭 → `up -d --build` → 等 api 容器 `healthy` → 公网 `GET /api/health`。
+未设置 `API_IMAGE` 时：确保维护窗关闭 → `up -d --build` → 等 api 容器 `healthy` → 公网 `GET /api/health`。
+
+已设置 `API_IMAGE` 时改为拉取该镜像再启动。bootstrap 会先关掉维护窗。首次上机器也可以：
+
+```bash
+API_IMAGE=registry.cn-shenzhen.aliyuncs.com/<命名空间>/deploy-api:<tag> \
+  ./deploy/ctl.sh bootstrap --pull
+```
 
 期望：脚本退出 0；`curl -sS http://127.0.0.1/` 为 `ok`；`/api/health` 含 `"status":"ok"`。
 
-## 5. 发版（短停机 + 维护码）
+## 6. 发版（短停机 + 维护码）
 
 ```bash
 ./deploy/ctl.sh release
@@ -71,9 +105,11 @@ DOCKER_BUILDKIT=1 docker build -f apps/api/Dockerfile \
 1. 打开维护窗（`deploy/nginx/runtime/maintenance.on`）并 reload Nginx  
 2. 对外 `/api/*`（**含** `/api/health`）返回 **503**  
    `{"code":"MAINTENANCE","message":"系统升级中，请稍后再试"}`（`Retry-After: 60`）  
-3. `up -d --build`（含 `prisma migrate deploy`）  
+3. 本机构建：`up -d --build`。拉取模式：`compose pull api`，再用 `docker pull` 确认引用已在本地，然后 `up -d --no-build`。容器启动仍由 `deploy/api-entrypoint.sh` 执行 `prisma migrate deploy`  
 4. **只**等容器内 HEALTHCHECK 变 `healthy`（不看公网 health）  
-5. 关闭维护窗 → 公网探活  
+5. 关闭维护窗（再次 reload Nginx，让它解析到新的 api 容器）→ 公网探活  
+
+`compose pull` 在服务同时写了 `build` 时，拉取失败也可能退出码为 0。所以 pull 模式接着执行 `docker pull "$API_IMAGE"`，用这次的退出码决定发版是否继续。镜像已经在本地时，第二次只做清单核对。
 
 小程序 / Admin 请求层识别 `code: MAINTENANCE` 后会节流提示「系统升级中…」（见 `SystemErrorCode`、`apps/mp/src/utils/request.ts`、`apps/admin/src/api/http.ts`）。
 
@@ -86,11 +122,14 @@ DOCKER_BUILDKIT=1 docker build -f apps/api/Dockerfile \
 ./deploy/ctl.sh maintenance off  # 确认已就绪后手动恢复
 ```
 
-## 6. 常用命令
+## 7. 常用命令
 
 ```bash
 ./deploy/ctl.sh help
-./deploy/ctl.sh up                 # 仅构建启动，不切维护窗（本地调试）
+./deploy/ctl.sh up                 # 按 API_IMAGE 构建或拉取，不切维护窗
+./deploy/ctl.sh up --build         # 强制本机构建
+./deploy/ctl.sh release --pull     # 强制拉取；必须有 API_IMAGE
+./deploy/ctl.sh release --build    # 强制本机构建（.env 里即使写了 API_IMAGE）
 ./deploy/ctl.sh down               # 停栈，保留 volume
 ./deploy/ctl.sh logs api           # 跟踪日志
 ./deploy/ctl.sh maintenance on|off|status
@@ -99,7 +138,7 @@ DOCKER_BUILDKIT=1 docker build -f apps/api/Dockerfile \
 
 可选环境变量：`PUBLIC_PROBE_BASE`（默认 `http://127.0.0.1`）、`WAIT_TIMEOUT_SEC`（默认 300）。
 
-## 7. 可选冒烟
+## 8. 可选冒烟
 
 需本机 Node / pnpm，且临时打开 `AUTH_DEV_BYPASS=true` 后重启 api：
 
@@ -111,12 +150,32 @@ API_BASE=http://127.0.0.1/api pnpm --filter @activity/api smoke
 
 跑完把 `AUTH_DEV_BYPASS` 改回空并 `./deploy/ctl.sh up`。
 
-## 8. 等价底层命令（排障）
+## 9. 等价底层命令（排障）
+
+本机构建：
 
 ```bash
-docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+API_PULL_POLICY=never docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+```
+
+从 ACR 拉取（先在 ECS 上 `docker login registry.cn-shenzhen.aliyuncs.com`）：
+
+```bash
+export API_IMAGE=registry.cn-shenzhen.aliyuncs.com/<命名空间>/deploy-api:<tag>
+API_PULL_POLICY=always docker compose -f deploy/docker-compose.yml --env-file deploy/.env pull api
+docker pull "$API_IMAGE"
+API_PULL_POLICY=never docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --no-build
+```
+
+日志：
+
+```bash
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env logs -f api
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env down
 ```
 
 `down` 默认保留 volume。`down -v` 会删除 Postgres 数据和封面上传，确认后再用。
+
+## 10. 云效 Flow
+
+构建在云效、ECS 只拉取的清单和主机脚本见 [yunxiao-acr.md](./yunxiao-acr.md)。运行时仍是这一份 Compose（Postgres + api + Nginx），不在服务器上 `pnpm install` / `docker build`。

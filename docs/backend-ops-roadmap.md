@@ -68,7 +68,7 @@
 
 | 项 | 标准 |
 | --- | --- |
-| 计算 | NestJS 单体；本地 / 单机 Docker + Nginx |
+| 计算 | NestJS 单体；本地 / 单机 Docker + Nginx。镜像可在 ECS 构建，或由云效推到 ACR（cn-shenzhen）后 pull |
 | 数据 | 阿里云或自建 PostgreSQL **单主**；日备开启 |
 | 会话 | JWT / DB，无 Redis |
 | 域名 | HTTPS 合法域名（微信 request / upload） |
@@ -91,7 +91,7 @@
 | 平台 | 仍以微信为主；抖音/小红书接口保持预留 |
 | 观测 | 错误追踪（如 Sentry 类）+ 关键接口延迟 |
 
-**已进仓库：** `deploy/docker-compose.yml`（API + Postgres + Nginx 单机）；手册 `docs/deploy-docker.md`。HTTPS、OSS/CDN、Sentry、配置下发仍后置。
+**已进仓库：** `deploy/docker-compose.yml`（API + Postgres + Nginx 单机；`API_IMAGE` 为空时在 ECS 上构建，设置后从 ACR pull）；手册 `docs/deploy-docker.md`、云效清单 `docs/yunxiao-acr.md`。HTTPS、OSS/CDN、Sentry、配置下发仍后置。
 
 **不做：** 在线收款、主从强制、容器多副本（可预研）。
 
