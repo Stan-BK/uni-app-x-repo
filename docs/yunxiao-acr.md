@@ -42,16 +42,21 @@ ECS 上仍需 Docker Engine 与 Compose 插件，以及已经按 [deploy-docker.
 | 项 | 值 |
 | --- | --- |
 | Dockerfile 路径 | `apps/api/Dockerfile` |
-| 构建上下文 Context | 仓库根目录 `.` |
+| 构建上下文 Context | `.`（仓库根。必填，不能留空） |
 | 镜像仓库 | `crpi-zpeirnr1a18s4043.cn-shenzhen.personal.cr.aliyuncs.com/juyouu/deploy-api` |
 | 标签 | `${DATETIME}` |
 | 额外标签（可选） | `latest` |
 
-上下文必须是仓库根。Dockerfile 会复制 `pnpm-lock.yaml`、`packages/shared`、`apps/api`、`deploy/npmrc`、`deploy/api-entrypoint.sh`。上下文若填成 `apps/api`，构建会失败。
+构建上下文必须是仓库根 `.`。这一项留空时，云效把上下文设成 Dockerfile 所在目录 `apps/api`（日志里是 `contextPath is set to: …/apps/api`）。Dockerfile 要复制仓库根的 `pnpm-lock.yaml`、`packages/shared`、`apps/api`、`deploy/npmrc`、`deploy/api-entrypoint.sh`，上下文落在 `apps/api` 时这些 COPY 会失败。
 
 `${DATETIME}` 是云效预定义变量（`yyyyMMddHHmmss`），同一次流水线里构建和部署拿到的是同一个值。发版用这个标签，不要只靠 `latest` 回滚。
 
-Dockerfile 使用 BuildKit 缓存挂载（`RUN --mount=type=cache`）。云效 Docker 构建任务默认 BuildKit，保持默认即可。缓存挂载不跨构建机保留，第一次构建会下载依赖，这不影响镜像内容。不要为了 ACR 去改 `apps/api/Dockerfile`。
+`apps/api/Dockerfile` 按国内构建机写过，云效不需要访问 registry-1.docker.io：
+
+- 没有 `# syntax=docker/dockerfile:1`。云效构建机是 Docker 26.1 / buildx，自带的 Dockerfile 前端已经支持 `RUN --mount=type=cache`。写上 syntax 会去 Docker Hub 拉 `docker/dockerfile:1`，国内经常超时。
+- 基础镜像默认是 `docker.m.daocloud.io/library/node:20-bookworm-slim`（DaoCloud 同步的官方 `library/node`，清单与 Docker Hub 相同）。构建参数 `NODE_IMAGE` 可覆盖。
+
+缓存挂载仍保留。它不跨构建机保留，第一次构建会下载依赖，这不影响镜像内容。本机改回 Docker Hub 的写法见 [deploy-docker.md](./deploy-docker.md) 第 4 节。
 
 构建成功后，公网上的镜像是：
 
@@ -123,4 +128,4 @@ export API_IMAGE="crpi-zpeirnr1a18s4043-vpc.cn-shenzhen.personal.cr.aliyuncs.com
 
 ## 5. 仍要在 ECS 上构建时
 
-不设置 `API_IMAGE`，执行 `./deploy/ctl.sh release` 或 `./deploy/ctl.sh release --build`。这就是原来的 `up -d --build`。`.env` 里如果已经写了 `API_IMAGE`，用 `--build` 可以强制这次在本机构建，且不会把镜像 push 到 ACR。
+不设置 `API_IMAGE`，执行 `./deploy/ctl.sh release` 或 `./deploy/ctl.sh release --build`。这就是原来的 `up -d --build`。`.env` 里如果已经写了 `API_IMAGE`，用 `--build` 可以强制这次在本机构建，且不会把镜像 push 到 ACR。本机构建的基础镜像默认同样来自 DaoCloud；改回 Docker Hub 的 `NODE_IMAGE` 见 [deploy-docker.md](./deploy-docker.md) 第 4 节。

@@ -62,15 +62,25 @@ API_IMAGE=crpi-zpeirnr1a18s4043-vpc.cn-shenzhen.personal.cr.aliyuncs.com/juyouu/
 
 - `./deploy/ctl.sh` 和 `docker compose build`（Compose V2）默认走 BuildKit，不用额外开关。
 - 直接 `docker build` 时加上 `DOCKER_BUILDKIT=1`（Docker 23+ 默认已开启）。`DOCKER_BUILDKIT=0` 会在解析 `--mount` 时失败。
+- Dockerfile 不写 `# syntax=docker/dockerfile:1`。Docker 23+ 自带的 Dockerfile 前端已经支持 cache mount，写上这行会去 Docker Hub 拉前端镜像。云效 cn-shenzhen 构建机访问 registry-1.docker.io 会超时。
+
+基础镜像默认是 `docker.m.daocloud.io/library/node:20-bookworm-slim`（构建参数 `NODE_IMAGE`）。这是 DaoCloud 对官方 `library/node:20-bookworm-slim` 的同步，云效和国内 ECS 都不必为这一层访问 Docker Hub。本机若 DaoCloud 不可达、但能访问 Docker Hub，把 `NODE_IMAGE` 设为 `node:20-bookworm-slim`。
 
 镜像里的 `pnpm install` / `corepack prepare` 默认使用 `https://registry.npmmirror.com`（构建参数 `NPM_REGISTRY`）。`deploy/npmrc` 只在镜像构建时复制为 `/app/.npmrc`，用来指定 pnpm store 和 `deploy-all-files`。仓库根 `.npmrc` 不改，本机 `pnpm install` 不会被切到国内源。
 
-换源示例：
+换源、或改回 Docker Hub 基础镜像：
 
 ```bash
 DOCKER_BUILDKIT=1 docker build -f apps/api/Dockerfile \
+  --build-arg NODE_IMAGE=node:20-bookworm-slim \
   --build-arg NPM_REGISTRY=https://registry.npmjs.org \
   -t activity-api .
+```
+
+`./deploy/ctl.sh release --build` 与 `docker compose build` 默认也用这个镜像。Compose 会把环境变量 `NODE_IMAGE` 传给构建；要在这次本机构建里改回 Docker Hub：
+
+```bash
+NODE_IMAGE=node:20-bookworm-slim ./deploy/ctl.sh release --build
 ```
 
 依赖清单不变时，安装层会命中 Docker 层缓存，不再访问 registry。安装层需要重跑时，BuildKit 挂载的 pnpm store 仍复用已下载的包。这份 store 不进镜像层：换一台新 ECS 时第一次构建仍会下载（走上面的源），之后再构建会变快。`docker builder prune` 会清掉层缓存和这份 store。

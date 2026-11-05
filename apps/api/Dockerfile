@@ -1,6 +1,10 @@
-# syntax=docker/dockerfile:1
-
-FROM node:20-bookworm-slim AS base
+# 云效 cn-shenzhen 构建机访问 registry-1.docker.io 会超时。
+# Docker 23+（云效当前为 Docker 26.1 / buildx）自带的 Dockerfile 前端已支持
+# RUN --mount=type=cache，因此不拉取 docker.io/docker/dockerfile 前端镜像。
+# 基础镜像默认用 DaoCloud 同步的官方 library/node（清单与 Docker Hub 相同）。
+# 改回 Docker Hub：--build-arg NODE_IMAGE=node:20-bookworm-slim
+ARG NODE_IMAGE=docker.m.daocloud.io/library/node:20-bookworm-slim
+FROM ${NODE_IMAGE} AS base
 RUN apt-get update \
     && apt-get install -y --no-install-recommends openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
