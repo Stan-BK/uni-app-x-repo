@@ -2,6 +2,11 @@
 # 单机 Docker 栈控制：初次部署 / 发版短停机 / 维护窗 / 日志
 # 用法（仓库根或任意目录）：
 #   ./deploy/ctl.sh bootstrap|release|up|down|logs|maintenance|health|help
+#
+# 镜像来源（bootstrap / release / up）：
+#   未设置 API_IMAGE：在本机 build（默认，与原先 release 相同）
+#   已设置 API_IMAGE，或显式 --pull：compose pull api 后 up -d --no-build
+#   显式 --build：即使设置了 API_IMAGE 也在本机构建
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -19,6 +24,11 @@ compose() {
   docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"
 }
 
+# compose pull 在服务同时写了 build 时，失败也可能退出 0。用 docker pull 的退出码确认镜像已取回。
+docker_pull() {
+  docker pull "$@"
+}
+
 die() {
   echo "error: $*" >&2
   exit 1
@@ -26,6 +36,93 @@ die() {
 
 require_env() {
   [[ -f "$ENV_FILE" ]] || die "缺少 $ENV_FILE。先执行: cp deploy/.env.example deploy/.env 并填写密钥"
+}
+
+trim() {
+  local s="$1"
+  s="${s#"${s%%[![:space:]]*}"}"
+  s="${s%"${s##*[![:space:]]}"}"
+  printf '%s' "$s"
+}
+
+# 读 deploy/.env 里某个键的最后一次赋值。不 source，避免把密钥当脚本执行。
+env_file_value() {
+  local key="$1" line val found=""
+  [[ -f "$ENV_FILE" ]] || return 0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%$'\r'}"
+    line="$(trim "$line")"
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    if [[ "$line" == export\ * ]]; then
+      line="$(trim "${line#export }")"
+    fi
+    if [[ "$line" == "$key="* ]]; then
+      val="${line#"$key="}"
+      if [[ "$val" == \"*\" && "$val" == *\" ]]; then
+        val="${val:1:${#val}-2}"
+      elif [[ "$val" == \'*\' && "$val" == *\' ]]; then
+        val="${val:1:${#val}-2}"
+      fi
+      found="$val"
+    fi
+  done < "$ENV_FILE"
+  printf '%s' "$found"
+}
+
+# 设置 DEPLOY_MODE=build|pull 与 RESOLVED_API_IMAGE。
+# 优先级：--build / --pull > 当前 shell 的 API_IMAGE > deploy/.env 的 API_IMAGE > 本机构建。
+resolve_deploy_mode() {
+  local flag_pull=0 flag_build=0 arg
+  for arg in "$@"; do
+    case "$arg" in
+      --pull) flag_pull=1 ;;
+      --build) flag_build=1 ;;
+      *) die "未知参数: $arg（可用 --pull 或 --build）" ;;
+    esac
+  done
+  if (( flag_pull && flag_build )); then
+    die "--pull 与 --build 不能同时使用"
+  fi
+
+  if [[ -v API_IMAGE ]]; then
+    RESOLVED_API_IMAGE="$(trim "$API_IMAGE")"
+  else
+    RESOLVED_API_IMAGE="$(trim "$(env_file_value API_IMAGE)")"
+  fi
+
+  if (( flag_build )); then
+    DEPLOY_MODE=build
+  elif (( flag_pull )); then
+    DEPLOY_MODE=pull
+  elif [[ -n "$RESOLVED_API_IMAGE" ]]; then
+    DEPLOY_MODE=pull
+  else
+    DEPLOY_MODE=build
+  fi
+
+  if [[ "$DEPLOY_MODE" == "pull" ]]; then
+    [[ -n "$RESOLVED_API_IMAGE" ]] || die "pull 模式需要 API_IMAGE。示例: crpi-zpeirnr1a18s4043-vpc.cn-shenzhen.personal.cr.aliyuncs.com/juyouu/deploy-api:<tag>"
+    [[ "$RESOLVED_API_IMAGE" == */* ]] || die "API_IMAGE 应为带仓库路径的镜像引用（含 /），当前: $RESOLVED_API_IMAGE"
+    [[ "$RESOLVED_API_IMAGE" != *"<"* && "$RESOLVED_API_IMAGE" != *">"* && "$RESOLVED_API_IMAGE" != *" "* && "$RESOLVED_API_IMAGE" != *$'\t'* ]] || die "API_IMAGE 仍是占位符或含空白。请换成真实标签，例如 crpi-zpeirnr1a18s4043-vpc.cn-shenzhen.personal.cr.aliyuncs.com/juyouu/deploy-api:20261105120000"
+    if [[ "$RESOLVED_API_IMAGE" != *:* ]]; then
+      echo "警告: API_IMAGE 没有标签，Docker 会按 latest 拉取。发版建议使用云效 DATETIME 标签。" >&2
+    fi
+  fi
+}
+
+apply_stack() {
+  local mode="$1"
+  if [[ "$mode" == "pull" ]]; then
+    echo "镜像: ${RESOLVED_API_IMAGE}"
+    # always：即使本地已有同名标签也向仓库核对。不要用默认 never，否则 pull 会被跳过。
+    API_PULL_POLICY=always compose pull api
+    echo "docker pull ${RESOLVED_API_IMAGE}"
+    docker_pull "$RESOLVED_API_IMAGE"
+    API_PULL_POLICY=never compose up -d --no-build
+  else
+    # never：不要尝试从 Docker Hub 拉取本地标签 activity-api:local。--build 仍会重新构建。
+    API_PULL_POLICY=never compose up -d --build
+  fi
 }
 
 ensure_runtime_dir() {
@@ -112,9 +209,14 @@ probe_public() {
 cmd_bootstrap() {
   require_env
   ensure_runtime_dir
+  resolve_deploy_mode "$@"
   maintenance_off
-  echo "bootstrap: 构建并启动…"
-  compose up -d --build
+  if [[ "$DEPLOY_MODE" == "pull" ]]; then
+    echo "bootstrap: 拉取并启动…"
+  else
+    echo "bootstrap: 构建并启动…"
+  fi
+  apply_stack "$DEPLOY_MODE"
   wait_api_healthy
   echo "探活（公网）…"
   if probe_public; then
@@ -127,10 +229,15 @@ cmd_bootstrap() {
 cmd_release() {
   require_env
   ensure_runtime_dir
+  resolve_deploy_mode "$@"
   echo "release: 打开维护窗…"
   maintenance_on
-  echo "release: 构建并滚动替换…"
-  compose up -d --build
+  if [[ "$DEPLOY_MODE" == "pull" ]]; then
+    echo "release: 拉取镜像并滚动替换…"
+  else
+    echo "release: 构建并滚动替换…"
+  fi
+  apply_stack "$DEPLOY_MODE"
   wait_api_healthy
   echo "release: 关闭维护窗…"
   maintenance_off
@@ -146,7 +253,8 @@ cmd_release() {
 cmd_up() {
   require_env
   ensure_runtime_dir
-  compose up -d --build
+  resolve_deploy_mode "$@"
+  apply_stack "$DEPLOY_MODE"
   echo "up 完成（未切换维护窗；当前 $(maintenance_status)）"
 }
 
@@ -197,16 +305,30 @@ cmd_help() {
 用法: ./deploy/ctl.sh <命令> [参数]
 
 命令:
-  bootstrap     初次部署：确保维护关 → up -d --build → 等健康 → 公网探活
-  release       发版短停机：维护开 → up -d --build → 等健康 → 维护关 → 探活
-  up            仅构建启动，不切换维护窗（本地调试）
-  down          停栈，保留 volume
-  logs [服务…]  跟踪日志（默认全部；可 api|nginx|postgres）
-  maintenance   on|off|status
-  health        维护状态 + compose ps + 公网探活
-  help          显示本说明
+  bootstrap [--pull|--build]  初次部署：确保维护关 → 构建或拉取 → 等健康 → 公网探活
+  release [--pull|--build]    发版短停机：维护开 → 构建或拉取 → 等健康 → 维护关 → 探活
+  up [--pull|--build]         仅启动，不切换维护窗（本地调试）
+  down                        停栈，保留 volume
+  logs [服务…]                跟踪日志（默认全部；可 api|nginx|postgres）
+  maintenance                 on|off|status
+  health                      维护状态 + compose ps + 公网探活
+  help                        显示本说明
+
+镜像模式（bootstrap / release / up）:
+  默认（未设置 API_IMAGE）  本机 build：up -d --build。与原先发版相同。
+  API_IMAGE=<仓库引用>      pull：compose pull api → docker pull → up -d --no-build
+  --pull                    强制 pull；未设置 API_IMAGE 时失败（不会退回本机构建）
+  --build                   强制本机构建，即使 .env 里写了 API_IMAGE
+
+API_IMAGE 例（ECS 拉取用 VPC 域名）:
+  crpi-zpeirnr1a18s4043-vpc.cn-shenzhen.personal.cr.aliyuncs.com/juyouu/deploy-api:20261105120000
+  当前 shell 中的 API_IMAGE 优先于 deploy/.env。生产流水线请带 --pull，
+  或用 ./deploy/ecs-pull-release.sh。ECS 需事先
+  docker login --username=stan_bk crpi-zpeirnr1a18s4043-vpc.cn-shenzhen.personal.cr.aliyuncs.com
+  云效推送用公网域名。详见 docs/yunxiao-acr.md。
 
 环境变量（可选）:
+  API_IMAGE           预构建镜像引用。空则本机构建
   PUBLIC_PROBE_BASE   公网探活根（默认 http://127.0.0.1）
   WAIT_TIMEOUT_SEC    等 api healthy 超时秒数（默认 300）
   WAIT_INTERVAL_SEC   轮询间隔（默认 5）
@@ -214,6 +336,7 @@ cmd_help() {
 维护窗语义:
   touch deploy/nginx/runtime/maintenance.on 后，Nginx 对 /api/*（含 health）
   返回 503 {"code":"MAINTENANCE",...}。就绪判定只看容器 HEALTHCHECK。
+  发版结束关闭维护窗时会 reload Nginx，从而重新解析 api 容器地址。
 EOF
 }
 
@@ -233,4 +356,6 @@ main() {
   esac
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

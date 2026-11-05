@@ -210,7 +210,7 @@
 
 | 运维阶段 | 对应产品 | 关键升级点 |
 | --- | --- | --- |
-| A 地基 | P0-0～P0-1 | Docker+Nginx 清单已进 `deploy/`；PG 单主、微信登录；HTTPS 后置 |
+| A 地基 | P0-0～P0-1 | Docker+Nginx 清单已进 `deploy/`（可 ECS 构建或 ACR pull）；PG 单主、微信登录；HTTPS 后置 |
 | B 业务闭环 | P0-2～P0-6 | OSS+CDN、配置下发、错误追踪 |
 | C 有交易再上 | P1-3 收款入账；P2 提现/对账 | JSAPI/退款/结算（ADR-0014）；Redis/MQ 非 P1-3 必需 |
 | D 稳定化 | 增长后 | 容器多副本、PG 主从、限流、KMS |
