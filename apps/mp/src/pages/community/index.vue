@@ -1,6 +1,6 @@
 <template>
   <view class="page page-l1">
-    <EdLeafDeco />
+    <EdPageBg />
     <view class="header">
       <view class="sort">
         <view
@@ -61,7 +61,7 @@ import {
   onShow,
 } from "@dcloudio/uni-app";
 import EdTabBar from "@/components/ed-tab-bar/ed-tab-bar.vue";
-import EdLeafDeco from "@/components/ed-leaf-deco/ed-leaf-deco.vue";
+import EdPageBg from "@/components/ed-page-bg/ed-page-bg.vue";
 import CommunityPostCard from "@/components/community-post-card/community-post-card.vue";
 import { getPostShareMessage } from "@/adapters/share";
 import {

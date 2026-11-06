@@ -1,6 +1,6 @@
 <template>
   <view class="page page-l1">
-    <EdLeafDeco />
+    <EdPageBg />
     <view v-if="user.isLoggedIn" class="home-head">
       <view class="bell" hover-class="none" @click="goNotifications">
         <view class="ico-bell" />
@@ -188,7 +188,7 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { onPageScroll, onReachBottom, onShow } from "@dcloudio/uni-app";
 import EdTabBar from "@/components/ed-tab-bar/ed-tab-bar.vue";
 import EdHotDeck from "@/components/ed-hot-deck/ed-hot-deck.vue";
-import EdLeafDeco from "@/components/ed-leaf-deco/ed-leaf-deco.vue";
+import EdPageBg from "@/components/ed-page-bg/ed-page-bg.vue";
 import { getCommunityUnreadCount } from "@/api/community";
 import {
   listHotPublicActivities,
