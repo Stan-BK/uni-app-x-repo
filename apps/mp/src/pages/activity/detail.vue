@@ -757,7 +757,7 @@ $ed-radius-pill: 999rpx !default;
 .attendees {
   display: inline-flex;
   flex-direction: row;
-  align-items: center;
+  align-items: flex-start;
   gap: 20rpx;
   height: 140rpx;
 }
@@ -766,7 +766,7 @@ $ed-radius-pill: 999rpx !default;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   width: 132rpx;
   height: 140rpx;
   flex-shrink: 0;
