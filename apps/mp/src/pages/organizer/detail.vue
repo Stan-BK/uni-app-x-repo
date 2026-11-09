@@ -159,6 +159,7 @@ import {
   type Registration,
 } from "@/api/registrations";
 import { useUserStore } from "@/stores/user";
+import { displayRegistrationName } from "@/utils/registration-display";
 import { ApiError } from "@/utils/request";
 
 const user = useUserStore();
@@ -227,7 +228,7 @@ function goEdit() {
 }
 
 function personName(person: Registration) {
-  return person.nickname?.trim() || person.name?.trim() || "用户";
+  return displayRegistrationName(person);
 }
 
 function personAvatar(person: Registration) {
