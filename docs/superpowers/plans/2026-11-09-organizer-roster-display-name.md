@@ -199,7 +199,7 @@ EOF
 **Files:**
 - Modify: `docs/superpowers/specs/2026-11-09-organizer-roster-display-name-design.md`
 
-- [ ] **Step 1: 规格状态**
+- [x] **Step 1: 规格状态**
 
 将文首 `- **状态：** Approved` 改为 `- **状态：** Implemented`，并在文首增加：
 
@@ -207,7 +207,7 @@ EOF
 - **实现计划：** [docs/superpowers/plans/2026-11-09-organizer-roster-display-name.md](../plans/2026-11-09-organizer-roster-display-name.md)
 ```
 
-- [ ] **Step 2: 手测（开发者工具 / 真机）**
+- [ ] **Step 2: 手测（开发者工具 / 真机）** — PENDING_USER
 
 前置：API + `pnpm dev:mp-weixin` 已启；用所有者账号。
 
@@ -217,7 +217,7 @@ EOF
 4. 公开活动详情参加者仍为昵称（不出现报名姓名强制替换）  
 5. 边界：姓名与昵称相同 → 无「微信：」次行；无姓名有昵称 → 主行昵称  
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-11-09-organizer-roster-display-name-design.md

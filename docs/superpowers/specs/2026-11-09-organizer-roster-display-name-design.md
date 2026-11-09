@@ -1,7 +1,8 @@
 # 所有者报名名单展示「报名姓名」设计规格
 
 - **日期：** 2026-11-09  
-- **状态：** Approved  
+- **状态：** Implemented  
+- **实现计划：** [docs/superpowers/plans/2026-11-09-organizer-roster-display-name.md](../plans/2026-11-09-organizer-roster-display-name.md)
 - **关联：** [ADR-0007](../../adr/0007-registration-idempotency-and-capacity.md)（所有者可拉名单）、P0-4 已实现名单 API/页  
 - **范围：** 仅修正所有者侧展示优先级；不改 API 契约、公开详情隐私、Admin。
 
