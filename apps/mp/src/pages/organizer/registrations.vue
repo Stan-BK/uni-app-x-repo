@@ -26,6 +26,7 @@
                 statusLabel(item.status)
               }}</text>
             </view>
+            <text v-if="weixinLine(item)" class="meta">{{ weixinLine(item) }}</text>
             <text class="meta">手机：{{ item.phone || "—" }}</text>
             <text class="meta">提交时间：{{ formatTime(item.createdAt) }}</text>
           </view>
@@ -49,6 +50,10 @@ import {
   listOrganizerRegistrations,
   type Registration,
 } from "@/api/registrations";
+import {
+  displayRegistrationName,
+  registrationWeixinSubtitle,
+} from "@/utils/registration-display";
 import { ApiError } from "@/utils/request";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -68,7 +73,11 @@ const pageSize = 20;
 const hasMore = computed(() => items.value.length < total.value);
 
 function personName(item: Registration) {
-  return item.nickname?.trim() || item.name?.trim() || "用户";
+  return displayRegistrationName(item);
+}
+
+function weixinLine(item: Registration) {
+  return registrationWeixinSubtitle(item);
 }
 
 function personAvatar(item: Registration) {
