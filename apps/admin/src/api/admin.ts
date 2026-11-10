@@ -108,3 +108,89 @@ export function listAuditLogs(params: ListAuditLogsParams = {}) {
     pageSize: number;
   }>(`/admin/audit-logs${qs ? `?${qs}` : ""}`);
 }
+
+export type AdminCommunityPost = {
+  id: string;
+  body: string;
+  author: { id: string; nickname: string; avatarUrl: string | null };
+  images: { url: string; sortOrder: number }[];
+  activities: { id: string; title: string }[];
+  likeCount: number;
+  commentCount: number;
+  createdAt: string;
+};
+
+export type AdminCommunityComment = {
+  id: string;
+  postId: string;
+  parentId: string | null;
+  body: string;
+  imageUrl: string | null;
+  author: { id: string; nickname: string; avatarUrl: string | null };
+  replyTo: { id: string; nickname: string; avatarUrl: string | null } | null;
+  likeCount: number;
+  createdAt: string;
+  replies: AdminCommunityComment[];
+};
+
+export type ListAdminCommunityPostsParams = {
+  q?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export function listAdminCommunityPosts(
+  params: ListAdminCommunityPostsParams = {},
+) {
+  const q = new URLSearchParams();
+  if (params.q) q.set("q", params.q);
+  if (params.page) q.set("page", String(params.page));
+  if (params.pageSize) q.set("pageSize", String(params.pageSize));
+  const qs = q.toString();
+  return apiRequest<{
+    items: AdminCommunityPost[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }>(`/admin/community/posts${qs ? `?${qs}` : ""}`);
+}
+
+export function getAdminCommunityPost(id: string) {
+  return apiRequest<AdminCommunityPost>(
+    `/admin/community/posts/${encodeURIComponent(id)}`,
+  );
+}
+
+export function listAdminCommunityComments(
+  postId: string,
+  params: { page?: number; pageSize?: number } = {},
+) {
+  const q = new URLSearchParams();
+  if (params.page) q.set("page", String(params.page));
+  if (params.pageSize) q.set("pageSize", String(params.pageSize));
+  const qs = q.toString();
+  return apiRequest<{
+    items: AdminCommunityComment[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }>(
+    `/admin/community/posts/${encodeURIComponent(postId)}/comments${
+      qs ? `?${qs}` : ""
+    }`,
+  );
+}
+
+export function softDeleteAdminCommunityPost(id: string) {
+  return apiRequest<void>(
+    `/admin/community/posts/${encodeURIComponent(id)}`,
+    { method: "DELETE" },
+  );
+}
+
+export function softDeleteAdminCommunityComment(id: string) {
+  return apiRequest<void>(
+    `/admin/community/comments/${encodeURIComponent(id)}`,
+    { method: "DELETE" },
+  );
+}
