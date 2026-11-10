@@ -1,4 +1,4 @@
-import { Controller, Delete, Param, UseGuards } from "@nestjs/common";
+import { Controller, Delete, Get, Param, Query, UseGuards } from "@nestjs/common";
 import { AdminRole } from "@prisma/client";
 import {
   CurrentAdmin,
@@ -8,12 +8,31 @@ import { Roles } from "../common/decorators/roles.decorator";
 import { AdminJwtGuard } from "../common/guards/admin-jwt.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { AdminCommunityService } from "./admin-community.service";
+import { ListAdminPostsQuery } from "./dto/list-admin-posts.query";
 
 @Controller("admin/community")
 @UseGuards(AdminJwtGuard, RolesGuard)
 @Roles(AdminRole.operator, AdminRole.admin)
 export class AdminCommunityController {
   constructor(private readonly adminCommunityService: AdminCommunityService) {}
+
+  @Get("posts")
+  listPosts(@Query() query: ListAdminPostsQuery) {
+    return this.adminCommunityService.listPosts(query);
+  }
+
+  @Get("posts/:postId/comments")
+  listComments(
+    @Param("postId") postId: string,
+    @Query() query: ListAdminPostsQuery,
+  ) {
+    return this.adminCommunityService.listComments(postId, query);
+  }
+
+  @Get("posts/:id")
+  getPost(@Param("id") id: string) {
+    return this.adminCommunityService.getPost(id);
+  }
 
   @Delete("posts/:id")
   async softDeletePost(

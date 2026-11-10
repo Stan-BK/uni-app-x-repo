@@ -2,6 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { CommunityDeletedBy } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { POST_INCLUDE } from "../community/posts.mapper";
 import { PrismaService } from "../prisma/prisma.service";
 import { AdminCommunityService } from "./admin-community.service";
 
@@ -11,10 +12,14 @@ describe("AdminCommunityService", () => {
   const prisma = {
     post: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
+      count: vi.fn(),
       updateMany: vi.fn(),
     },
     comment: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
+      count: vi.fn(),
       updateMany: vi.fn(),
     },
     $transaction: vi.fn(),
@@ -200,6 +205,166 @@ describe("AdminCommunityService", () => {
       expect(prisma.comment.updateMany).toHaveBeenCalledTimes(1);
       expect(prisma.post.updateMany).not.toHaveBeenCalled();
       expect(auditLogCreate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("listPosts", () => {
+    it("无 q 时 where 仅 deletedAt:null，按 createdAt desc 分页", async () => {
+      prisma.post.findMany.mockResolvedValue([]);
+      prisma.post.count.mockResolvedValue(0);
+
+      const result = await service.listPosts({});
+
+      expect(prisma.post.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { deletedAt: null },
+          orderBy: { createdAt: "desc" },
+          skip: 0,
+          take: 20,
+        }),
+      );
+      expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 20 });
+    });
+
+    it("q 时 OR 匹配 body 与 author.nickname（insensitive）", async () => {
+      prisma.post.findMany.mockResolvedValue([]);
+      prisma.post.count.mockResolvedValue(0);
+
+      await service.listPosts({ q: "徒步", page: 2, pageSize: 10 });
+
+      const arg = prisma.post.findMany.mock.calls[0][0];
+      expect(arg.where).toEqual({
+        deletedAt: null,
+        OR: [
+          { body: { contains: "徒步", mode: "insensitive" } },
+          { author: { nickname: { contains: "徒步", mode: "insensitive" } } },
+        ],
+      });
+      expect(arg.skip).toBe(10);
+      expect(arg.take).toBe(10);
+    });
+  });
+
+  describe("listComments", () => {
+    it("动态不存在 → 404", async () => {
+      prisma.post.findUnique.mockResolvedValue(null);
+      await expect(service.listComments("nope", {})).rejects.toThrow(
+        new NotFoundException("动态不存在"),
+      );
+    });
+
+    it("动态已删 → 404", async () => {
+      prisma.post.findUnique.mockResolvedValue({
+        id: "p1",
+        deletedAt: new Date(),
+      });
+      await expect(service.listComments("p1", {})).rejects.toThrow(
+        new NotFoundException("动态已删除"),
+      );
+    });
+
+    it("仅拉取未删一级评论并带齐未删二级，DTO 无 likedByMe", async () => {
+      prisma.post.findUnique.mockResolvedValue({ id: "p1", deletedAt: null });
+      const createdAt = new Date("2026-11-02T00:00:00.000Z");
+      prisma.comment.findMany.mockResolvedValue([
+        {
+          id: "c1",
+          postId: "p1",
+          parentId: null,
+          body: "根评",
+          imageUrl: null,
+          likeCount: 0,
+          createdAt,
+          author: { id: "u1", nickname: "甲", avatarUrl: null },
+          replyToAuthor: null,
+          replies: [
+            {
+              id: "c2",
+              postId: "p1",
+              parentId: "c1",
+              body: "回复",
+              imageUrl: null,
+              likeCount: 0,
+              createdAt,
+              author: { id: "u2", nickname: "乙", avatarUrl: null },
+              replyToAuthor: {
+                id: "u1",
+                nickname: "甲",
+                avatarUrl: null,
+              },
+            },
+          ],
+        },
+      ]);
+      prisma.comment.count.mockResolvedValue(1);
+
+      const result = await service.listComments("p1", { page: 1, pageSize: 20 });
+
+      expect(prisma.comment.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { postId: "p1", parentId: null, deletedAt: null },
+        }),
+      );
+      expect(result.total).toBe(1);
+      expect(result.items[0]).not.toHaveProperty("likedByMe");
+      expect(result.items[0].replies[0]).not.toHaveProperty("likedByMe");
+      expect(result.items[0].replies[0].body).toBe("回复");
+    });
+  });
+
+  describe("getPost", () => {
+    it("未删动态返回 Admin DTO（无 likedByMe）", async () => {
+      const createdAt = new Date("2026-11-01T00:00:00.000Z");
+      prisma.post.findUnique.mockResolvedValue({
+        id: "p1",
+        body: "hello",
+        likeCount: 1,
+        commentCount: 2,
+        deletedAt: null,
+        createdAt,
+        author: { id: "u1", nickname: "小明", avatarUrl: null },
+        images: [],
+        activityLinks: [],
+      });
+
+      const dto = await service.getPost("p1");
+
+      expect(dto).toMatchObject({
+        id: "p1",
+        body: "hello",
+        author: { id: "u1", nickname: "小明", avatarUrl: null },
+        likeCount: 1,
+        commentCount: 2,
+      });
+      expect(dto).not.toHaveProperty("likedByMe");
+      expect(prisma.post.findUnique).toHaveBeenCalledWith({
+        where: { id: "p1" },
+        include: POST_INCLUDE,
+      });
+    });
+
+    it("不存在 → 404 动态不存在", async () => {
+      prisma.post.findUnique.mockResolvedValue(null);
+      await expect(service.getPost("nope")).rejects.toThrow(
+        new NotFoundException("动态不存在"),
+      );
+    });
+
+    it("已删 → 404 动态已删除", async () => {
+      prisma.post.findUnique.mockResolvedValue({
+        id: "p1",
+        deletedAt: new Date(),
+        body: "",
+        likeCount: 0,
+        commentCount: 0,
+        createdAt: new Date(),
+        author: { id: "u1", nickname: null, avatarUrl: null },
+        images: [],
+        activityLinks: [],
+      });
+      await expect(service.getPost("p1")).rejects.toThrow(
+        new NotFoundException("动态已删除"),
+      );
     });
   });
 });

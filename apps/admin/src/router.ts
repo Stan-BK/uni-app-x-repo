@@ -31,6 +31,12 @@ export const router = createRouter({
           meta: { title: "活动列表" },
         },
         {
+          path: "community",
+          name: "community",
+          component: () => import("./views/CommunityPosts.vue"),
+          meta: { title: "社区动态" },
+        },
+        {
           path: "audit-logs",
           name: "audit-logs",
           component: () => import("./views/AuditLogs.vue"),

@@ -1,11 +1,123 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { AuditAction, AuditTargetType } from "@activity/shared";
 import { CommunityDeletedBy } from "@prisma/client";
+import { mapComment } from "../community/comments.service";
+import { POST_INCLUDE, mapPost } from "../community/posts.mapper";
+import { normalizePaging } from "../community/posts.service";
 import { PrismaService } from "../prisma/prisma.service";
+
+const AUTHOR_SELECT = {
+  id: true,
+  nickname: true,
+  avatarUrl: true,
+} as const;
+
+const COMMENT_INCLUDE = {
+  author: { select: AUTHOR_SELECT },
+  replyToAuthor: { select: AUTHOR_SELECT },
+} as const;
+
+function mapAdminPost(row: Parameters<typeof mapPost>[0]) {
+  const { likedByMe: _omit, ...rest } = mapPost(row);
+  return rest;
+}
 
 @Injectable()
 export class AdminCommunityService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async listPosts(input: { q?: string; page?: number; pageSize?: number }) {
+    const { page, pageSize } = normalizePaging(input);
+    const keyword = input.q?.trim() || undefined;
+    const where = {
+      deletedAt: null as null,
+      ...(keyword
+        ? {
+            OR: [
+              { body: { contains: keyword, mode: "insensitive" as const } },
+              {
+                author: {
+                  nickname: { contains: keyword, mode: "insensitive" as const },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.post.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: POST_INCLUDE,
+      }),
+      this.prisma.post.count({ where }),
+    ]);
+    return {
+      items: rows.map((row) => mapAdminPost(row)),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  async getPost(id: string) {
+    const row = await this.prisma.post.findUnique({
+      where: { id },
+      include: POST_INCLUDE,
+    });
+    if (!row) throw new NotFoundException("动态不存在");
+    if (row.deletedAt) throw new NotFoundException("动态已删除");
+    return mapAdminPost(row);
+  }
+
+  async listComments(
+    postId: string,
+    input: { page?: number; pageSize?: number },
+  ) {
+    const post = await this.prisma.post.findUnique({
+      where: { id: postId },
+      select: { id: true, deletedAt: true },
+    });
+    if (!post) throw new NotFoundException("动态不存在");
+    if (post.deletedAt) throw new NotFoundException("动态已删除");
+
+    const { page, pageSize } = normalizePaging(input);
+    const where = { postId, parentId: null, deletedAt: null };
+    const [rows, total] = await Promise.all([
+      this.prisma.comment.findMany({
+        where,
+        orderBy: { createdAt: "asc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          ...COMMENT_INCLUDE,
+          replies: {
+            where: { deletedAt: null },
+            orderBy: { createdAt: "asc" },
+            include: COMMENT_INCLUDE,
+          },
+        },
+      }),
+      this.prisma.comment.count({ where }),
+    ]);
+
+    const items = rows.map((row) => {
+      const rootMapped = mapComment(row);
+      const { likedByMe: _a, ...root } = rootMapped;
+      return {
+        ...root,
+        replies: row.replies.map((r) => {
+          const mapped = mapComment(r, { replyToFallback: root.author });
+          const { likedByMe: _b, ...rest } = mapped;
+          return rest;
+        }),
+      };
+    });
+
+    return { items, total, page, pageSize };
+  }
 
   /**
    * Admin 软删动态；不存在或已删均返回 404。

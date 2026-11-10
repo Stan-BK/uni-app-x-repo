@@ -1,5 +1,5 @@
 import { AdminRole } from "@activity/shared";
-import { Calendar, Document, User } from "@element-plus/icons-vue";
+import { Calendar, ChatDotRound, Document, User } from "@element-plus/icons-vue";
 import type { Component } from "vue";
 import { Capability } from "./permissions";
 
@@ -15,7 +15,13 @@ export type NavItem = {
 export const navItems: NavItem[] = [
   { path: "/users", title: "用户发布权", icon: User },
   { path: "/activities", title: "活动列表", icon: Calendar },
-  { path: "/audit-logs", title: "审计日志", icon: Document, capability: Capability.AuditRead },
+  { path: "/community", title: "社区动态", icon: ChatDotRound },
+  {
+    path: "/audit-logs",
+    title: "审计日志",
+    icon: Document,
+    capability: Capability.AuditRead,
+  },
 ];
 
 export const ADMIN_ROLE_LABEL: Record<string, string> = {
