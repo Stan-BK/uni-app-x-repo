@@ -1,11 +1,54 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { AuditAction, AuditTargetType } from "@activity/shared";
 import { CommunityDeletedBy } from "@prisma/client";
+import { POST_INCLUDE, mapPost } from "../community/posts.mapper";
+import { normalizePaging } from "../community/posts.service";
 import { PrismaService } from "../prisma/prisma.service";
+
+function mapAdminPost(row: Parameters<typeof mapPost>[0]) {
+  const { likedByMe: _omit, ...rest } = mapPost(row);
+  return rest;
+}
 
 @Injectable()
 export class AdminCommunityService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async listPosts(input: { q?: string; page?: number; pageSize?: number }) {
+    const { page, pageSize } = normalizePaging(input);
+    const keyword = input.q?.trim() || undefined;
+    const where = {
+      deletedAt: null as null,
+      ...(keyword
+        ? {
+            OR: [
+              { body: { contains: keyword, mode: "insensitive" as const } },
+              {
+                author: {
+                  nickname: { contains: keyword, mode: "insensitive" as const },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.post.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: POST_INCLUDE,
+      }),
+      this.prisma.post.count({ where }),
+    ]);
+    return {
+      items: rows.map((row) => mapAdminPost(row)),
+      total,
+      page,
+      pageSize,
+    };
+  }
 
   /**
    * Admin 软删动态；不存在或已删均返回 404。

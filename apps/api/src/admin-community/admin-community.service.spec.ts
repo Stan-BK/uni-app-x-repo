@@ -11,6 +11,8 @@ describe("AdminCommunityService", () => {
   const prisma = {
     post: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
+      count: vi.fn(),
       updateMany: vi.fn(),
     },
     comment: {
@@ -200,6 +202,43 @@ describe("AdminCommunityService", () => {
       expect(prisma.comment.updateMany).toHaveBeenCalledTimes(1);
       expect(prisma.post.updateMany).not.toHaveBeenCalled();
       expect(auditLogCreate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("listPosts", () => {
+    it("无 q 时 where 仅 deletedAt:null，按 createdAt desc 分页", async () => {
+      prisma.post.findMany.mockResolvedValue([]);
+      prisma.post.count.mockResolvedValue(0);
+
+      const result = await service.listPosts({});
+
+      expect(prisma.post.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { deletedAt: null },
+          orderBy: { createdAt: "desc" },
+          skip: 0,
+          take: 20,
+        }),
+      );
+      expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 20 });
+    });
+
+    it("q 时 OR 匹配 body 与 author.nickname（insensitive）", async () => {
+      prisma.post.findMany.mockResolvedValue([]);
+      prisma.post.count.mockResolvedValue(0);
+
+      await service.listPosts({ q: "徒步", page: 2, pageSize: 10 });
+
+      const arg = prisma.post.findMany.mock.calls[0][0];
+      expect(arg.where).toEqual({
+        deletedAt: null,
+        OR: [
+          { body: { contains: "徒步", mode: "insensitive" } },
+          { author: { nickname: { contains: "徒步", mode: "insensitive" } } },
+        ],
+      });
+      expect(arg.skip).toBe(10);
+      expect(arg.take).toBe(10);
     });
   });
 });
