@@ -21,6 +21,14 @@ export class AdminCommunityController {
     return this.adminCommunityService.listPosts(query);
   }
 
+  @Get("posts/:postId/comments")
+  listComments(
+    @Param("postId") postId: string,
+    @Query() query: ListAdminPostsQuery,
+  ) {
+    return this.adminCommunityService.listComments(postId, query);
+  }
+
   @Get("posts/:id")
   getPost(@Param("id") id: string) {
     return this.adminCommunityService.getPost(id);
