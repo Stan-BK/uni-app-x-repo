@@ -21,6 +21,11 @@ export class AdminCommunityController {
     return this.adminCommunityService.listPosts(query);
   }
 
+  @Get("posts/:id")
+  getPost(@Param("id") id: string) {
+    return this.adminCommunityService.getPost(id);
+  }
+
   @Delete("posts/:id")
   async softDeletePost(
     @Param("id") id: string,

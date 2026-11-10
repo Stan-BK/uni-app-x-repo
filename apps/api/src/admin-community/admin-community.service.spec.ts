@@ -2,6 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { CommunityDeletedBy } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { POST_INCLUDE } from "../community/posts.mapper";
 import { PrismaService } from "../prisma/prisma.service";
 import { AdminCommunityService } from "./admin-community.service";
 
@@ -239,6 +240,62 @@ describe("AdminCommunityService", () => {
       });
       expect(arg.skip).toBe(10);
       expect(arg.take).toBe(10);
+    });
+  });
+
+  describe("getPost", () => {
+    it("未删动态返回 Admin DTO（无 likedByMe）", async () => {
+      const createdAt = new Date("2026-11-01T00:00:00.000Z");
+      prisma.post.findUnique.mockResolvedValue({
+        id: "p1",
+        body: "hello",
+        likeCount: 1,
+        commentCount: 2,
+        deletedAt: null,
+        createdAt,
+        author: { id: "u1", nickname: "小明", avatarUrl: null },
+        images: [],
+        activityLinks: [],
+      });
+
+      const dto = await service.getPost("p1");
+
+      expect(dto).toMatchObject({
+        id: "p1",
+        body: "hello",
+        author: { id: "u1", nickname: "小明", avatarUrl: null },
+        likeCount: 1,
+        commentCount: 2,
+      });
+      expect(dto).not.toHaveProperty("likedByMe");
+      expect(prisma.post.findUnique).toHaveBeenCalledWith({
+        where: { id: "p1" },
+        include: POST_INCLUDE,
+      });
+    });
+
+    it("不存在 → 404 动态不存在", async () => {
+      prisma.post.findUnique.mockResolvedValue(null);
+      await expect(service.getPost("nope")).rejects.toThrow(
+        new NotFoundException("动态不存在"),
+      );
+    });
+
+    it("已删 → 404 动态已删除", async () => {
+      prisma.post.findUnique.mockResolvedValue({
+        id: "p1",
+        deletedAt: new Date(),
+        body: "",
+        likeCount: 0,
+        commentCount: 0,
+        createdAt: new Date(),
+        author: { id: "u1", nickname: null, avatarUrl: null },
+        images: [],
+        activityLinks: [],
+      });
+      await expect(service.getPost("p1")).rejects.toThrow(
+        new NotFoundException("动态已删除"),
+      );
     });
   });
 });

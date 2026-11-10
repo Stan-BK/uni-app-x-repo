@@ -50,6 +50,16 @@ export class AdminCommunityService {
     };
   }
 
+  async getPost(id: string) {
+    const row = await this.prisma.post.findUnique({
+      where: { id },
+      include: POST_INCLUDE,
+    });
+    if (!row) throw new NotFoundException("动态不存在");
+    if (row.deletedAt) throw new NotFoundException("动态已删除");
+    return mapAdminPost(row);
+  }
+
   /**
    * Admin 软删动态；不存在或已删均返回 404。
    * 用 `deletedAt: null` 条件更新做并发闸门，仅更新成功的请求才写审计，避免双写。
