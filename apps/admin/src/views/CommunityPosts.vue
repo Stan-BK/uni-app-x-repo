@@ -4,8 +4,12 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import {
+  getAdminCommunityPost,
+  listAdminCommunityComments,
   listAdminCommunityPosts,
+  softDeleteAdminCommunityComment,
   softDeleteAdminCommunityPost,
+  type AdminCommunityComment,
   type AdminCommunityPost,
 } from "../api/admin";
 import { ApiError } from "../api/http";
@@ -20,9 +24,13 @@ import { displayName, formatDateTime } from "../utils/format";
 const router = useRouter();
 const busyId = ref<string | null>(null);
 
-/** 评论抽屉状态（内容由 Task 7 实现） */
+/** 评论抽屉状态 */
 const drawerVisible = ref(false);
 const drawerPostId = ref<string | null>(null);
+const drawerPost = ref<AdminCommunityPost | null>(null);
+const drawerComments = ref<AdminCommunityComment[]>([]);
+const drawerLoading = ref(false);
+const busyCommentId = ref<string | null>(null);
 
 /** 表单态：用户正在编辑的关键字 */
 const form = reactive({ q: "" });
@@ -53,9 +61,71 @@ function bodyPreview(body: string) {
   return t.length > 80 ? `${t.slice(0, 80)}…` : t;
 }
 
-function openDrawer(row: AdminCommunityPost): void {
+async function openDrawer(row: AdminCommunityPost) {
   drawerPostId.value = row.id;
+  drawerPost.value = null;
+  drawerComments.value = [];
   drawerVisible.value = true;
+  await loadDrawer(row.id);
+}
+
+async function loadDrawer(postId: string) {
+  drawerLoading.value = true;
+  try {
+    const [post, comments] = await Promise.all([
+      getAdminCommunityPost(postId),
+      listAdminCommunityComments(postId, { page: 1, pageSize: 50 }),
+    ]);
+    drawerPost.value = post;
+    drawerComments.value = comments.items;
+    const row = rows.value.find((r) => r.id === postId);
+    if (row) row.commentCount = post.commentCount;
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 401) {
+      await router.replace("/login");
+      return;
+    }
+    if (e instanceof ApiError && e.status === 404) {
+      ElMessage.warning("动态不存在或已删除");
+      drawerVisible.value = false;
+      drawerPostId.value = null;
+      refresh();
+      return;
+    }
+    ElMessage.error(e instanceof ApiError ? e.message : "加载失败");
+  } finally {
+    drawerLoading.value = false;
+  }
+}
+
+async function onDeleteComment(comment: AdminCommunityComment) {
+  const postId = drawerPostId.value;
+  if (!postId) return;
+  try {
+    await ElMessageBox.confirm("确认软删该评论？", "删除评论", {
+      type: "warning",
+      confirmButtonText: "删除",
+      cancelButtonText: "取消",
+    });
+    busyCommentId.value = comment.id;
+    await softDeleteAdminCommunityComment(comment.id);
+    ElMessage.success("已删除");
+    await loadDrawer(postId);
+  } catch (e) {
+    if (e === "cancel" || e === "close") return;
+    if (e instanceof ApiError && e.status === 401) {
+      await router.replace("/login");
+      return;
+    }
+    if (e instanceof ApiError && e.status === 404) {
+      ElMessage.warning("已删除或不存在");
+      await loadDrawer(postId);
+      return;
+    }
+    ElMessage.error(e instanceof ApiError ? e.message : "删除失败");
+  } finally {
+    busyCommentId.value = null;
+  }
 }
 
 async function onDeletePost(row: AdminCommunityPost) {
@@ -77,6 +147,15 @@ async function onDeletePost(row: AdminCommunityPost) {
     if (e === "cancel" || e === "close") return;
     if (e instanceof ApiError && e.status === 401) {
       await router.replace("/login");
+      return;
+    }
+    if (e instanceof ApiError && e.status === 404) {
+      ElMessage.warning("已删除或不存在");
+      if (drawerPostId.value === row.id) {
+        drawerVisible.value = false;
+        drawerPostId.value = null;
+      }
+      refresh();
       return;
     }
     ElMessage.error(e instanceof ApiError ? e.message : "删除失败");
@@ -166,8 +245,114 @@ async function onDeletePost(row: AdminCommunityPost) {
       </el-table-column>
     </ProTableLite>
 
-    <!-- Task 7：评论抽屉内容 -->
-    <el-drawer v-model="drawerVisible" title="评论" size="520px" destroy-on-close />
+    <el-drawer v-model="drawerVisible" title="动态与评论" size="480px" destroy-on-close>
+      <div v-loading="drawerLoading" class="drawer-body">
+        <template v-if="drawerPost">
+          <section class="post">
+            <UserIdentity
+              :name="displayName(drawerPost.author.nickname)"
+              :sub="formatDateTime(drawerPost.createdAt)"
+            />
+            <p v-if="drawerPost.body.trim()" class="post__body">{{ drawerPost.body }}</p>
+            <div v-if="drawerPost.images.length" class="post__images">
+              <el-image
+                v-for="(img, idx) in drawerPost.images"
+                :key="img.url"
+                :src="img.url"
+                :preview-src-list="drawerPost.images.map((i) => i.url)"
+                :initial-index="idx"
+                fit="cover"
+                preview-teleported
+                class="post__image"
+              />
+            </div>
+            <div v-if="drawerPost.activities.length" class="post__activities">
+              <el-tag v-for="a in drawerPost.activities" :key="a.id" size="small" effect="plain">
+                {{ a.title }}
+              </el-tag>
+            </div>
+            <div class="post__footer">
+              <span class="text-secondary">
+                赞 {{ drawerPost.likeCount }} · 评论 {{ drawerPost.commentCount }}
+              </span>
+              <el-button
+                type="danger"
+                size="small"
+                :loading="busyId === drawerPost.id"
+                @click="onDeletePost(drawerPost)"
+              >
+                删除动态
+              </el-button>
+            </div>
+          </section>
+
+          <section class="comments">
+            <h4 class="comments__title">评论（{{ drawerPost.commentCount }}）</h4>
+            <el-empty v-if="!drawerComments.length" description="暂无评论" :image-size="64" />
+            <div v-for="c in drawerComments" :key="c.id" class="comment-group">
+              <div class="comment">
+                <div class="comment__head">
+                  <UserIdentity
+                    :name="displayName(c.author.nickname)"
+                    :sub="formatDateTime(c.createdAt)"
+                    :size="28"
+                  />
+                  <el-button
+                    type="danger"
+                    link
+                    size="small"
+                    :loading="busyCommentId === c.id"
+                    @click="onDeleteComment(c)"
+                  >
+                    删除
+                  </el-button>
+                </div>
+                <p v-if="c.body.trim()" class="comment__body">{{ c.body }}</p>
+                <el-image
+                  v-if="c.imageUrl"
+                  :src="c.imageUrl"
+                  :preview-src-list="[c.imageUrl]"
+                  fit="cover"
+                  preview-teleported
+                  class="comment__image"
+                />
+              </div>
+              <div v-for="r in c.replies" :key="r.id" class="comment reply">
+                <div class="comment__head">
+                  <UserIdentity
+                    :name="displayName(r.author.nickname)"
+                    :sub="formatDateTime(r.createdAt)"
+                    :size="24"
+                  />
+                  <el-button
+                    type="danger"
+                    link
+                    size="small"
+                    :loading="busyCommentId === r.id"
+                    @click="onDeleteComment(r)"
+                  >
+                    删除
+                  </el-button>
+                </div>
+                <p v-if="r.body.trim() || r.replyTo" class="comment__body">
+                  <span v-if="r.replyTo" class="text-secondary">
+                    回复 @{{ displayName(r.replyTo.nickname) }}：
+                  </span>{{ r.body }}
+                </p>
+                <el-image
+                  v-if="r.imageUrl"
+                  :src="r.imageUrl"
+                  :preview-src-list="[r.imageUrl]"
+                  fit="cover"
+                  preview-teleported
+                  class="comment__image"
+                />
+              </div>
+            </div>
+          </section>
+        </template>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -183,6 +368,86 @@ async function onDeletePost(row: AdminCommunityPost) {
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: bottom;
+}
+
+.drawer-body {
+  min-height: 160px;
+}
+
+.post {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.post__body,
+.comment__body {
+  margin: 10px 0 0;
+  color: var(--text-primary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.post__images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.post__image {
+  width: 88px;
+  height: 88px;
+  border-radius: 6px;
+}
+
+.post__activities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.post__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.comments__title {
+  margin: 16px 0 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.comment-group {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--el-border-color-extra-light);
+}
+
+.comment__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.comment__body {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.comment__image {
+  width: 96px;
+  height: 96px;
+  margin-top: 8px;
+  border-radius: 6px;
+}
+
+.reply {
+  margin-top: 10px;
+  padding-left: 28px;
 }
 
 @media (max-width: 900px) {
