@@ -64,6 +64,7 @@ export const useUserStore = defineStore("user", {
       try {
         await this.login();
         if (this.guideProfileIfNeeded("login")) return false;
+        uni.showToast({ title: "登录成功", icon: "none" });
         return true;
       } catch (e) {
         uni.showToast({
