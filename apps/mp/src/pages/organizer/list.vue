@@ -18,7 +18,7 @@
       <text class="empty-title">{{ emptyCopy.title }}</text>
       <text class="empty-desc">{{ emptyCopy.desc }}</text>
       <button
-        v-if="user.canPublish && filter !== 'off'"
+        v-if="user.canPublish && filter !== 'off' && filter !== 'ended'"
         class="ed-btn"
         hover-class="none"
         @click="goCreate"
@@ -54,17 +54,17 @@
               <view class="row-tags">
                 <text
                   class="status ed-tag"
-                  :class="lifecycleTagClass(item.lifecycle)"
-                >{{ lifecycleLabel(item.lifecycle) }}</text>
+                  :class="lifecycleTagClass(displayLifecycle(item))"
+                >{{ lifecycleLabel(displayLifecycle(item)) }}</text>
               </view>
               <text class="meta">{{ item.place || "—" }}</text>
               <text class="meta last">{{ formatTime(item.startAt) }}</text>
               <view
-                v-if="item.lifecycle === 'draft' || item.lifecycle === 'published'"
+                v-if="canMutate(item)"
                 class="ops"
               >
                 <button
-                  v-if="item.lifecycle === 'draft' && user.canPublish"
+                  v-if="displayLifecycle(item) === 'draft' && user.canPublish"
                   class="ed-btn"
                   size="mini"
                   hover-class="none"
@@ -74,7 +74,7 @@
                   发布
                 </button>
                 <button
-                  v-if="item.lifecycle === 'published'"
+                  v-if="displayLifecycle(item) === 'published'"
                   class="ed-btn-secondary"
                   size="mini"
                   hover-class="none"
@@ -84,7 +84,7 @@
                   退回草稿
                 </button>
                 <button
-                  v-if="item.lifecycle === 'published'"
+                  v-if="displayLifecycle(item) === 'published'"
                   class="danger"
                   size="mini"
                   hover-class="none"
@@ -94,7 +94,7 @@
                   取消
                 </button>
                 <button
-                  v-if="item.lifecycle === 'draft'"
+                  v-if="displayLifecycle(item) === 'draft'"
                   class="ed-btn-secondary"
                   size="mini"
                   hover-class="none"
@@ -122,13 +122,18 @@ import {
   type Activity,
 } from "@/api/activities";
 import { useUserStore } from "@/stores/user";
+import {
+  effectiveLifecycle,
+  type EffectiveLifecycle,
+} from "@/utils/activity-lifecycle";
 import { ApiError } from "@/utils/request";
 
-type ShelfFilter = "listed" | "draft" | "off";
+type ShelfFilter = "listed" | "draft" | "ended" | "off";
 
 const TABS: { id: ShelfFilter; label: string }[] = [
   { id: "listed", label: "已上架" },
   { id: "draft", label: "草稿" },
+  { id: "ended", label: "已结束" },
   { id: "off", label: "已下架" },
 ];
 
@@ -140,7 +145,7 @@ const brokenCovers = ref<Record<string, boolean>>({});
 const filter = ref<ShelfFilter>("listed");
 
 const filtered = computed(() =>
-  items.value.filter((item) => inShelf(item.lifecycle, filter.value)),
+  items.value.filter((item) => inShelf(displayLifecycle(item), filter.value)),
 );
 
 const masonryCols = computed(() => {
@@ -158,14 +163,25 @@ const emptyCopy = computed(() => {
   if (filter.value === "draft") {
     return { title: "暂无草稿", desc: "保存未发布的活动会出现在这里。" };
   }
+  if (filter.value === "ended") {
+    return { title: "暂无已结束活动", desc: "时间已过的活动会出现在这里。" };
+  }
   return { title: "暂无已下架活动", desc: "取消或被下架的活动会出现在这里。" };
 });
 
-function inShelf(lifecycle: Activity["lifecycle"], shelf: ShelfFilter) {
-  if (shelf === "listed") {
-    return lifecycle === "published" || lifecycle === "ended";
-  }
+function displayLifecycle(item: Pick<Activity, "lifecycle" | "endAt">) {
+  return effectiveLifecycle(item);
+}
+
+function canMutate(item: Pick<Activity, "lifecycle" | "endAt">) {
+  const life = displayLifecycle(item);
+  return life === "draft" || life === "published";
+}
+
+function inShelf(lifecycle: EffectiveLifecycle, shelf: ShelfFilter) {
+  if (shelf === "listed") return lifecycle === "published";
   if (shelf === "draft") return lifecycle === "draft";
+  if (shelf === "ended") return lifecycle === "ended";
   return lifecycle === "removed" || lifecycle === "cancelled";
 }
 
@@ -186,6 +202,7 @@ function lifecycleTagClass(lifecycle: string) {
   if (lifecycle === "draft") return "ed-tag-pending";
   if (lifecycle === "cancelled") return "ed-tag-paid";
   if (lifecycle === "removed") return "ed-tag-full";
+  if (lifecycle === "ended") return "ed-tag-muted";
   return "ed-tag-muted";
 }
 

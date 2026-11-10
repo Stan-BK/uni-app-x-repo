@@ -127,6 +127,23 @@ export class ActivitiesService {
     return { registrationDeadlineAt: activity.startAt };
   }
 
+  /** ADR-0005：published 且 now >= endAt 视为已结束（读时计算） */
+  private isTimeEnded(
+    activity: Pick<Activity, "lifecycle" | "endAt">,
+    now = new Date(),
+  ): boolean {
+    if (activity.lifecycle === ActivityLifecycle.ended) return true;
+    if (activity.lifecycle !== ActivityLifecycle.published) return false;
+    if (!activity.endAt) return false;
+    return now >= activity.endAt;
+  }
+
+  private assertNotEnded(activity: Pick<Activity, "lifecycle" | "endAt">) {
+    if (this.isTimeEnded(activity)) {
+      throw new ConflictException("Cannot modify ended activity");
+    }
+  }
+
   async create(userId: string, dto: UpsertActivityDto): Promise<Activity> {
     await this.requireCanPublish(userId);
     if (!dto.title?.trim()) {
@@ -204,6 +221,7 @@ export class ActivitiesService {
     if (activity.lifecycle !== ActivityLifecycle.published) {
       throw new ConflictException("Only published can unpublish to draft");
     }
+    this.assertNotEnded(activity);
     await this.registrationCancel.closeActivity(id);
     return this.prisma.activity.update({
       where: { id },
@@ -223,6 +241,7 @@ export class ActivitiesService {
     ) {
       throw new ConflictException("Cannot cancel from current state");
     }
+    this.assertNotEnded(activity);
     await this.registrationCancel.closeActivity(id);
     return this.prisma.activity.update({
       where: { id },

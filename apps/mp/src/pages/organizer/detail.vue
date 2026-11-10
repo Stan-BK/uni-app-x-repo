@@ -10,8 +10,8 @@
         mode="aspectFill"
       />
       <text class="title">{{ activity.title || "未命名活动" }}</text>
-      <text class="badge ed-tag" :class="lifecycleTagClass(activity.lifecycle)">{{
-        lifecycleLabel(activity.lifecycle)
+      <text class="badge ed-tag" :class="lifecycleTagClass(displayLifecycle)">{{
+        lifecycleLabel(displayLifecycle)
       }}</text>
 
       <view class="block">
@@ -159,6 +159,7 @@ import {
   type Registration,
 } from "@/api/registrations";
 import { useUserStore } from "@/stores/user";
+import { effectiveLifecycle } from "@/utils/activity-lifecycle";
 import { displayRegistrationName } from "@/utils/registration-display";
 import { ApiError } from "@/utils/request";
 
@@ -182,11 +183,15 @@ const ERR_MAP: Record<string, string> = {
   "Only draft can be published": "仅草稿状态可发布",
   "Only published can unpublish to draft": "仅已发布活动可退回草稿",
   "Cannot cancel from current state": "当前状态不可下架",
+  "Cannot modify ended activity": "活动已结束，不可再操作",
   "Publish permission frozen": "发布权限已关闭",
 };
 
-const isDraft = computed(() => activity.value?.lifecycle === "draft");
-const isPublished = computed(() => activity.value?.lifecycle === "published");
+const displayLifecycle = computed(() =>
+  activity.value ? effectiveLifecycle(activity.value) : "draft",
+);
+const isDraft = computed(() => displayLifecycle.value === "draft");
+const isPublished = computed(() => displayLifecycle.value === "published");
 const showActionBar = computed(() => isDraft.value || isPublished.value);
 
 function lifecycleLabel(lifecycle: string) {

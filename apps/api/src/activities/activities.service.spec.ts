@@ -161,6 +161,7 @@ describe("ActivitiesService", () => {
       id: "act-1",
       ownerUserId: "user-1",
       lifecycle: ActivityLifecycle.published,
+      endAt: new Date("2030-01-02T12:00:00Z"),
     });
     prisma.activity.update.mockResolvedValue({
       id: "act-1",
@@ -179,6 +180,7 @@ describe("ActivitiesService", () => {
       id: "act-1",
       ownerUserId: "user-1",
       lifecycle: ActivityLifecycle.published,
+      endAt: new Date("2030-01-02T12:00:00Z"),
     });
     prisma.activity.update.mockResolvedValue({
       id: "act-1",
@@ -189,5 +191,41 @@ describe("ActivitiesService", () => {
     const result = await service.unpublish("user-1", "act-1");
     expect(cancelHook.closeActivity).toHaveBeenCalledWith("act-1");
     expect(result.lifecycle).toBe(ActivityLifecycle.draft);
+  });
+
+  it("unpublish rejects when published activity endAt has passed", async () => {
+    prisma.activity.findFirst.mockResolvedValue({
+      id: "act-1",
+      ownerUserId: "user-1",
+      lifecycle: ActivityLifecycle.published,
+      endAt: new Date("2020-01-02T12:00:00Z"),
+    });
+
+    await expect(service.unpublish("user-1", "act-1")).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    await expect(service.unpublish("user-1", "act-1")).rejects.toThrow(
+      "Cannot modify ended activity",
+    );
+    expect(cancelHook.closeActivity).not.toHaveBeenCalled();
+    expect(prisma.activity.update).not.toHaveBeenCalled();
+  });
+
+  it("cancel rejects when published activity endAt has passed", async () => {
+    prisma.activity.findFirst.mockResolvedValue({
+      id: "act-1",
+      ownerUserId: "user-1",
+      lifecycle: ActivityLifecycle.published,
+      endAt: new Date("2020-01-02T12:00:00Z"),
+    });
+
+    await expect(service.cancel("user-1", "act-1")).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    await expect(service.cancel("user-1", "act-1")).rejects.toThrow(
+      "Cannot modify ended activity",
+    );
+    expect(cancelHook.closeActivity).not.toHaveBeenCalled();
+    expect(prisma.activity.update).not.toHaveBeenCalled();
   });
 });

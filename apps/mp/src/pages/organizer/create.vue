@@ -255,6 +255,7 @@ import {
   type Activity,
   type UpsertBody,
 } from "@/api/activities";
+import { effectiveLifecycle } from "@/utils/activity-lifecycle";
 import { ApiError } from "@/utils/request";
 import { useUserStore } from "@/stores/user";
 // 显式导入 uni-ui：pnpm monorepo 下仅靠 easycom 时 usingComponents 可能为空
@@ -574,7 +575,7 @@ function buildBody(): UpsertBody {
 }
 
 function fillForm(a: Activity) {
-  lifecycle.value = a.lifecycle;
+  lifecycle.value = effectiveLifecycle(a);
   form.title = a.title ?? "";
   form.coverUrl = a.coverUrl ?? "";
   coverPreview.value = a.coverUrl ?? "";
@@ -768,14 +769,15 @@ async function loadActivity(id: string) {
     const a = await getActivity(id);
     editingId.value = a.id;
     fillForm(a);
+    const life = effectiveLifecycle(a);
     if (
-      a.lifecycle === "published" ||
-      a.lifecycle === "cancelled" ||
-      a.lifecycle === "removed" ||
-      a.lifecycle === "ended"
+      life === "published" ||
+      life === "cancelled" ||
+      life === "removed" ||
+      life === "ended"
     ) {
       showError(
-        a.lifecycle === "published"
+        life === "published"
           ? "已发布活动不可直接修改，请先退回草稿"
           : "该活动当前状态不可编辑",
       );
