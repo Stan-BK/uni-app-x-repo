@@ -46,3 +46,4 @@ P0～P1-4 已覆盖活动发现、报名、支付结算与订阅消息。产品�
 - 共享枚举/热度常量：`packages/shared/src/community.ts`；数据模型：`apps/api/prisma/schema.prisma`。
 - 2026-11-03 自动验收：API 全量测试 248 passed、16 skipped，API 类型检查通过；微信开发者工具手测（AT-COM-01～12，含通知跳转、自赞无通知、Admin 删评）待人工执行。
 - 实现计划：[动态基座](../superpowers/plans/2026-11-03-community-feed-posts.md)、[互动与通知](../superpowers/plans/2026-11-03-community-feed-engagement.md)。
+- Admin UI：`apps/admin`「社区动态」最小管理页已落地（只读列表/详情/评论 + 既有软删）；规格见 2026-11-10-admin-community-moderation-design.md。

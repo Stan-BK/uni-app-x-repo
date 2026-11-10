@@ -265,7 +265,7 @@ Admin 列表 UI 后置打磨；API 本期必备。
 
 ## 6. Admin
 
-本期：软删 API + 审计。最小管理页（列表关键字 + 删除）可选实现；不阻塞 mp 闭环。不做社区内容审核队列（举报后置）。
+本期：软删 API + 审计。最小管理页已落地（列表关键字 + 软删动态；抽屉查看/软删评论），见 [2026-11-10-admin-community-moderation-design.md](./2026-11-10-admin-community-moderation-design.md)。不做社区内容审核队列（举报后置）。
 
 ## 7. 非目标（后置）
 

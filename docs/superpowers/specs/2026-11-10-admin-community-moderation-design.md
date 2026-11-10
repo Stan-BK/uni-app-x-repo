@@ -1,7 +1,7 @@
 # Admin 社区动态最小管理页
 
 - **日期：** 2026-11-10
-- **状态：** Approved（待实现）
+- **状态：** Implemented
 - **关联：** roadmap P1-5；[ADR-0016](../../adr/0016-community-feed.md)；母规格 [2026-11-03-community-feed-design.md](./2026-11-03-community-feed-design.md) §6
 - **范围：** 落地母规格「最小管理页（列表关键字 + 删除）」可选能力；**不做**审核队列 / 上下架态 / 恢复已删 / 举报。
 
