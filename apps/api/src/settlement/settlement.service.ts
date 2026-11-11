@@ -1,4 +1,10 @@
+import { randomBytes } from "node:crypto";
 import { Injectable } from "@nestjs/common";
+import type {
+  WalletLedgerItem,
+  WalletPaged,
+  WalletPendingItem,
+} from "@activity/shared";
 import {
   ActivityLifecycle,
   FeeType,
@@ -7,7 +13,6 @@ import {
   Prisma,
   RefundStatus,
 } from "@prisma/client";
-import { randomBytes } from "node:crypto";
 import { PaymentsService } from "../payments/payments.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { settlementAmounts } from "./fee";
@@ -21,6 +26,22 @@ export type WalletView = {
   availableCents: number;
   pendingCents: number;
 };
+
+type WalletPageQuery = { page?: number; pageSize?: number };
+
+type PendingRow = {
+  activityId: string;
+  title: string;
+  endAt: Date | null;
+  lifecycle: ActivityLifecycle;
+  pendingCents: number;
+};
+
+function normalizeWalletPaging(input: WalletPageQuery) {
+  const page = Math.max(1, Number(input.page) || 1);
+  const pageSize = Math.min(50, Math.max(1, Number(input.pageSize) || 20));
+  return { page, pageSize };
+}
 
 function newCuid(): string {
   return `c${randomBytes(12).toString("hex")}${Date.now().toString(36)}`.slice(
@@ -42,17 +63,113 @@ export class SettlementService {
       select: { availableCents: true },
     });
     const availableCents = account?.availableCents ?? 0;
+    const pendingCents = (await this.loadPendingRows(userId)).reduce(
+      (sum, row) => sum + row.pendingCents,
+      0,
+    );
+    return { availableCents, pendingCents };
+  }
 
+  async listPending(
+    userId: string,
+    query: WalletPageQuery,
+  ): Promise<WalletPaged<WalletPendingItem>> {
+    const { page, pageSize } = normalizeWalletPaging(query);
+    const rows = await this.loadPendingRows(userId);
+    const start = (page - 1) * pageSize;
+    const items = rows.slice(start, start + pageSize).map((row) => ({
+      activityId: row.activityId,
+      title: row.title,
+      pendingCents: row.pendingCents,
+      endAt: row.endAt ? row.endAt.toISOString() : "",
+      lifecycle: row.lifecycle,
+    }));
+    return { items, total: rows.length, page, pageSize };
+  }
+
+  async listLedger(
+    userId: string,
+    query: WalletPageQuery,
+  ): Promise<WalletPaged<WalletLedgerItem>> {
+    const { page, pageSize } = normalizeWalletPaging(query);
+    const empty = {
+      items: [] as WalletLedgerItem[],
+      total: 0,
+      page,
+      pageSize,
+    };
+    const account = await this.prisma.walletAccount.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!account) {
+      return empty;
+    }
+
+    const where = { accountId: account.id };
+    const total = await this.prisma.ledgerEntry.count({ where });
+    const entries = await this.prisma.ledgerEntry.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+
+    const activityIds = [
+      ...new Set(
+        entries
+          .filter((entry) => entry.refType === "activity")
+          .map((entry) => entry.refId),
+      ),
+    ];
+    const activities =
+      activityIds.length === 0
+        ? []
+        : await this.prisma.activity.findMany({
+            where: { id: { in: activityIds } },
+            select: { id: true, title: true },
+          });
+    const titleById = new Map(
+      activities.map((activity) => [activity.id, activity.title]),
+    );
+
+    const items: WalletLedgerItem[] = entries.map((entry) => {
+      const activityId = entry.refType === "activity" ? entry.refId : null;
+      const title =
+        (activityId ? titleById.get(activityId) : undefined) ??
+        (activityId ? "活动已删除" : "余额变动");
+      return {
+        id: entry.id,
+        type: entry.type as WalletLedgerItem["type"],
+        availableDeltaCents: entry.availableDeltaCents,
+        availableAfterCents: entry.availableAfterCents,
+        createdAt: entry.createdAt.toISOString(),
+        title,
+        activityId,
+      };
+    });
+
+    return { items, total, page, pageSize };
+  }
+
+  private async loadPendingRows(userId: string): Promise<PendingRow[]> {
     const unsettledActivities = await this.prisma.activity.findMany({
       where: {
         ownerUserId: userId,
         feeType: FeeType.paid,
         settlement: { is: null },
       },
-      select: { id: true, platformFeeBps: true },
+      select: {
+        id: true,
+        title: true,
+        endAt: true,
+        lifecycle: true,
+        platformFeeBps: true,
+      },
+      orderBy: { endAt: "asc" },
     });
 
-    let pendingCents = 0;
+    const rows: PendingRow[] = [];
     for (const activity of unsettledActivities) {
       const paidOrders = await this.prisma.paymentOrder.findMany({
         where: {
@@ -80,14 +197,19 @@ export class SettlementService {
         0,
       );
 
-      pendingCents += settlementAmounts(
-        grossCents,
-        refundedCents,
-        activity.platformFeeBps,
-      ).netCents;
+      rows.push({
+        activityId: activity.id,
+        title: activity.title,
+        endAt: activity.endAt,
+        lifecycle: activity.lifecycle,
+        pendingCents: settlementAmounts(
+          grossCents,
+          refundedCents,
+          activity.platformFeeBps,
+        ).netCents,
+      });
     }
-
-    return { availableCents, pendingCents };
+    return rows;
   }
 
   async settleActivity(

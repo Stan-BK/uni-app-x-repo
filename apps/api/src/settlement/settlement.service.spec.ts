@@ -135,12 +135,13 @@ describeDb("SettlementService", () => {
       endAt?: Date;
       lifecycle?: ActivityLifecycle;
       platformFeeBps?: number | null;
+      title?: string;
     } = {},
   ) {
     const activity = await prisma.activity.create({
       data: {
         ownerUserId,
-        title: "收费活动",
+        title: opts.title ?? "收费活动",
         feeType: FeeType.paid,
         feeCents: 500,
         lifecycle: opts.lifecycle ?? ActivityLifecycle.published,
@@ -463,6 +464,105 @@ describeDb("SettlementService", () => {
         "availableCents",
         "pendingCents",
       ]);
+    });
+  });
+
+  describe("listLedger", () => {
+    it("returns empty page when user has no wallet account", async () => {
+      const owner = await createOwner();
+      const result = await settlementService.listLedger(owner.id, {});
+      expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 20 });
+    });
+
+    it("returns settlement_credit row with activityId and title after settle", async () => {
+      const owner = await createOwner();
+      const guest = await createParticipant();
+      const activity = await createPaidActivity(owner.id, {
+        platformFeeBps: 1000,
+        title: "周末徒步",
+      });
+      await createPaidOrder(activity.id, guest.id, 1000);
+      await settlementService.settleActivity(activity.id, now);
+
+      const result = await settlementService.listLedger(owner.id, {});
+      expect(result.total).toBe(1);
+      expect(result.items[0]).toMatchObject({
+        type: LedgerEntryType.settlement_credit,
+        availableDeltaCents: 900,
+        activityId: activity.id,
+        title: "周末徒步",
+      });
+      expect(result.items[0].createdAt).toBeTruthy();
+    });
+
+    it("uses placeholder title when activity is missing", async () => {
+      const owner = await createOwner();
+      const account = await prisma.walletAccount.create({
+        data: { userId: owner.id, availableCents: 100 },
+      });
+      await prisma.ledgerEntry.create({
+        data: {
+          accountId: account.id,
+          type: LedgerEntryType.settlement_credit,
+          availableDeltaCents: 100,
+          availableAfterCents: 100,
+          idempotencyKey: `settlement:orphan-${owner.id}`,
+          refType: "activity",
+          refId: "activity_does_not_exist",
+        },
+      });
+
+      const result = await settlementService.listLedger(owner.id, {});
+      expect(result.items[0].title).toBe("活动已删除");
+      expect(result.items[0].activityId).toBe("activity_does_not_exist");
+    });
+  });
+
+  describe("listPending", () => {
+    it("lists unsettled paid activities with pendingCents matching getWallet sum", async () => {
+      const owner = await createOwner();
+      const guest = await createParticipant();
+      const a1 = await createPaidActivity(owner.id, {
+        platformFeeBps: 1000,
+        title: "先结束",
+        endAt: new Date("2030-07-10T12:00:00.000Z"),
+      });
+      const a2 = await createPaidActivity(owner.id, {
+        platformFeeBps: 1000,
+        title: "后结束",
+        endAt: new Date("2030-07-20T12:00:00.000Z"),
+      });
+      await createPaidOrder(a1.id, guest.id, 400);
+      await createPaidOrder(a2.id, guest.id, 600);
+
+      const wallet = await settlementService.getWallet(owner.id);
+      const pending = await settlementService.listPending(owner.id, {});
+      expect(pending.items.map((i) => i.activityId)).toEqual([a1.id, a2.id]);
+      expect(pending.items.reduce((s, i) => s + i.pendingCents, 0)).toBe(
+        wallet.pendingCents,
+      );
+      expect(pending.items[0].title).toBe("先结束");
+      expect(pending.items[0].pendingCents).toBe(360);
+      expect(pending.items[1].pendingCents).toBe(540);
+    });
+
+    it("excludes settled activities from pending list", async () => {
+      const owner = await createOwner();
+      const guest = await createParticipant();
+      const settled = await createPaidActivity(owner.id, {
+        platformFeeBps: 1000,
+      });
+      await createPaidOrder(settled.id, guest.id, 1000);
+      await settlementService.settleActivity(settled.id, now);
+
+      const unsettled = await createPaidActivity(owner.id, {
+        platformFeeBps: 1000,
+      });
+      await createPaidOrder(unsettled.id, guest.id, 200);
+
+      const pending = await settlementService.listPending(owner.id, {});
+      expect(pending.items.map((i) => i.activityId)).toEqual([unsettled.id]);
+      expect(pending.items[0].pendingCents).toBe(180);
     });
   });
 
