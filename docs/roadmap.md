@@ -152,10 +152,11 @@
 
 **ADR：** [0014](./adr/0014-paid-registration-and-settlement.md)（Implemented）  
 **设计：** [docs/superpowers/specs/2026-10-24-paid-registration-and-settlement-design.md](./superpowers/specs/2026-10-24-paid-registration-and-settlement-design.md)  
-**计划：** [支付与退款](./superpowers/plans/2026-10-24-paid-registration-payment.md)、[结算入账](./superpowers/plans/2026-10-24-activity-settlement-wallet.md)
+**计划：** [支付与退款](./superpowers/plans/2026-10-24-paid-registration-payment.md)、[结算入账](./superpowers/plans/2026-10-24-activity-settlement-wallet.md)、[钱包明细与待结算](./superpowers/plans/2026-11-11-wallet-ledger-and-pending.md)
 
 - [x] 支付与退款（JSAPI、`pending_payment` 占名额、关单、回调幂等、结束前退款）  
 - [x] 结算入账（活动结束/取消下架后净额进发布者可用余额、待结算预估；**不含提现**）  
+- [x] 钱包只读明细与待结算活动列表（同页 Tab；**不含提现**）
 
 **验收：** 见设计规格 §9。免费报名行为不变；提现仍属 P2。
 

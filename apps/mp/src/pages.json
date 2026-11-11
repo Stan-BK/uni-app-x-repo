@@ -80,6 +80,12 @@
       }
     },
     {
+      "path": "pages/mine/wallet",
+      "style": {
+        "navigationBarTitleText": "我的钱包"
+      }
+    },
+    {
       "path": "pages/organizer/home",
       "style": {
         "navigationBarTitleText": "发布"
