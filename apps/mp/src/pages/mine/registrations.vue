@@ -31,14 +31,14 @@
         </view>
       </view>
       <view v-if="user.isLoggedIn" class="wallet">
-        <view class="wallet-main">
+        <view class="wallet-main" hover-class="none" @click.stop="goWallet('ledger')">
           <text class="wallet-label">可用余额</text>
           <view class="wallet-amount">
             <text class="wallet-currency">¥</text>
             <text class="wallet-figure">{{ availableDisplay }}</text>
           </view>
         </view>
-        <view class="wallet-side">
+        <view class="wallet-side" hover-class="none" @click.stop="goWallet('pending')">
           <text class="wallet-label">待结算</text>
           <text class="wallet-pending">{{ pendingDisplay }}</text>
         </view>
@@ -377,6 +377,12 @@ function goProfile() {
   uni.navigateTo({ url: "/pages/mine/profile" });
 }
 
+function goWallet(tab: "ledger" | "pending") {
+  uni.navigateTo({
+    url: `/pages/mine/wallet?tab=${encodeURIComponent(tab)}`,
+  });
+}
+
 function goCommunityMine() {
   uni.navigateTo({ url: "/pages/community/mine" });
 }
@@ -446,6 +452,11 @@ onShow(() => {
   margin-top: 28rpx;
   padding-top: 24rpx;
   border-top: 1rpx solid $ed-color-border;
+}
+
+.wallet-main {
+  flex: 1;
+  min-width: 0;
 }
 
 .wallet-label {
