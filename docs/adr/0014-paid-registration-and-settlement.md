@@ -1,10 +1,10 @@
 # ADR-0014: 收费报名支付与结算入账
 
-- **状态：** Implemented
-- **日期：** 2026-10-24
+- **状态：** Implemented（支付/结算/余额摘要）；Accepted（2026-11-11 钱包只读明细修订，待实现）
+- **日期：** 2026-10-24（修订 2026-11-11）
 - **关联：** roadmap P1-3、PRD D-05 / D-06、[ADR-0005](./0005-activity-lifecycle-and-model.md)、[ADR-0007](./0007-registration-idempotency-and-capacity.md)、[ADR-0010](./0010-backend-ops-stack.md)
-- **设计规格：** [docs/superpowers/specs/2026-10-24-paid-registration-and-settlement-design.md](../superpowers/specs/2026-10-24-paid-registration-and-settlement-design.md)
-- **实现计划：** [支付与退款](../superpowers/plans/2026-10-24-paid-registration-payment.md)、[结算入账](../superpowers/plans/2026-10-24-activity-settlement-wallet.md)
+- **设计规格：** [收费报名与结算](../superpowers/specs/2026-10-24-paid-registration-and-settlement-design.md)、[钱包明细与待结算](../superpowers/specs/2026-11-11-wallet-ledger-and-pending-design.md)
+- **实现计划：** [支付与退款](../superpowers/plans/2026-10-24-paid-registration-payment.md)、[结算入账](../superpowers/plans/2026-10-24-activity-settlement-wallet.md)（钱包明细实现计划待写）
 
 ## 背景
 
@@ -26,6 +26,8 @@ P0-4 与 ADR-0007 已落地免费报名闭环，并对 `feeType=paid` **拒绝�
 
 7. **不引入 Redis。** 名额并发仍用 Postgres 行锁；支付回调幂等靠支付单状态迁移与唯一约束（同一报名最多一张 `pending`、最多一张 `paid` 支付单；退款单与结算单 `activityId` / 幂等键唯一）。超时关单与结算扫描在 API 单进程内定时执行，并在读取相关报名/活动时顺带执行。
 
+8. **钱包只读明细（2026-11-11 修订）。** 在已有 `GET /me/wallet` 摘要之外，提供本人只读分页接口：`GET /me/wallet/ledger`（`LedgerEntry` 全量流水，正负向均按流水展示；本阶段仅有 `settlement_credit`）与 `GET /me/wallet/pending`（未结算收费活动及单活动预估净额，算法与摘要 `pendingCents` 一致）。小程序「我的」点可用余额 / 待结算进入同一钱包页（顶栏双金额 + Tab）；金额为 0 仍可进入。活动相关行可跳转活动详情。**仍不做提现**、不写新出账类型、Admin 不改余额。细节见 [钱包明细规格](../superpowers/specs/2026-11-11-wallet-ledger-and-pending-design.md)。
+
 ## 备选方案
 
 | 方案 | 优点 | 缺点 |
@@ -34,15 +36,18 @@ P0-4 与 ADR-0007 已落地免费报名闭环，并对 `feeType=paid` **拒绝�
 | 仅支付成功占名额 | 不占坑 | 并发双付、回调满员需退款，本阶段明确不做 |
 | Redis 锁 / 消息队列处理回调 | 吞吐与解耦更好 | 违反 ADR-0010 / backend-ops MVP 边界 |
 | P2 才开放收费 | 实现更晚 | 与当前产品阶段不符 |
+| 摘要外再提供只读 ledger/pending 列表（决策 8） | 可核对入账与待结算构成，不引入提现 | 多两个接口与一页 UI |
+| 不做明细、仅摘要 | 实现更少 | 余额为 0 时无法回顾历史；待结算无法拆到活动 |
+| 钱包页内嵌提现入口 | 一次做完资金出口 | 超出本阶段与 P2 边界 |
 
 ## 后果
 
-- 正面：收费闭环与免费规则边界清晰；支付 ADR 先于代码；提现、支付宝、分账仍后置 P2。
-- 负面 / 跟进：须实现 `Registration.pending_payment`、`PaymentOrder` / `Refund` / 钱包与结算表；同步 mp 调起支付与个人页余额展示；更新 roadmap P1-3 与 PRD D-05。实现完成后将本 ADR 标为 `Implemented`。
+- 正面：收费闭环与免费规则边界清晰；支付 ADR 先于代码；提现、支付宝、分账仍后置 P2；只读明细不改变入账公式。
+- 负面 / 跟进：支付结算主链路已 Implemented。钱包只读明细（决策 8）须按 [钱包明细规格](../superpowers/specs/2026-11-11-wallet-ledger-and-pending-design.md) 落地 api + mp 后再将修订标为 Implemented。
 - Admin 不增加改余额或提现页面。
 
 ## 实现备注
 
-- **代码入口：** `apps/api/src/payments`（JSAPI 下单/回调/关单/退款）、`apps/api/src/settlement`（活动关窗结算与发布者钱包入账）；小程序收费报名调起支付与个人页可用余额/待结算展示见 `apps/mp` 对应页面。发布者提现、支付宝、Admin 改余额未实现。
-- 涉及：`packages/shared`（状态与错误码）；`apps/api`（报名分支、微信支付适配、关单扫描、退款、结算）；`apps/mp`（收费 CTA、待支付、钱包展示）。细节见设计规格与两份实现计划。
-- 验收要点：规格 §9 单元测试清单；免费行为不变；15 分钟内不换 `outTradeNo`；重复回调只确认一次；下架全额退与结算净额 0；活动结束后拒绝退款。
+- **代码入口：** `apps/api/src/payments`（JSAPI 下单/回调/关单/退款）、`apps/api/src/settlement`（活动关窗结算与发布者钱包入账、钱包摘要与只读列表）；小程序收费报名调起支付、个人页余额摘要与钱包明细页见 `apps/mp`。发布者提现、支付宝、Admin 改余额未实现。
+- 涉及：`packages/shared`（状态与错误码、流水/待结算类型）；`apps/api`（报名分支、微信支付适配、关单扫描、退款、结算、ledger/pending 查询）；`apps/mp`（收费 CTA、待支付、钱包摘要与明细 Tab）。细节见设计规格与实现计划。
+- 验收要点：规格 §9 单元测试清单；免费行为不变；15 分钟内不换 `outTradeNo`；重复回调只确认一次；下架全额退与结算净额 0；活动结束后拒绝退款；钱包明细规格 §6（流水分页、pending 合计一致、空账户、401）。
