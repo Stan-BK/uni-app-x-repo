@@ -1,7 +1,7 @@
 # 钱包余额明细与待结算列表设计规格
 
 - **日期：** 2026-11-11
-- **状态：** Approved（待实现）
+- **状态：** Implemented
 - **ADR：** [ADR-0014](../../adr/0014-paid-registration-and-settlement.md)（2026-11-11 修订）
 - **前置：** [收费报名与结算](./2026-10-24-paid-registration-and-settlement-design.md)、[结算入账计划](../plans/2026-10-24-activity-settlement-wallet.md)
 - **范围：** 小程序只读查看余额流水与待结算活动列表；从「我的」钱包双金额入口进入。
