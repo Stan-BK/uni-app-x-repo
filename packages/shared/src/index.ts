@@ -6,3 +6,4 @@ export * from "./observability";
 export * from "./subscribe-message";
 export * from "./community";
 export * from "./system";
+export * from "./wallet";
