@@ -4,7 +4,7 @@
 - **日期：** 2026-10-24（修订 2026-11-11）
 - **关联：** roadmap P1-3、PRD D-05 / D-06、[ADR-0005](./0005-activity-lifecycle-and-model.md)、[ADR-0007](./0007-registration-idempotency-and-capacity.md)、[ADR-0010](./0010-backend-ops-stack.md)
 - **设计规格：** [收费报名与结算](../superpowers/specs/2026-10-24-paid-registration-and-settlement-design.md)、[钱包明细与待结算](../superpowers/specs/2026-11-11-wallet-ledger-and-pending-design.md)
-- **实现计划：** [支付与退款](../superpowers/plans/2026-10-24-paid-registration-payment.md)、[结算入账](../superpowers/plans/2026-10-24-activity-settlement-wallet.md)（钱包明细实现计划待写）
+- **实现计划：** [支付与退款](../superpowers/plans/2026-10-24-paid-registration-payment.md)、[结算入账](../superpowers/plans/2026-10-24-activity-settlement-wallet.md)、[钱包明细与待结算](../superpowers/plans/2026-11-11-wallet-ledger-and-pending.md)
 
 ## 背景
 
