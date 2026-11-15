@@ -45,6 +45,8 @@ export type ListMineQuery = {
   pageSize?: number;
   status?: string;
   activityId?: string;
+  /** 仅 listForOwner 使用："true" | "false" */
+  checkedIn?: string;
 };
 
 type LockedActivity = Pick<
@@ -490,14 +492,26 @@ export class RegistrationsService {
 
     const page = Math.max(1, Number(query.page) || 1);
     const pageSize = Math.min(50, Math.max(1, Number(query.pageSize) || 20));
+    const checkedInFilter: Prisma.RegistrationWhereInput =
+      query.checkedIn === "true"
+        ? { checkedInAt: { not: null } }
+        : query.checkedIn === "false"
+          ? { checkedInAt: null }
+          : {};
     const where: Prisma.RegistrationWhereInput = {
       activityId,
       ...(query.status
         ? { status: query.status as RegistrationStatus }
         : {}),
+      ...checkedInFilter,
+    };
+    // 签到计数口径：始终为该活动 confirmed 总体，不随 status / checkedIn 筛选变化
+    const confirmedWhere: Prisma.RegistrationWhereInput = {
+      activityId,
+      status: RegistrationStatus.confirmed,
     };
     const skip = (page - 1) * pageSize;
-    const [rows, total] = await Promise.all([
+    const [rows, total, checkedInCount, confirmedTotal] = await Promise.all([
       this.prisma.registration.findMany({
         where,
         orderBy: { createdAt: "desc" },
@@ -506,6 +520,10 @@ export class RegistrationsService {
         include: { user: { select: { nickname: true, avatarUrl: true } } },
       }),
       this.prisma.registration.count({ where }),
+      this.prisma.registration.count({
+        where: { ...confirmedWhere, checkedInAt: { not: null } },
+      }),
+      this.prisma.registration.count({ where: confirmedWhere }),
     ]);
 
     return {
@@ -517,12 +535,16 @@ export class RegistrationsService {
         status: row.status,
         createdAt: row.createdAt.toISOString(),
         cancelledAt: row.cancelledAt?.toISOString() ?? null,
+        checkedInAt: row.checkedInAt?.toISOString() ?? null,
+        checkedInByUserId: row.checkedInByUserId ?? null,
         nickname: row.user.nickname?.trim() || row.name || "用户",
         avatarUrl: row.user.avatarUrl,
       })),
       total,
       page,
       pageSize,
+      checkedInCount,
+      notCheckedInCount: confirmedTotal - checkedInCount,
     };
   }
 

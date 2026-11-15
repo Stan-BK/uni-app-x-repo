@@ -1164,6 +1164,8 @@ describe("RegistrationsService", () => {
           status: RegistrationStatus.confirmed,
           createdAt: "2026-10-01T00:00:00.000Z",
           cancelledAt: null,
+          checkedInAt: null,
+          checkedInByUserId: null,
           nickname: "阿三",
           avatarUrl: "https://cdn.example/a.png",
         },
@@ -1171,6 +1173,130 @@ describe("RegistrationsService", () => {
       total: 1,
       page: 1,
       pageSize: 20,
+      checkedInCount: 1,
+      notCheckedInCount: 0,
+    });
+  });
+
+  describe("listForOwner checkedIn filter and counts", () => {
+    const checkedAt = new Date("2026-10-02T08:00:00.000Z");
+    const ownerRow = (over: Record<string, unknown> = {}) => ({
+      id: "r1",
+      activityId: "act1",
+      userId: "u2",
+      name: "张三",
+      phone: "13800138000",
+      status: RegistrationStatus.confirmed,
+      cancelledAt: null,
+      checkedInAt: null,
+      checkedInByUserId: null,
+      createdAt: new Date("2026-10-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-10-01T00:00:00.000Z"),
+      user: { nickname: "阿三", avatarUrl: null },
+      ...over,
+    });
+
+    beforeEach(() => {
+      prisma.activity.findUnique.mockResolvedValue({
+        id: "act1",
+        ownerUserId: "u1",
+      });
+    });
+
+    /** count 调用顺序：where、confirmed+checkedIn、confirmed */
+    function mockCounts(total: number, checkedIn: number, confirmed: number) {
+      prisma.registration.count
+        .mockResolvedValueOnce(total)
+        .mockResolvedValueOnce(checkedIn)
+        .mockResolvedValueOnce(confirmed);
+    }
+
+    it("checkedIn=true 仅筛已签到", async () => {
+      prisma.registration.findMany.mockResolvedValue([
+        ownerRow({ checkedInAt: checkedAt, checkedInByUserId: "u1" }),
+      ]);
+      mockCounts(1, 1, 3);
+
+      const res = await service.listForOwner("u1", "act1", {
+        checkedIn: "true",
+      });
+
+      expect(prisma.registration.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { activityId: "act1", checkedInAt: { not: null } },
+        }),
+      );
+      expect(prisma.registration.count).toHaveBeenCalledWith({
+        where: { activityId: "act1", checkedInAt: { not: null } },
+      });
+      expect(res.items[0]).toMatchObject({
+        checkedInAt: checkedAt.toISOString(),
+        checkedInByUserId: "u1",
+      });
+      expect(res.total).toBe(1);
+    });
+
+    it("checkedIn=false 仅筛未签到", async () => {
+      prisma.registration.findMany.mockResolvedValue([ownerRow()]);
+      mockCounts(2, 1, 3);
+
+      const res = await service.listForOwner("u1", "act1", {
+        checkedIn: "false",
+      });
+
+      expect(prisma.registration.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { activityId: "act1", checkedInAt: null },
+        }),
+      );
+      expect(res.items[0]).toMatchObject({
+        checkedInAt: null,
+        checkedInByUserId: null,
+      });
+      expect(res.total).toBe(2);
+    });
+
+    it("计数始终基于 confirmed，不受 status / checkedIn 筛选影响", async () => {
+      prisma.registration.findMany.mockResolvedValue([]);
+      mockCounts(0, 2, 5);
+
+      const res = await service.listForOwner("u1", "act1", {
+        status: RegistrationStatus.cancelled,
+        checkedIn: "false",
+      });
+
+      expect(prisma.registration.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            activityId: "act1",
+            status: RegistrationStatus.cancelled,
+            checkedInAt: null,
+          },
+        }),
+      );
+      expect(prisma.registration.count).toHaveBeenCalledWith({
+        where: {
+          activityId: "act1",
+          status: RegistrationStatus.confirmed,
+          checkedInAt: { not: null },
+        },
+      });
+      expect(prisma.registration.count).toHaveBeenCalledWith({
+        where: { activityId: "act1", status: RegistrationStatus.confirmed },
+      });
+      expect(res.checkedInCount).toBe(2);
+      expect(res.notCheckedInCount).toBe(3);
+    });
+
+    it("未传 checkedIn / status 时不附加筛选", async () => {
+      prisma.registration.findMany.mockResolvedValue([]);
+      mockCounts(0, 0, 0);
+
+      await service.listForOwner("u1", "act1", {});
+
+      expect(prisma.registration.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { activityId: "act1" } }),
+      );
     });
   });
 });
