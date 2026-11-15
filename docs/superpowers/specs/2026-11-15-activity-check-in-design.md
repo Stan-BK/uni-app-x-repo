@@ -1,8 +1,9 @@
 # 活动签到（确认到场）设计规格
 
 - **日期：** 2026-11-15  
-- **状态：** Draft（待 ADR Accepted 后实现）  
-- **关联 ADR：** 待立（签到 / 确认到场；roadmap 将签到标在 P2）  
+- **状态：** Accepted（待实现）  
+- **关联 ADR：** [0017](../../adr/0017-activity-check-in.md)（Accepted）  
+- **实现计划：** [docs/superpowers/plans/2026-11-15-activity-check-in.md](../plans/2026-11-15-activity-check-in.md)  
 - **关联：** ADR-0005（活动生命周期）、ADR-0007（`Registration` / 有效报名）、现有所有者名单 `GET /me/activities/:id/registrations`
 
 ## 1. 目标
@@ -202,9 +203,10 @@ DTO 增补：`checkedInAt: string | null`、`checkedInByUserId: string | null`�
 
 ## 7. 实现顺序与文档
 
-1. 新 ADR（签到）→ 状态 `Accepted`（并视需要更新 `docs/roadmap.md` P2 条目勾选/说明）  
-2. 本规格标为可实现；编写 `docs/superpowers/plans/...-activity-check-in.md`  
+1. ~~新 ADR（签到）→ `Accepted`~~（ADR-0017）  
+2. ~~实现计划~~（`docs/superpowers/plans/2026-11-15-activity-check-in.md`）  
 3. `packages/shared` 错误码 → Prisma → API → mp 联调 → 自动化测试覆盖 AT-CI  
+4. 完成后 ADR / 本规格标 `Implemented`，roadmap P2 签到勾选 
 
 ## 8. 明确不做（本阶段）
 

@@ -5,7 +5,7 @@
 > **基础设施与云资源升级：** 见 [backend-ops-roadmap.md](./backend-ops-roadmap.md)（ADR-0010）。功能按本文件 P0/P1/P2；中间件/部署按该文档阶段 A–D。
 
 **MVP 边界：** 免费活动发布—发现—报名—所有者名单—后台发布权冻结/下架；**P1-3** 起开放收费报名收款与活动结束结算入账（见 [ADR-0014](./adr/0014-paid-registration-and-settlement.md)）。  
-**明确不做（首期 MVP）：** 签到、评价、候补、分销；提现、支付宝、活动结束后退款仍后置 **P2**。  
+**明确不做（首期 MVP）：** 评价、候补、分销；提现、支付宝、活动结束后退款仍后置 **P2**。签到见 **P2-签到** / [ADR-0017](./adr/0017-activity-check-in.md)（已 Accepted，独立切片）。  
 **有交易能力：** P1-3 微信支付 JSAPI + 结束前退款 + 净额入账（阶段 C 开闸；**P1-3 不强制 Redis/MQ**）。提现与对账深化仍见 P2。
 
 ---
@@ -202,7 +202,21 @@
 
 ## P2 / 独立里程碑
 
-发布者提现、微信商家转账、支付宝、对账深化、活动结束后退款；签到；评价；候补；商业化能力。（收费报名 JSAPI、订单状态机、结束前退款、结算入账见 P1-3 / ADR-0014。）
+发布者提现、微信商家转账、支付宝、对账深化、活动结束后退款；评价；候补；商业化能力。（收费报名 JSAPI、订单状态机、结束前退款、结算入账见 P1-3 / ADR-0014。）
+
+### P2-签到（确认到场）
+
+**ADR：** [0017](./adr/0017-activity-check-in.md)（Accepted）  
+**设计：** [docs/superpowers/specs/2026-11-15-activity-check-in-design.md](./superpowers/specs/2026-11-15-activity-check-in-design.md)  
+**计划：** [docs/superpowers/plans/2026-11-15-activity-check-in.md](./superpowers/plans/2026-11-15-activity-check-in.md)
+
+- [ ] Registration 签到字段 + 短时 JWT 发码  
+- [ ] 所有者扫码 / 手动签到（幂等、不可撤销）  
+- [ ] 名单已/未签到筛选与 count  
+- [ ] mp：参与者签到码 + 组织者签到工作台  
+
+**验收：** AT-CI-01～09。  
+**本期不做：** 撤销、Admin/协管员、反向扫码、离线补签。
 
 对应基础设施：P2 提现/对账深化前可评估 Redis / MQ（**P1-3 收费报名仍不上 Redis/MQ**）；部署仍可为 Docker 单机，峰值前启动阶段 D（多副本 / 主从）。
 
