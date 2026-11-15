@@ -9,6 +9,8 @@ export type RegistrationDto = {
   phone: string;
   status: string;
   cancelledAt: string | null;
+  checkedInAt: string | null;
+  checkedInByUserId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -28,6 +30,8 @@ export function toRegistrationDto(row: Registration): RegistrationDto {
     phone: row.phone,
     status: row.status,
     cancelledAt: row.cancelledAt?.toISOString() ?? null,
+    checkedInAt: row.checkedInAt?.toISOString() ?? null,
+    checkedInByUserId: row.checkedInByUserId ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
