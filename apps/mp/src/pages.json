@@ -80,6 +80,12 @@
       }
     },
     {
+      "path": "pages/mine/check-in-code",
+      "style": {
+        "navigationBarTitleText": "签到码"
+      }
+    },
+    {
       "path": "pages/mine/wallet",
       "style": {
         "navigationBarTitleText": "我的钱包"
@@ -113,6 +119,12 @@
       "path": "pages/organizer/registrations",
       "style": {
         "navigationBarTitleText": "报名名单"
+      }
+    },
+    {
+      "path": "pages/organizer/check-in",
+      "style": {
+        "navigationBarTitleText": "签到"
       }
     }
   ],

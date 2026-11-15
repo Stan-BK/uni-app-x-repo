@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsInt, IsOptional, IsString, Max, Min } from "class-validator";
+import { IsIn, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class ListMyRegistrationsQuery {
   @IsOptional()
@@ -10,6 +10,11 @@ export class ListMyRegistrationsQuery {
   @IsOptional()
   @IsString()
   activityId?: string;
+
+  /** 发起人名单按签到状态筛选 */
+  @IsOptional()
+  @IsIn(["true", "false"])
+  checkedIn?: string;
 
   @IsOptional()
   @Type(() => Number)
