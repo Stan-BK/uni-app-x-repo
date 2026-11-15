@@ -41,7 +41,7 @@
 - Create: `packages/shared/src/check-in.ts`
 - Modify: `packages/shared/src/index.ts`
 
-- [ ] **Step 1: 新增错误码**
+- [x] **Step 1: 新增错误码**
 
 ```ts
 // packages/shared/src/check-in.ts
@@ -57,11 +57,11 @@ export type CheckInErrorCode =
   (typeof CheckInErrorCode)[keyof typeof CheckInErrorCode];
 ```
 
-- [ ] **Step 2: export**
+- [x] **Step 2: export**
 
 在 `packages/shared/src/index.ts` 增加：`export * from "./check-in";`
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add packages/shared/src/check-in.ts packages/shared/src/index.ts
@@ -80,7 +80,7 @@ EOF
 - Modify: `apps/api/prisma/schema.prisma`
 - Create: migration via `pnpm --filter api exec prisma migrate`
 
-- [ ] **Step 1: 改 schema**
+- [x] **Step 1: 改 schema**
 
 在 `model Registration` 增加：
 
@@ -98,7 +98,7 @@ EOF
   registrationsCheckedIn Registration[] @relation("RegistrationCheckInBy")
 ```
 
-- [ ] **Step 2: 迁移**
+- [x] **Step 2: 迁移**
 
 ```bash
 cd apps/api && pnpm exec prisma migrate dev --name activity_check_in
@@ -106,7 +106,7 @@ cd apps/api && pnpm exec prisma migrate dev --name activity_check_in
 
 Expected: migration 成功，client 生成。
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps/api/prisma
@@ -125,7 +125,7 @@ EOF
 - Modify: `apps/api/src/registrations/registration.mapper.ts`
 - Test: 随 Task 4+ 覆盖
 
-- [ ] **Step 1: 扩展 DTO**
+- [x] **Step 1: 扩展 DTO**
 
 ```ts
 export type RegistrationDto = {
@@ -143,7 +143,7 @@ export function toRegistrationDto(row: Registration): RegistrationDto {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add apps/api/src/registrations/registration.mapper.ts
@@ -164,7 +164,7 @@ EOF
 - Modify: `apps/api/src/registrations/registrations.module.ts`（providers + JwtModule import）
 - Modify: `apps/api/.env.example`
 
-- [ ] **Step 1: 写失败单测骨架**（`check-in.service.spec.ts`）
+- [x] **Step 1: 写失败单测骨架**（`check-in.service.spec.ts`）
 
 覆盖用例（mock Prisma + JwtService + ConfigService）：
 
@@ -178,7 +178,7 @@ EOF
 8. 非所有者 → `CHECK_IN_FORBIDDEN`  
 9. path activityId 与 payload 不一致 → `CHECK_IN_TOKEN_INVALID`
 
-- [ ] **Step 2: 跑测确认失败**
+- [x] **Step 2: 跑测确认失败**
 
 ```bash
 pnpm --filter api test -- check-in.service.spec.ts
@@ -186,7 +186,7 @@ pnpm --filter api test -- check-in.service.spec.ts
 
 Expected: FAIL（service 不存在或方法未实现）
 
-- [ ] **Step 3: 实现 `CheckInService`**
+- [x] **Step 3: 实现 `CheckInService`**
 
 要点：
 
@@ -242,13 +242,13 @@ export class CheckInService {
 
 业务失败用 `ConflictException` / `ForbiddenException` / `NotFoundException`，body 带 `{ message, code: CheckInErrorCode.* }`（与报名服务一致）。
 
-- [ ] **Step 4: 模块注册**
+- [x] **Step 4: 模块注册**
 
 `RegistrationsModule`：`imports: [JwtModule]`（若尚未从 Auth 导出则 `JwtModule.registerAsync` 与 auth 相同 secret，或 `forwardRef` / import `AuthModule` 已 export 的 `JwtModule`——**优先 import 已 export JwtModule 的 AuthModule**）。`providers` / `exports` 加入 `CheckInService`。
 
 `.env.example` 增加：`CHECK_IN_TOKEN_TTL_SEC=180`
 
-- [ ] **Step 5: 跑测通过**
+- [x] **Step 5: 跑测通过**
 
 ```bash
 pnpm --filter api test -- check-in.service.spec.ts
@@ -256,7 +256,7 @@ pnpm --filter api test -- check-in.service.spec.ts
 
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/api/src/registrations/check-in.service.ts \
@@ -279,7 +279,7 @@ EOF
 - Modify: `apps/api/src/activities/activities.controller.ts`
 - Create DTO（可选）：`apps/api/src/registrations/dto/check-in-with-token.dto.ts`（`token: string`，`@IsString()` `@IsNotEmpty()`）
 
-- [ ] **Step 1: 报名侧发码**
+- [x] **Step 1: 报名侧发码**
 
 ```ts
 @Post(":id/check-in-token")
@@ -293,7 +293,7 @@ issueCheckInToken(
 
 注意：`:id/check-in-token` 须注册在不会被其它 `:id` 冲突的位置（本 controller 已有 `:id/cancel`，同样模式即可）。
 
-- [ ] **Step 2: 活动侧扫码 / 手动**
+- [x] **Step 2: 活动侧扫码 / 手动**
 
 在 `ActivitiesController` 注入 `CheckInService`：
 
@@ -319,11 +319,11 @@ checkInManual(
 
 路由顺序：把更具体的 `registrations` / `check-in` 放在 `@Get(":id")` **之前**（若尚未如此，调整声明顺序）。
 
-- [ ] **Step 3: ActivitiesModule** 能注入 CheckInService（export from RegistrationsModule 并 import）。
+- [x] **Step 3: ActivitiesModule** 能注入 CheckInService（export from RegistrationsModule 并 import）。
 
-- [ ] **Step 4: 手动或 e2e 烟测**（可选 curl + AUTH_DEV_BYPASS）；至少保证 `pnpm --filter api test` 相关仍绿。
+- [x] **Step 4: 手动或 e2e 烟测**（可选 curl + AUTH_DEV_BYPASS）；至少保证 `pnpm --filter api test` 相关仍绿。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/api/src/registrations apps/api/src/activities
@@ -343,12 +343,12 @@ EOF
 - Modify: `apps/api/src/registrations/registrations.service.ts` `listForOwner`
 - Modify: `apps/api/src/registrations/registrations.service.spec.ts`
 
-- [ ] **Step 1: 失败单测**
+- [x] **Step 1: 失败单测**
 
 - `checkedIn=true` 只返回有 `checkedInAt` 的行  
 - 响应含 `checkedInCount` / `notCheckedInCount`（针对该活动、默认与列表相同的 status 过滤；**规格默认按 confirmed 计**：若 query 未传 status，count 以 `status=confirmed` 为准；items 的 where 与现网一致——**实现约定：count 始终针对 `activityId + status=confirmed`；列表 items 仍尊重传入的 status，若未传 status 则不过滤 status（保持现网行为）。** 为签到工作台：mp 请求时显式 `status=confirmed`。）
 
-- [ ] **Step 2: 实现**
+- [x] **Step 2: 实现**
 
 ```ts
 const checkedInFilter =
@@ -383,7 +383,7 @@ const notCheckedInCount = confirmedTotal - checkedInCount;
 return { items, total, page, pageSize, checkedInCount, notCheckedInCount };
 ```
 
-- [ ] **Step 3: 跑测**
+- [x] **Step 3: 跑测**
 
 ```bash
 pnpm --filter api test -- registrations.service.spec.ts
@@ -391,7 +391,7 @@ pnpm --filter api test -- registrations.service.spec.ts
 
 Expected: PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/api/src/registrations
@@ -410,7 +410,7 @@ EOF
 - Modify: `apps/mp/src/api/registrations.ts`
 - Create: `apps/mp/src/adapters/scan.ts`
 
-- [ ] **Step 1: API 函数**
+- [x] **Step 1: API 函数**
 
 ```ts
 export type CheckInTokenResult = {
@@ -453,7 +453,7 @@ export function checkInManual(activityId: string, registrationId: string) {
 
 扩展 `Registration` 类型与 `listOrganizerRegistrations`：支持 `checkedIn?: boolean`；响应类型含 `checkedInCount` / `notCheckedInCount`；字段 `checkedInAt`。
 
-- [ ] **Step 2: scan 适配**
+- [x] **Step 2: scan 适配**
 
 ```ts
 // apps/mp/src/adapters/scan.ts
@@ -475,7 +475,7 @@ export function scanQrCode(): Promise<string> {
 
 （若项目更倾向零 `#ifdef`：用 `uni.scanCode` 统一调用，H5 fail 时 toast——二选一，优先少 ifdef。）
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps/mp/src/api/registrations.ts apps/mp/src/adapters/scan.ts
@@ -496,7 +496,7 @@ EOF
 - Modify: `apps/mp/src/pages/mine/registrations.vue`（入口）
 - Dependency: `pnpm --filter mp add uqrcodejs`（或同等 canvas QR；选定后锁定）
 
-- [ ] **Step 1: 安装 QR 库并实现页面**
+- [x] **Step 1: 安装 QR 库并实现页面**
 
 逻辑：
 
@@ -506,7 +506,7 @@ EOF
 - 捕获 `CHECK_IN_ALREADY_DONE` → 切已签到 UI  
 - 捕获 `CHECK_IN_NOT_ALLOWED` → 展示不可用文案  
 
-- [ ] **Step 2: pages.json**
+- [x] **Step 2: pages.json**
 
 ```json
 {
@@ -515,9 +515,9 @@ EOF
 }
 ```
 
-- [ ] **Step 3: 我的报名列表** 对 `confirmed` 且活动未结束项增加「签到码」跳转。
+- [x] **Step 3: 我的报名列表** 对 `confirmed` 且活动未结束项增加「签到码」跳转。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/mp
@@ -537,7 +537,7 @@ EOF
 - Modify: `apps/mp/src/pages.json`
 - Modify: `apps/mp/src/pages/organizer/detail.vue`（或 list/registrations）加「签到」入口
 
-- [ ] **Step 1: 页面结构**
+- [x] **Step 1: 页面结构**
 
 - Tab：扫码 | 未签到 | 已签到  
 - 扫码：按钮 → `scanQrCode()` → `checkInWithToken` → toast 姓名 + 首次/已签到  
@@ -546,9 +546,9 @@ EOF
 - 顶栏：`checkedInCount` / `notCheckedInCount`  
 - 活动已结束：禁用扫码与手动（可按 `endAt` 本地判断 + 接口错误兜底）
 
-- [ ] **Step 2: pages.json 注册 `pages/organizer/check-in`**
+- [x] **Step 2: pages.json 注册 `pages/organizer/check-in`**
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps/mp
@@ -568,7 +568,7 @@ EOF
 - Modify: `docs/adr/0017-activity-check-in.md` → 实现完成后改 `Implemented`（本 Task 若代码已合入再改）  
 - Modify: `docs/superpowers/specs/2026-11-15-activity-check-in-design.md` 状态  
 
-- [ ] **Step 1: API 全量测试**
+- [x] **Step 1: API 全量测试**
 
 ```bash
 pnpm --filter api test
@@ -577,9 +577,9 @@ pnpm --filter api exec tsc --noEmit
 
 Expected: PASS
 
-- [ ] **Step 2: 更新 checklist**（roadmap / ADR / spec 状态）
+- [x] **Step 2: 更新 checklist**（roadmap / ADR / spec 状态）
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs apps/api apps/mp packages/shared

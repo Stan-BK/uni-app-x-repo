@@ -1,8 +1,8 @@
 # 活动签到（确认到场）设计规格
 
 - **日期：** 2026-11-15  
-- **状态：** Accepted（待实现）  
-- **关联 ADR：** [0017](../../adr/0017-activity-check-in.md)（Accepted）  
+- **状态：** Implemented（2026-11-15）  
+- **关联 ADR：** [0017](../../adr/0017-activity-check-in.md)（Implemented）  
 - **实现计划：** [docs/superpowers/plans/2026-11-15-activity-check-in.md](../plans/2026-11-15-activity-check-in.md)  
 - **关联：** ADR-0005（活动生命周期）、ADR-0007（`Registration` / 有效报名）、现有所有者名单 `GET /me/activities/:id/registrations`
 

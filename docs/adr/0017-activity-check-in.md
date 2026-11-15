@@ -1,6 +1,6 @@
 # ADR-0017: 活动签到（确认到场）
 
-- **状态：** Accepted
+- **状态：** Implemented
 - **日期：** 2026-11-15
 - **关联：** roadmap P2 / 独立里程碑「签到」、[ADR-0005](./0005-activity-lifecycle-and-model.md)、[ADR-0007](./0007-registration-idempotency-and-capacity.md)
 - **设计规格：** [docs/superpowers/specs/2026-11-15-activity-check-in-design.md](../superpowers/specs/2026-11-15-activity-check-in-design.md)
@@ -43,9 +43,10 @@
 
 - 正面：现场签到可落地；与现有报名/名单一致；符合 MVP 中间件约束。  
 - 负面 / 跟进：roadmap 将签到自「明确不做」中拆为可交付的 P2 切片；若需协管员/撤销/多次入场另立 ADR。  
-- 实现完成后将本 ADR 标为 `Implemented`。
+- 实现已完成，本 ADR 已标为 `Implemented`（2026-11-15）。
 
 ## 实现备注
 
 - 涉及：`packages/shared`、`apps/api`（Prisma、registrations/activities）、`apps/mp`（签到码页、组织者签到工作台、扫码适配）  
 - 验收：规格 AT-CI-01～09  
+- **落地情况（2026-11-15）：** shared `CheckInErrorCode`；Prisma `Registration.checkedInAt/checkedInByUserId`（迁移 `20261115111809_activity_check_in`）；`CheckInService` 发码/验签/幂等核销 + 三条 HTTP 路由；所有者名单 `checkedIn` 筛选与 count；mp 参与者签到码页、组织者签到工作台与扫码适配。API 全量测试 283 passed / 21 skipped，build tsc 通过；微信开发者工具手测待人工执行。
