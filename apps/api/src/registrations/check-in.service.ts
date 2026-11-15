@@ -215,7 +215,11 @@ export class CheckInService {
     // 条件更新：并发重复核销时只有一次写入，其余按幂等返回
     const now = new Date();
     const { count } = await this.prisma.registration.updateMany({
-      where: { id: reg.id, checkedInAt: null },
+      where: {
+        id: reg.id,
+        checkedInAt: null,
+        status: RegistrationStatus.confirmed,
+      },
       data: { checkedInAt: now, checkedInByUserId: ownerUserId },
     });
     if (count === 1) {

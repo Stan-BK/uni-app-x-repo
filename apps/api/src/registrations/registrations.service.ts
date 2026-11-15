@@ -9,6 +9,7 @@ import {
 } from "@nestjs/common";
 import {
   BusinessEvent,
+  CheckInErrorCode,
   PHONE_PATTERN,
   REAL_NAME_MAX_LENGTH,
   RegistrationErrorCode,
@@ -309,6 +310,12 @@ export class RegistrationsService {
       throw new ConflictException({
         message: "当前状态不可取消",
         code: RegistrationErrorCode.NotCancellable,
+      });
+    }
+    if (row.checkedInAt != null) {
+      throw new ConflictException({
+        message: "已签到，无法取消报名",
+        code: CheckInErrorCode.CancelNotAllowed,
       });
     }
 

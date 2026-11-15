@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Post,
   Query,
@@ -50,6 +52,7 @@ export class RegistrationsController {
   }
 
   @Post(":id/check-in-token")
+  @HttpCode(HttpStatus.OK)
   issueCheckInToken(
     @CurrentUser() user: CurrentUserPayload,
     @Param("id") id: string,

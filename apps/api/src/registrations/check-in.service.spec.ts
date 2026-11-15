@@ -207,7 +207,11 @@ describe("CheckInService", () => {
       });
       expect(typeof first.checkedInAt).toBe("string");
       expect(prisma.registration.updateMany).toHaveBeenCalledWith({
-        where: { id: REG_ID, checkedInAt: null },
+        where: {
+          id: REG_ID,
+          checkedInAt: null,
+          status: RegistrationStatus.confirmed,
+        },
         data: {
           checkedInAt: expect.any(Date),
           checkedInByUserId: OWNER,

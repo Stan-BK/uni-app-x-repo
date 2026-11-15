@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -65,6 +67,7 @@ export class ActivitiesController {
   }
 
   @Post(":id/check-in")
+  @HttpCode(HttpStatus.OK)
   checkInWithToken(
     @CurrentUser() user: CurrentUserPayload,
     @Param("id") id: string,
@@ -74,6 +77,7 @@ export class ActivitiesController {
   }
 
   @Post(":id/registrations/:registrationId/check-in")
+  @HttpCode(HttpStatus.OK)
   checkInManual(
     @CurrentUser() user: CurrentUserPayload,
     @Param("id") id: string,

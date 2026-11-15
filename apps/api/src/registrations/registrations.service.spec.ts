@@ -1,6 +1,10 @@
 import { ForbiddenException, Logger } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import { BusinessEvent, RegistrationErrorCode } from "@activity/shared";
+import {
+  BusinessEvent,
+  CheckInErrorCode,
+  RegistrationErrorCode,
+} from "@activity/shared";
 import {
   ActivityLifecycle,
   FeeType,
@@ -1064,6 +1068,27 @@ describe("RegistrationsService", () => {
     await service.cancel("u1", "r1");
 
     expect(paymentsService.refundPaid).not.toHaveBeenCalled();
+  });
+
+  it("cancel rejects confirmed registration that already checked in", async () => {
+    prisma.registration.findUnique.mockResolvedValue({
+      id: "r1",
+      userId: "u1",
+      activityId: "act1",
+      status: RegistrationStatus.confirmed,
+      checkedInAt: new Date("2026-11-15T10:00:00.000Z"),
+      activity: {
+        ...publishedPaid,
+        ...paidActivityFields,
+      },
+    });
+    await expect(service.cancel("u1", "r1")).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: CheckInErrorCode.CancelNotAllowed,
+      }),
+    });
+    expect(paymentsService.refundPaid).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it("listMine returns paginated items with activity summary", async () => {

@@ -49,4 +49,5 @@
 
 - 涉及：`packages/shared`、`apps/api`（Prisma、registrations/activities）、`apps/mp`（签到码页、组织者签到工作台、扫码适配）  
 - 验收：规格 AT-CI-01～09  
+- **已签到后不可取消报名：** 用户取消时若 `checkedInAt` 非空，返回 409 `CHECK_IN_CANCEL_NOT_ALLOWED`（「已签到，无法取消报名」），不触发退款；核销写入条件含 `status = confirmed`，三条签到 POST 路由显式返回 200。  
 - **落地情况（2026-11-15）：** shared `CheckInErrorCode`；Prisma `Registration.checkedInAt/checkedInByUserId`（迁移 `20261115111809_activity_check_in`）；`CheckInService` 发码/验签/幂等核销 + 三条 HTTP 路由；所有者名单 `checkedIn` 筛选与 count；mp 参与者签到码页、组织者签到工作台与扫码适配。API 全量测试 283 passed / 21 skipped，build tsc 通过；微信开发者工具手测待人工执行。
