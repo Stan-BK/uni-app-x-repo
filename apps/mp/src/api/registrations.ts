@@ -17,6 +17,8 @@ export type Registration = {
   alreadyRegistered?: boolean;
   status: string;
   cancelledAt?: string | null;
+  checkedInAt?: string | null;
+  checkedInByUserId?: string | null;
   createdAt: string;
   paymentStatus?: "pending" | "paid" | null;
   pay?: RegistrationPayParams | null;
@@ -37,7 +39,9 @@ export type Registration = {
 };
 
 /** 小程序运行时无 URLSearchParams，手动拼查询串 */
-function toQuery(params: Record<string, string | number | undefined>): string {
+function toQuery(
+  params: Record<string, string | number | boolean | undefined>,
+): string {
   const parts: string[] = [];
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined || value === "") continue;
@@ -100,14 +104,58 @@ export function listMyRegistrations(
 
 export function listOrganizerRegistrations(
   activityId: string,
-  params: { page?: number; pageSize?: number; status?: string } = {},
+  params: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    checkedIn?: boolean;
+  } = {},
 ) {
   return request<{
     items: Registration[];
     total: number;
     page: number;
     pageSize: number;
+    checkedInCount: number;
+    notCheckedInCount: number;
   }>(
     `/me/activities/${encodeURIComponent(activityId)}/registrations${toQuery(params)}`,
+  );
+}
+
+export type CheckInTokenResult = {
+  token: string;
+  expiresAt: string;
+  expiresInSec: number;
+  activityId: string;
+  registrationId: string;
+};
+
+export type CheckInResult = {
+  registrationId: string;
+  name: string;
+  phone: string;
+  checkedInAt: string;
+  alreadyCheckedIn: boolean;
+};
+
+export function issueCheckInToken(registrationId: string) {
+  return request<CheckInTokenResult>(
+    `/registrations/${encodeURIComponent(registrationId)}/check-in-token`,
+    { method: "POST" },
+  );
+}
+
+export function checkInWithToken(activityId: string, token: string) {
+  return request<CheckInResult>(
+    `/me/activities/${encodeURIComponent(activityId)}/check-in`,
+    { method: "POST", data: { token } },
+  );
+}
+
+export function checkInManual(activityId: string, registrationId: string) {
+  return request<CheckInResult>(
+    `/me/activities/${encodeURIComponent(activityId)}/registrations/${encodeURIComponent(registrationId)}/check-in`,
+    { method: "POST" },
   );
 }
