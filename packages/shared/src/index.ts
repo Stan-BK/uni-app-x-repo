@@ -7,3 +7,4 @@ export * from "./subscribe-message";
 export * from "./community";
 export * from "./system";
 export * from "./wallet";
+export * from "./check-in";
