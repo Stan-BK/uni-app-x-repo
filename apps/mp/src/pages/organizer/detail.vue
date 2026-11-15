@@ -105,7 +105,7 @@
         hover-class="none"
         @click="goCheckIn"
       >
-        签到
+        签到管理
       </button>
     </view>
 
