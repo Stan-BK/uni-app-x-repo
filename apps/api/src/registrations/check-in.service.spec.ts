@@ -116,8 +116,16 @@ describe("CheckInService", () => {
   describe("issueToken", () => {
     it("本人 + confirmed + 未结束 → 返回 token 与 expiresInSec", async () => {
       prisma.registration.findUnique.mockResolvedValue(regRow());
+      const before = Date.now();
       const res = await service.issueToken(USER, REG_ID);
+      const after = Date.now();
       expect(res.expiresInSec).toBe(180);
+      expect(res.activityId).toBe(ACTIVITY_ID);
+      expect(res.registrationId).toBe(REG_ID);
+      const expiresAtMs = new Date(res.expiresAt).getTime();
+      expect(res.expiresAt).toBe(new Date(expiresAtMs).toISOString());
+      expect(expiresAtMs).toBeGreaterThanOrEqual(before + 180_000);
+      expect(expiresAtMs).toBeLessThanOrEqual(after + 180_000);
       const payload = jwt.verify<Record<string, unknown>>(res.token, {
         secret: SECRET,
       });

@@ -15,6 +15,8 @@ import {
 } from "../common/decorators/current-user.decorator";
 import { CanPublishGuard } from "../common/guards/can-publish.guard";
 import { UserJwtGuard } from "../common/guards/user-jwt.guard";
+import { CheckInService } from "../registrations/check-in.service";
+import { CheckInWithTokenDto } from "../registrations/dto/check-in-with-token.dto";
 import { ListMyRegistrationsQuery } from "../registrations/dto/list-my-registrations.query";
 import { RegistrationsService } from "../registrations/registrations.service";
 import { ActivitiesService } from "./activities.service";
@@ -27,6 +29,7 @@ export class ActivitiesController {
   constructor(
     private readonly activitiesService: ActivitiesService,
     private readonly registrations: RegistrationsService,
+    private readonly checkIn: CheckInService,
   ) {}
 
   @Post()
@@ -59,6 +62,24 @@ export class ActivitiesController {
     @Query() query: ListMyRegistrationsQuery,
   ) {
     return this.registrations.listForOwner(user.userId, id, query);
+  }
+
+  @Post(":id/check-in")
+  checkInWithToken(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param("id") id: string,
+    @Body() dto: CheckInWithTokenDto,
+  ) {
+    return this.checkIn.checkInWithToken(user.userId, id, dto.token);
+  }
+
+  @Post(":id/registrations/:registrationId/check-in")
+  checkInManual(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param("id") id: string,
+    @Param("registrationId") registrationId: string,
+  ) {
+    return this.checkIn.checkInManual(user.userId, id, registrationId);
   }
 
   @Get(":id")

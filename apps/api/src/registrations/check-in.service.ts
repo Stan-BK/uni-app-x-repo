@@ -100,7 +100,13 @@ export class CheckInService {
       secret: this.secret(),
       expiresIn: `${expiresInSec}s`,
     });
-    return { token, expiresInSec };
+    return {
+      token,
+      expiresAt: new Date(Date.now() + expiresInSec * 1000).toISOString(),
+      expiresInSec,
+      activityId: reg.activityId,
+      registrationId: reg.id,
+    };
   }
 
   async checkInWithToken(

@@ -14,12 +14,16 @@ import {
 import { UserJwtGuard } from "../common/guards/user-jwt.guard";
 import { CreateRegistrationDto } from "./dto/create-registration.dto";
 import { ListMyRegistrationsQuery } from "./dto/list-my-registrations.query";
+import { CheckInService } from "./check-in.service";
 import { RegistrationsService } from "./registrations.service";
 
 @Controller("registrations")
 @UseGuards(UserJwtGuard)
 export class RegistrationsController {
-  constructor(private readonly registrationsService: RegistrationsService) {}
+  constructor(
+    private readonly registrationsService: RegistrationsService,
+    private readonly checkIn: CheckInService,
+  ) {}
 
   @Post()
   create(
@@ -43,6 +47,14 @@ export class RegistrationsController {
     @Param("id") id: string,
   ) {
     return this.registrationsService.cancel(user.userId, id);
+  }
+
+  @Post(":id/check-in-token")
+  issueCheckInToken(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param("id") id: string,
+  ) {
+    return this.checkIn.issueToken(user.userId, id);
   }
 
   @Post(":id/payment-sync")
