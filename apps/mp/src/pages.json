@@ -120,6 +120,12 @@
       "style": {
         "navigationBarTitleText": "报名名单"
       }
+    },
+    {
+      "path": "pages/organizer/check-in",
+      "style": {
+        "navigationBarTitleText": "签到"
+      }
     }
   ],
   "tabBar": {

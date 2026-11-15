@@ -98,6 +98,15 @@
         </view>
         <text v-else class="people-empty">暂无报名，点此查看名单</text>
       </view>
+
+      <button
+        v-if="showCheckIn"
+        class="ed-btn-secondary check-in-entry"
+        hover-class="none"
+        @click="goCheckIn"
+      >
+        签到
+      </button>
     </view>
 
     <view v-if="showActionBar" class="action-bar">
@@ -193,6 +202,10 @@ const displayLifecycle = computed(() =>
 const isDraft = computed(() => displayLifecycle.value === "draft");
 const isPublished = computed(() => displayLifecycle.value === "published");
 const showActionBar = computed(() => isDraft.value || isPublished.value);
+/** 已发布 / 已结束的活动才有签到（结束后只读查看） */
+const showCheckIn = computed(
+  () => isPublished.value || displayLifecycle.value === "ended",
+);
 
 function lifecycleLabel(lifecycle: string) {
   return LIFECYCLE_LABEL[lifecycle] ?? lifecycle;
@@ -244,6 +257,13 @@ function goRegistrations() {
   if (!activityId.value) return;
   uni.navigateTo({
     url: `/pages/organizer/registrations?activityId=${encodeURIComponent(activityId.value)}`,
+  });
+}
+
+function goCheckIn() {
+  if (!activityId.value) return;
+  uni.navigateTo({
+    url: `/pages/organizer/check-in?activityId=${encodeURIComponent(activityId.value)}`,
   });
 }
 
@@ -420,6 +440,15 @@ onShow(() => {
 
 .rules {
   white-space: pre-wrap;
+}
+
+.check-in-entry {
+  margin: 8rpx 0 0;
+  height: 88rpx;
+  padding: 0;
+  line-height: 88rpx;
+  font-size: 28rpx;
+  font-weight: 600;
 }
 
 .people-block {
