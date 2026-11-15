@@ -103,7 +103,7 @@
               </view>
               <text class="meta">{{ item.activity?.place || "—" }}</text>
               <text class="meta last">{{ formatTime(item.activity?.startAt) }}</text>
-              <view v-if="canPay(item) || canCancel(item)" class="actions">
+              <view v-if="canPay(item) || canCheckIn(item) || canCancel(item)" class="actions">
                 <button
                   v-if="canPay(item)"
                   class="pay-btn ed-btn"
@@ -114,6 +114,11 @@
                 >
                   去支付
                 </button>
+                <text
+                  v-if="canCheckIn(item)"
+                  class="ed-btn-link"
+                  @click.stop="goCheckInCode(item)"
+                >签到码</text>
                 <text
                   v-if="canCancel(item)"
                   class="ed-btn-link"
@@ -220,6 +225,16 @@ function activityNotEnded(item: Registration): boolean {
 function canCancel(item: Registration): boolean {
   if (item.status !== "confirmed" || !activityNotEnded(item)) return false;
   return item.activity?.allowUserCancel !== false;
+}
+
+function canCheckIn(item: Registration): boolean {
+  return item.status === "confirmed" && activityNotEnded(item);
+}
+
+function goCheckInCode(item: Registration) {
+  uni.navigateTo({
+    url: `/pages/mine/check-in-code?registrationId=${encodeURIComponent(item.id)}`,
+  });
 }
 
 function errMessage(err: unknown): string {

@@ -192,6 +192,9 @@ importers:
       pinia:
         specifier: ^2.1.7
         version: 2.3.1(typescript@4.9.5)(vue@3.4.21(typescript@4.9.5))
+      uqrcodejs:
+        specifier: ^4.0.7
+        version: 4.0.7
       vue:
         specifier: 3.4.21
         version: 3.4.21(typescript@4.9.5)
@@ -5418,6 +5421,9 @@ packages:
     hasBin: true
     peerDependencies:
       browserslist: '>= 4.21.0'
+
+  uqrcodejs@4.0.7:
+    resolution: {integrity: sha512-84+aZmD2godCVI+93lxE3YUAPNY8zAJvNA7xRS7R7U+q57KzMDepBSfNCwoRUhWOfR6eHFoAOcHRPwsP6ka1cA==}
 
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
@@ -12083,6 +12089,8 @@ snapshots:
       browserslist: 4.29.3
       escalade: 3.2.0
       picocolors: 1.1.1
+
+  uqrcodejs@4.0.7: {}
 
   uri-js@4.4.1:
     dependencies:

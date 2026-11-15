@@ -17,3 +17,9 @@ declare module '*.vue' {
   const component: DefineComponent<{}, {}, any>
   export default component
 }
+
+declare module 'uqrcodejs' {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const UQRCode: any
+  export default UQRCode
+}
