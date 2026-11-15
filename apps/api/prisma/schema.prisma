@@ -91,6 +91,7 @@ model User {
   identities    UserIdentity[]
   activities    Activity[]
   registrations Registration[]
+  registrationsCheckedIn Registration[] @relation("RegistrationCheckInBy")
   wallet        WalletAccount?
   settlements   ActivitySettlement[]
   posts         Post[]
@@ -185,15 +186,19 @@ model Registration {
   phone       String
   status      RegistrationStatus @default(confirmed)
   cancelledAt DateTime?
+  checkedInAt       DateTime?
+  checkedInByUserId String?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
   activity       Activity        @relation(fields: [activityId], references: [id])
   user           User            @relation(fields: [userId], references: [id])
+  checkedInBy    User?           @relation("RegistrationCheckInBy", fields: [checkedInByUserId], references: [id])
   paymentOrders  PaymentOrder[]
   subscribeMessageJobs SubscribeMessageJob[]
 
   @@unique([userId, activityId])
   @@index([activityId, status])
+  @@index([activityId, checkedInAt])
   @@index([userId, createdAt])
 }
 
