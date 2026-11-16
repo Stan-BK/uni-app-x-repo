@@ -14,6 +14,7 @@ alwaysApply: true
 3. `docs/backend-ops-roadmap.md`（云资源 / 中间件是否已开放）
 4. `docs/product/prd-summary.md`
 5. 相关 `docs/adr/*.md`（至少 0001、0002、0010）
+6. 若走 Superpowers：相关 `docs/superpowers/specs/*.md` 与 `docs/superpowers/plans/*.md`（约定见 `superpowers-workflow` 规则）
 
 ## 硬规则
 

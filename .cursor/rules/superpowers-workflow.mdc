@@ -1,0 +1,38 @@
+---
+description: Superpowers 工作流与本仓库产物路径（与 ADR / roadmap 协同）
+alwaysApply: true
+---
+
+# Superpowers 工作流（本仓库）
+
+本仓库已接入 Superpowers。Cursor 侧通过 marketplace 插件提供 skills；本规则约束产物落点与决策优先级。
+
+## 何时启用
+
+- 新功能 / 改行为 / 多步实现 → 先 `brainstorming`，设计批准后再 `writing-plans`
+- 有已批准 plan → `subagent-driven-development` 或 `executing-plans`
+- 非平凡 bug → `systematic-debugging`
+- 宣称完成前 → `verification-before-completion`
+- 相关 skill 存在时：先读 skill，再动手（含澄清问题之前）
+
+用户明确说「跳过流程 / 直接改」时，以用户指令为准。
+
+## 产物路径（固定）
+
+- 设计：`docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+- 计划：`docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
+
+不要把设计/计划散落到别处；命名沿用现有日期前缀风格。
+
+## 与文档驱动开发的优先级
+
+1. 用户显式指令
+2. 本仓库 ADR / roadmap / `doc-driven-development` 硬规则（跨模块选型、支付、权限等须 ADR Accepted）
+3. Superpowers skills 流程
+4. 默认 agent 行为
+
+Superpowers 负责「怎么做」；ADR 与 roadmap 负责「能不能做 / 做到哪一阶段」。冲突时先更新或引用 ADR，再写 spec/plan。
+
+## 开工上下文
+
+写 spec/plan 前至少对照：`docs/技术栈.md`、`docs/roadmap.md`、`docs/backend-ops-roadmap.md`、相关 `docs/adr/*.md`。
