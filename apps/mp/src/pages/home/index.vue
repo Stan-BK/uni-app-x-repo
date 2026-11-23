@@ -89,68 +89,64 @@
     <view v-if="loading && !items.length" class="state">加载中…</view>
     <view v-else-if="!items.length" class="state">暂无活动</view>
     <view v-else class="list">
-      <view class="masonry">
-        <view
-          v-for="(col, colIndex) in masonryCols"
-          :key="colIndex"
-          class="masonry-col"
-        >
-          <view
-            v-for="item in col"
-            :key="item.id"
-            class="card"
-            @click="goDetail(item.id)"
-          >
-            <image
-              v-if="item.coverUrl"
-              class="cover-img"
-              :src="item.coverUrl"
-              mode="aspectFill"
-            />
-            <view v-else class="cover cover-placeholder">
-              <text class="cover-label">活动</text>
-            </view>
-            <view class="body">
-              <view class="row-title">
-                <view class="title">{{ item.title }}</view>
-              </view>
-              <view class="row-tags">
-                <text
-                  class="fee ed-tag"
-                  :class="isFree(item) ? 'ed-tag-open' : 'ed-tag-paid'"
-                >{{ feeLabel(item) }}</text>
-                <text
-                  class="status ed-tag"
-                  :class="[item.displayStatus, statusTag(item.displayStatus)]"
-                >{{ displayLabel(item.displayStatus) }}</text>
-              </view>
-              <text class="meta">{{ formatTime(item.startAt) }}</text>
-              <view class="row-foot">
-                <text class="place">{{ item.place || "—" }}</text>
+      <view
+        v-for="item in items"
+        :key="item.id"
+        class="card"
+        @click="goDetail(item.id)"
+      >
+        <image
+          v-if="item.coverUrl"
+          class="cover-img"
+          :src="item.coverUrl"
+          mode="aspectFill"
+        />
+        <view v-else class="cover cover-placeholder">
+          <text class="cover-label">活动</text>
+        </view>
+        <view class="body">
+          <text class="title">{{ item.title }}</text>
+          <view class="meta-row">
+            <EdIcon name="clock" size="24rpx" color="currentColor" />
+            <text class="meta-text">{{ formatTime(item.startAt) }}</text>
+          </view>
+          <view class="meta-row">
+            <EdIcon name="pin" size="24rpx" color="currentColor" />
+            <text class="meta-text place">{{ item.place || "—" }}</text>
+          </view>
+          <view class="row-foot">
+            <text
+              class="fee ed-tag"
+              :class="isFree(item) ? 'ed-tag-open' : 'ed-tag-paid'"
+            >{{ feeLabel(item) }}</text>
+            <view class="foot-right">
+              <view
+                v-if="cardFaces(item).length"
+                class="faces"
+                :class="{ 'is-overflow': cardFaces(item).length >= 3 }"
+              >
                 <view
-                  v-if="cardFaces(item).length"
-                  class="faces"
-                  :class="{ 'is-overflow': cardFaces(item).length >= 3 }"
+                  v-for="(person, index) in cardFaces(item)"
+                  :key="`${item.id}-${person.nickname}-${index}`"
+                  class="face"
+                  :style="{ zIndex: index + 1 }"
                 >
-                  <view
-                    v-for="(person, index) in cardFaces(item)"
-                    :key="`${item.id}-${person.nickname}-${index}`"
-                    class="face"
-                    :style="{ zIndex: index + 1 }"
-                  >
-                    <image
-                      v-if="person.avatarUrl"
-                      class="face-img"
-                      :src="person.avatarUrl"
-                      mode="aspectFill"
-                    />
-                    <view v-else class="face-img face-fallback">
-                      <view class="face-head" />
-                      <view class="face-body" />
-                    </view>
+                  <image
+                    v-if="person.avatarUrl"
+                    class="face-img"
+                    :src="person.avatarUrl"
+                    mode="aspectFill"
+                  />
+                  <view v-else class="face-img face-fallback">
+                    <view class="face-head" />
+                    <view class="face-body" />
                   </view>
                 </view>
               </view>
+              <text
+                class="status ed-tag"
+                :class="[item.displayStatus, statusTag(item.displayStatus)]"
+              >{{ displayLabel(item.displayStatus) }}</text>
             </view>
           </view>
         </view>
