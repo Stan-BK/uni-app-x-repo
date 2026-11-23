@@ -187,6 +187,7 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { onPageScroll, onReachBottom, onShow } from "@dcloudio/uni-app";
 import EdTabBar from "@/components/ed-tab-bar/ed-tab-bar.vue";
+import EdIcon from "@/components/ed-icon/ed-icon.vue";
 import EdHotDeck from "@/components/ed-hot-deck/ed-hot-deck.vue";
 import EdPageBg from "@/components/ed-page-bg/ed-page-bg.vue";
 import { getCommunityUnreadCount } from "@/api/community";
@@ -221,13 +222,6 @@ const total = ref(0);
 const pageSize = 20;
 
 const hasMore = computed(() => items.value.length < total.value);
-const masonryCols = computed(() => {
-  const cols: [PublicActivity[], PublicActivity[]] = [[], []];
-  items.value.forEach((item, index) => {
-    cols[index % 2].push(item);
-  });
-  return cols;
-});
 const showEntryFab = ref(false);
 const unreadCount = ref(0);
 
@@ -299,11 +293,21 @@ function cardFaces(item: PublicActivity) {
   return (item.attendees ?? []).slice(0, 3);
 }
 
+const WEEKDAY_SHORT = ["日", "一", "二", "三", "四", "五", "六"] as const;
+
+function pad2(n: number) {
+  return n < 10 ? `0${n}` : String(n);
+}
+
 function formatTime(iso?: string | null) {
   if (!iso) return "时间待定";
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString();
+  if (Number.isNaN(d.getTime())) return "时间待定";
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const week = WEEKDAY_SHORT[d.getDay()];
+  const clock = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  return `${month}月${day}日 (${week}) ${clock}`;
 }
 
 function errMessage(e: unknown): string {
