@@ -289,7 +289,7 @@ function cardFaces(item: PublicActivity) {
   return (item.attendees ?? []).slice(0, 3);
 }
 
-const WEEKDAY_SHORT = ["日", "一", "二", "三", "四", "五", "六"] as const;
+const WEEKDAY_LABEL = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"] as const;
 
 function pad2(n: number) {
   return n < 10 ? `0${n}` : String(n);
@@ -301,7 +301,7 @@ function formatTime(iso?: string | null) {
   if (Number.isNaN(d.getTime())) return "时间待定";
   const month = d.getMonth() + 1;
   const day = d.getDate();
-  const week = WEEKDAY_SHORT[d.getDay()];
+  const week = WEEKDAY_LABEL[d.getDay()];
   const clock = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
   return `${month}月${day}日 (${week}) ${clock}`;
 }
