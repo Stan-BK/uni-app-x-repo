@@ -778,40 +778,38 @@ $ed-color-text-muted: #929b92 !default;
   flex-direction: column;
 }
 
-.masonry {
-  display: flex;
-  align-items: flex-start;
-  gap: 16rpx;
-}
-
-.masonry-col {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
 .card {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 20rpx;
+  padding: 20rpx;
+  margin-bottom: 16rpx;
   background: $ed-color-surface;
   border-radius: $ed-radius-card;
   border: 1rpx solid $ed-color-border;
-  overflow: hidden;
   box-shadow: 0 2rpx 8rpx rgba(36, 49, 45, 0.06);
+  box-sizing: border-box;
+}
+
+.cover-img,
+.cover {
+  width: 168rpx;
+  height: 168rpx;
+  flex-shrink: 0;
+  border-radius: 16rpx;
+  overflow: hidden;
 }
 
 .cover-img {
-  width: 100%;
-  height: 260rpx;
   display: block;
   background: $ed-color-border;
 }
 
 .cover {
-  height: 260rpx;
   display: flex;
   align-items: flex-end;
-  padding: 20rpx;
+  padding: 12rpx;
   box-sizing: border-box;
 }
 
@@ -821,46 +819,49 @@ $ed-color-text-muted: #929b92 !default;
 
 .cover-label {
   color: rgba(255, 255, 255, 0.92);
-  font-size: 26rpx;
+  font-size: 22rpx;
   letter-spacing: 2rpx;
 }
 
 .body {
-  padding: 20rpx;
-}
-
-.row-title {
-  margin-bottom: 10rpx;
-}
-
-.row-tags {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8rpx;
-  margin-bottom: 10rpx;
+  padding: 0;
 }
 
 .title {
-  font-size: 26rpx;
+  font-size: 28rpx;
   font-weight: 700;
   color: $ed-color-text;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  line-height: 1.35;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.fee,
-.status {
-  flex-shrink: 0;
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  color: $ed-color-text-secondary;
+  min-width: 0;
 }
 
-.meta {
-  display: block;
+.meta-text {
+  flex: 1;
+  min-width: 0;
   font-size: 24rpx;
   color: $ed-color-text-secondary;
-  margin-bottom: 16rpx;
+  line-height: 1.3;
+}
+
+.meta-text.place {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .row-foot {
@@ -868,16 +869,21 @@ $ed-color-text-muted: #929b92 !default;
   align-items: center;
   justify-content: space-between;
   gap: 16rpx;
+  margin-top: auto;
+  padding-top: 4rpx;
 }
 
-.place {
-  flex: 1;
+.fee,
+.status {
+  flex-shrink: 0;
+}
+
+.foot-right {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
   min-width: 0;
-  font-size: 24rpx;
-  color: $ed-color-text-secondary;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .faces {
@@ -885,7 +891,7 @@ $ed-color-text-muted: #929b92 !default;
   flex-direction: row;
   align-items: center;
   flex-shrink: 0;
-  padding-left: 20rpx;
+  padding-left: 0;
 }
 
 .face {
