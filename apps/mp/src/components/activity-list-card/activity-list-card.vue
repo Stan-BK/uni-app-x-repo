@@ -33,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, useSlots } from "vue";
+import { computed, ref, useSlots, watch } from "vue";
 import EdIcon from "@/components/ed-icon/ed-icon.vue";
 
 const props = withDefaults(
@@ -51,8 +51,16 @@ const emit = defineEmits<{ click: [] }>();
 
 const broken = ref(false);
 const slots = useSlots();
+// 条件操作调用方应传 :show-actions="..."，避免空 #actions 插槽预留第三列。
 const hasActions = computed(
   () => props.showActions ?? typeof slots.actions === "function",
+);
+
+watch(
+  () => props.coverUrl,
+  () => {
+    broken.value = false;
+  },
 );
 
 const resolvedCover = computed(() => {
