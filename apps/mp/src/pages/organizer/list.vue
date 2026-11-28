@@ -355,7 +355,7 @@ onShow(() => {
   flex-shrink: 0;
 }
 
-/* 第三列操作区（卡片内 max-width 160rpx，纵向堆叠） */
+/* 第三列操作区（卡片内 width 120rpx，纵向堆叠；不用 gap，小程序不稳） */
 button.ed-btn,
 button.ed-btn-secondary,
 button.danger {
@@ -364,10 +364,16 @@ button.danger {
   margin: 0;
   height: 56rpx;
   line-height: 56rpx;
-  padding: 0 12rpx;
+  padding: 0 8rpx;
   border-radius: $ed-radius-pill;
   font-size: 22rpx;
   white-space: nowrap;
+}
+
+button.ed-btn + button,
+button.ed-btn-secondary + button,
+button.danger + button {
+  margin-top: 12rpx;
 }
 
 button.danger {

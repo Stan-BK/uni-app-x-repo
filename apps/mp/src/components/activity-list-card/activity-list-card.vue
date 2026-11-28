@@ -27,7 +27,9 @@
     </view>
 
     <view v-if="hasActions" class="alc-actions" @click.stop>
-      <slot name="actions" />
+      <view class="alc-actions-stack">
+        <slot name="actions" />
+      </view>
     </view>
   </view>
 </template>
@@ -154,9 +156,6 @@ function onCoverError() {
   font-size: 24rpx;
   color: $ed-color-text-secondary;
   line-height: 1.2;
-}
-
-.alc-place {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -171,13 +170,43 @@ function onCoverError() {
   min-width: 0;
 }
 
+/* 三列时压窄操作列，把宽度让给中栏，避免时间换行撑高卡片 */
 .alc-actions {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  gap: 8rpx;
-  max-width: 160rpx;
+  width: 120rpx;
+}
+
+/* 小程序 flex gap 不稳定；插槽内 text 默认 inline 会粘连换行 */
+.alc-actions-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+}
+
+.alc-actions-stack :deep(button),
+.alc-actions-stack :deep(text),
+.alc-actions-stack :deep(.ed-btn-link) {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.alc-actions-stack :deep(button + button),
+.alc-actions-stack :deep(button + text),
+.alc-actions-stack :deep(button + .ed-btn-link),
+.alc-actions-stack :deep(text + text),
+.alc-actions-stack :deep(text + button),
+.alc-actions-stack :deep(.ed-btn-link + .ed-btn-link),
+.alc-actions-stack :deep(.ed-btn-link + button),
+.alc-actions-stack :deep(.ed-btn-link + text) {
+  margin-top: 12rpx;
 }
 </style>

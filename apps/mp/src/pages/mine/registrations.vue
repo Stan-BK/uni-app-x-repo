@@ -98,16 +98,16 @@
           >
             去支付
           </button>
-          <text
+          <view
             v-if="canCheckIn(item)"
-            class="ed-btn-link"
+            class="ed-btn-link alc-action-link"
             @click.stop="goCheckInCode(item)"
-          >签到码</text>
-          <text
+          >签到码</view>
+          <view
             v-if="canCancel(item)"
-            class="ed-btn-link"
+            class="ed-btn-link alc-action-link"
             @click.stop="onCancel(item)"
-          >取消报名</text>
+          >取消报名</view>
         </template>
       </ActivityListCard>
     </view>
@@ -670,5 +670,14 @@ $ed-color-accent: #e56f3e !default;
 
 .pay-btn::after {
   border: none;
+}
+
+.alc-action-link {
+  display: block;
+  width: 100%;
+  padding: 8rpx 0;
+  text-align: center;
+  line-height: 1.3;
+  font-weight: 600;
 }
 </style>
