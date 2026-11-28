@@ -27,86 +27,64 @@
       </button>
     </view>
     <view v-else class="list">
-      <view class="masonry">
-        <view
-          v-for="(col, colIndex) in masonryCols"
-          :key="colIndex"
-          class="masonry-col"
-        >
-          <view
-            v-for="item in col"
-            :key="item.id"
-            class="card"
-            @click="goDetail(item.id)"
+      <ActivityListCard
+        v-for="item in filtered"
+        :key="item.id"
+        :cover-url="coverSrc(item)"
+        :title="item.title || '未命名活动'"
+        :time-text="formatActivityTime(item.startAt)"
+        :place="item.place"
+        :show-actions="canMutate(item)"
+        @click="goDetail(item.id)"
+      >
+        <template #foot>
+          <text
+            class="status ed-tag"
+            :class="lifecycleTagClass(displayLifecycle(item))"
+          >{{ lifecycleLabel(displayLifecycle(item)) }}</text>
+        </template>
+        <template #actions>
+          <button
+            v-if="displayLifecycle(item) === 'draft' && user.canPublish"
+            class="ed-btn"
+            size="mini"
+            hover-class="none"
+            :disabled="actingId === item.id"
+            @click.stop="onPublish(item.id)"
           >
-            <image
-              v-if="coverSrc(item)"
-              class="cover-img"
-              :src="coverSrc(item)"
-              mode="aspectFill"
-              @error="onCoverError(item.id)"
-            />
-            <view v-else class="cover cover-placeholder">
-              <text class="cover-label">活动</text>
-            </view>
-            <view class="body">
-              <view class="title">{{ item.title || "未命名活动" }}</view>
-              <view class="row-tags">
-                <text
-                  class="status ed-tag"
-                  :class="lifecycleTagClass(displayLifecycle(item))"
-                >{{ lifecycleLabel(displayLifecycle(item)) }}</text>
-              </view>
-              <text class="meta">{{ item.place || "—" }}</text>
-              <text class="meta last">{{ formatTime(item.startAt) }}</text>
-              <view
-                v-if="canMutate(item)"
-                class="ops"
-              >
-                <button
-                  v-if="displayLifecycle(item) === 'draft' && user.canPublish"
-                  class="ed-btn"
-                  size="mini"
-                  hover-class="none"
-                  :disabled="actingId === item.id"
-                  @click.stop="onPublish(item.id)"
-                >
-                  发布
-                </button>
-                <button
-                  v-if="displayLifecycle(item) === 'published'"
-                  class="ed-btn-secondary"
-                  size="mini"
-                  hover-class="none"
-                  :disabled="actingId === item.id"
-                  @click.stop="onUnpublish(item.id)"
-                >
-                  退回草稿
-                </button>
-                <button
-                  v-if="displayLifecycle(item) === 'published'"
-                  class="danger"
-                  size="mini"
-                  hover-class="none"
-                  :disabled="actingId === item.id"
-                  @click.stop="onCancel(item.id)"
-                >
-                  取消
-                </button>
-                <button
-                  v-if="displayLifecycle(item) === 'draft'"
-                  class="ed-btn-secondary"
-                  size="mini"
-                  hover-class="none"
-                  @click.stop="goEdit(item.id)"
-                >
-                  编辑
-                </button>
-              </view>
-            </view>
-          </view>
-        </view>
-      </view>
+            发布
+          </button>
+          <button
+            v-if="displayLifecycle(item) === 'published'"
+            class="ed-btn-secondary"
+            size="mini"
+            hover-class="none"
+            :disabled="actingId === item.id"
+            @click.stop="onUnpublish(item.id)"
+          >
+            退回草稿
+          </button>
+          <button
+            v-if="displayLifecycle(item) === 'published'"
+            class="danger"
+            size="mini"
+            hover-class="none"
+            :disabled="actingId === item.id"
+            @click.stop="onCancel(item.id)"
+          >
+            取消
+          </button>
+          <button
+            v-if="displayLifecycle(item) === 'draft'"
+            class="ed-btn-secondary"
+            size="mini"
+            hover-class="none"
+            @click.stop="goEdit(item.id)"
+          >
+            编辑
+          </button>
+        </template>
+      </ActivityListCard>
     </view>
   </view>
 </template>
@@ -121,7 +99,9 @@ import {
   unpublishActivity,
   type Activity,
 } from "@/api/activities";
+import ActivityListCard from "@/components/activity-list-card/activity-list-card.vue";
 import { useUserStore } from "@/stores/user";
+import { formatActivityTime } from "@/utils/format-activity-time";
 import {
   effectiveLifecycle,
   type EffectiveLifecycle,
@@ -141,20 +121,11 @@ const user = useUserStore();
 const items = ref<Activity[]>([]);
 const loading = ref(false);
 const actingId = ref<string | null>(null);
-const brokenCovers = ref<Record<string, boolean>>({});
 const filter = ref<ShelfFilter>("listed");
 
 const filtered = computed(() =>
   items.value.filter((item) => inShelf(displayLifecycle(item), filter.value)),
 );
-
-const masonryCols = computed(() => {
-  const cols: [Activity[], Activity[]] = [[], []];
-  filtered.value.forEach((item, index) => {
-    cols[index % 2].push(item);
-  });
-  return cols;
-});
 
 const emptyCopy = computed(() => {
   if (filter.value === "listed") {
@@ -207,20 +178,7 @@ function lifecycleTagClass(lifecycle: string) {
 }
 
 function coverSrc(item: Activity) {
-  const url = item.coverUrl?.trim() ?? "";
-  if (!url || brokenCovers.value[item.id]) return "";
-  return url;
-}
-
-function onCoverError(id: string) {
-  brokenCovers.value = { ...brokenCovers.value, [id]: true };
-}
-
-function formatTime(iso?: string | null) {
-  if (!iso) return "时间待定";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString();
+  return item.coverUrl?.trim() ?? "";
 }
 
 function errMessage(e: unknown): string {
@@ -355,55 +313,12 @@ onShow(() => {
   margin-top: 24rpx;
 }
 
-.masonry {
-  display: flex;
-  align-items: flex-start;
-  gap: 16rpx;
-}
-
-.masonry-col {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
 .card {
   background: $ed-color-surface;
   border-radius: $ed-radius-card;
   border: 1rpx solid $ed-color-border;
   overflow: hidden;
   box-shadow: 0 2rpx 8rpx rgba(36, 49, 45, 0.06);
-}
-
-.cover-img {
-  width: 100%;
-  height: 260rpx;
-  display: block;
-  background: $ed-color-border;
-}
-
-.cover {
-  height: 260rpx;
-  display: flex;
-  align-items: flex-end;
-  padding: 20rpx;
-  box-sizing: border-box;
-}
-
-.cover-placeholder {
-  background: $ed-color-brand;
-}
-
-.cover-label {
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 26rpx;
-  letter-spacing: 2rpx;
-}
-
-.body {
-  padding: 20rpx;
 }
 
 .empty {
@@ -436,65 +351,32 @@ onShow(() => {
   font-weight: 600;
 }
 
-.title {
-  font-size: 26rpx;
-  font-weight: 700;
-  color: $ed-color-text;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  margin-bottom: 10rpx;
-}
-
-.row-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8rpx;
-  margin-bottom: 10rpx;
-}
-
 .status {
   flex-shrink: 0;
 }
 
-.meta {
+/* 第三列操作区（卡片内 width 120rpx，纵向堆叠；不用 gap，小程序不稳） */
+button.ed-btn,
+button.ed-btn-secondary,
+button.danger {
   display: block;
-  font-size: 22rpx;
-  color: $ed-color-text-secondary;
-  margin-bottom: 8rpx;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.meta.last {
-  margin-bottom: 0;
-}
-
-.ops {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8rpx;
-  margin-top: 16rpx;
-}
-
-.ops button.ed-btn,
-.ops button.ed-btn-secondary,
-.ops button.danger {
-  display: inline-flex;
-  flex: none;
-  width: auto;
+  width: 100%;
   margin: 0;
   height: 56rpx;
   line-height: 56rpx;
-  padding: 0 16rpx;
+  padding: 0 8rpx;
   border-radius: $ed-radius-pill;
   font-size: 22rpx;
+  white-space: nowrap;
 }
 
-.ops button.danger {
+button.ed-btn + button,
+button.ed-btn-secondary + button,
+button.danger + button {
+  margin-top: 12rpx;
+}
+
+button.danger {
   background: $ed-color-terracotta-soft;
   color: $ed-color-terracotta;
   border: none;

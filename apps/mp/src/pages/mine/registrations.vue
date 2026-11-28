@@ -71,74 +71,56 @@
       <button class="ed-btn" @click="goHome">浏览活动</button>
     </view>
     <view v-else class="list">
-      <view class="masonry">
-        <view
-          v-for="(col, colIndex) in masonryCols"
-          :key="colIndex"
-          class="masonry-col"
-        >
-          <view
-            v-for="item in col"
-            :key="item.id"
-            class="card reg-card"
-            @click="goDetail(item)"
+      <ActivityListCard
+        v-for="item in items"
+        :key="item.id"
+        :cover-url="coverSrc(item)"
+        :title="item.activity?.title || '活动'"
+        :time-text="formatActivityTime(item.activity?.startAt)"
+        :place="item.activity?.place"
+        :show-actions="canPay(item) || canCheckIn(item) || canCancel(item)"
+        @click="goDetail(item)"
+      >
+        <template #foot>
+          <text
+            class="status ed-tag"
+            :class="statusTagClass(item.status)"
+          >{{ statusLabel(item.status) }}</text>
+        </template>
+        <template #actions>
+          <button
+            v-if="canPay(item)"
+            class="pay-btn ed-btn"
+            hover-class="none"
+            :loading="payingId === item.id"
+            :disabled="payingId === item.id"
+            @click.stop="onPay(item)"
           >
-            <image
-              v-if="coverSrc(item)"
-              class="cover-img"
-              :src="coverSrc(item)"
-              mode="aspectFill"
-              @error="onCoverError(item.id)"
-            />
-            <view v-else class="cover cover-placeholder">
-              <text class="cover-label">活动</text>
-            </view>
-            <view class="body">
-              <view class="title">{{ item.activity?.title || "活动" }}</view>
-              <view class="row-tags">
-                <text
-                  class="status ed-tag"
-                  :class="statusTagClass(item.status)"
-                >{{ statusLabel(item.status) }}</text>
-              </view>
-              <text class="meta">{{ item.activity?.place || "—" }}</text>
-              <text class="meta last">{{ formatTime(item.activity?.startAt) }}</text>
-              <view v-if="canPay(item) || canCheckIn(item) || canCancel(item)" class="actions">
-                <button
-                  v-if="canPay(item)"
-                  class="pay-btn ed-btn"
-                  hover-class="none"
-                  :loading="payingId === item.id"
-                  :disabled="payingId === item.id"
-                  @click.stop="onPay(item)"
-                >
-                  去支付
-                </button>
-                <text
-                  v-if="canCheckIn(item)"
-                  class="ed-btn-link"
-                  @click.stop="goCheckInCode(item)"
-                >签到码</text>
-                <text
-                  v-if="canCancel(item)"
-                  class="ed-btn-link"
-                  @click.stop="onCancel(item)"
-                >取消报名</text>
-              </view>
-            </view>
-          </view>
-        </view>
-      </view>
+            去支付
+          </button>
+          <view
+            v-if="canCheckIn(item)"
+            class="ed-btn-link alc-action-link"
+            @click.stop="goCheckInCode(item)"
+          >签到码</view>
+          <view
+            v-if="canCancel(item)"
+            class="ed-btn-link alc-action-link"
+            @click.stop="onCancel(item)"
+          >取消报名</view>
+        </template>
+      </ActivityListCard>
     </view>
     <EdTabBar />
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { onMounted, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import EdTabBar from "@/components/ed-tab-bar/ed-tab-bar.vue";
 import EdPageBg from "@/components/ed-page-bg/ed-page-bg.vue";
+import ActivityListCard from "@/components/activity-list-card/activity-list-card.vue";
 import {
   cancelRegistration,
   createRegistration,
@@ -153,6 +135,7 @@ import {
   REGISTRATION_PAYMENT_PENDING_CONFIRM_TOAST,
   syncAfterPaymentSheet,
 } from "@/utils/registration-payment";
+import { formatActivityTime } from "@/utils/format-activity-time";
 import { ApiError } from "@/utils/request";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -171,23 +154,9 @@ let walletGen = 0;
 const items = ref<Registration[]>([]);
 const busy = ref(false);
 const payingId = ref("");
-const brokenCovers = ref<Record<string, boolean>>({});
-const masonryCols = computed(() => {
-  const cols: [Registration[], Registration[]] = [[], []];
-  items.value.forEach((item, index) => {
-    cols[index % 2].push(item);
-  });
-  return cols;
-});
 
 function coverSrc(item: Registration) {
-  const url = item.activity?.coverUrl?.trim() ?? "";
-  if (!url || brokenCovers.value[item.id]) return "";
-  return url;
-}
-
-function onCoverError(id: string) {
-  brokenCovers.value = { ...brokenCovers.value, [id]: true };
+  return item.activity?.coverUrl?.trim() ?? "";
 }
 
 function statusLabel(status: string) {
@@ -205,13 +174,6 @@ function statusTagClass(status: string) {
 
 function canPay(item: Registration): boolean {
   return item.status === "pending_payment" && activityNotEnded(item);
-}
-
-function formatTime(iso?: string | null) {
-  if (!iso) return "时间待定";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString();
 }
 
 function activityNotEnded(item: Registration): boolean {
@@ -684,20 +646,6 @@ $ed-color-accent: #e56f3e !default;
   flex-direction: column;
 }
 
-.masonry {
-  display: flex;
-  align-items: flex-start;
-  gap: 16rpx;
-}
-
-.masonry-col {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
 .card {
   background: $ed-color-surface;
   border-radius: $ed-radius-card;
@@ -708,94 +656,28 @@ $ed-color-accent: #e56f3e !default;
   padding: $ed-space-card;
 }
 
-.reg-card {
-  overflow: hidden;
-  box-shadow: 0 2rpx 8rpx rgba(36, 49, 45, 0.06);
-}
-
-.cover-img {
-  width: 100%;
-  height: 260rpx;
-  display: block;
-  background: $ed-color-border;
-}
-
-.cover {
-  height: 260rpx;
-  display: flex;
-  align-items: flex-end;
-  padding: 20rpx;
-  box-sizing: border-box;
-}
-
-.cover-placeholder {
-  background: $ed-color-brand;
-}
-
-.cover-label {
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 26rpx;
-  letter-spacing: 2rpx;
-}
-
-.body {
-  padding: 20rpx;
-}
-
-.title {
-  font-size: 26rpx;
-  font-weight: 700;
-  color: $ed-color-text;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  margin-bottom: 10rpx;
-}
-
-.row-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8rpx;
-  margin-bottom: 10rpx;
-}
-
 .status {
   flex-shrink: 0;
-}
-
-.meta {
-  display: block;
-  font-size: 22rpx;
-  color: $ed-color-text-secondary;
-  margin-bottom: 8rpx;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.meta.last {
-  margin-bottom: 0;
-}
-
-.actions {
-  border-top: 1rpx solid $ed-color-border;
-  margin-top: 16rpx;
-  padding-top: 16rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
 }
 
 .pay-btn {
   width: 100%;
   margin: 0;
-  font-size: 26rpx;
+  padding: 0 16rpx;
+  font-size: 24rpx;
   font-weight: 600;
 }
 
 .pay-btn::after {
   border: none;
+}
+
+.alc-action-link {
+  display: block;
+  width: 100%;
+  padding: 8rpx 0;
+  text-align: center;
+  line-height: 1.3;
+  font-weight: 600;
 }
 </style>
