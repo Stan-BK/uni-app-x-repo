@@ -256,6 +256,7 @@ import {
   type UpsertBody,
 } from "@/api/activities";
 import { effectiveLifecycle } from "@/utils/activity-lifecycle";
+import { markOrganizerListDirty } from "@/utils/organizer-list-dirty";
 import { ApiError } from "@/utils/request";
 import { useUserStore } from "@/stores/user";
 // 显式导入 uni-ui：pnpm monorepo 下仅靠 easycom 时 usingComponents 可能为空
@@ -719,6 +720,7 @@ async function saveDraft() {
       return;
     }
     await saveOrCreate();
+    markOrganizerListDirty();
     msg.value = "草稿已保存";
     uni.showToast({ title: "已保存", icon: "success" });
   } catch (e) {
@@ -748,6 +750,7 @@ async function publish() {
     }
     const id = await saveOrCreate();
     await publishActivity(id);
+    markOrganizerListDirty();
     lifecycle.value = "published";
     msg.value = "已发布";
     uni.showToast({ title: "已发布", icon: "success" });

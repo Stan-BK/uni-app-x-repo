@@ -106,6 +106,10 @@ import {
   effectiveLifecycle,
   type EffectiveLifecycle,
 } from "@/utils/activity-lifecycle";
+import {
+  consumeOrganizerListDirty,
+  markOrganizerListDirty,
+} from "@/utils/organizer-list-dirty";
 import { ApiError } from "@/utils/request";
 
 type ShelfFilter = "listed" | "draft" | "ended" | "off";
@@ -187,17 +191,19 @@ function errMessage(e: unknown): string {
   return "操作失败";
 }
 
-async function load() {
+/** silent：已有列表时后台刷新，避免 loading 闪屏 */
+async function load(opts: { silent?: boolean } = {}) {
   if (!user.isLoggedIn) {
     items.value = [];
     loading.value = false;
     return;
   }
-  loading.value = true;
+  if (!opts.silent) loading.value = true;
   try {
     const res = await listMyActivities();
     items.value = res.items ?? [];
   } catch (e) {
+    markOrganizerListDirty();
     uni.showToast({ title: errMessage(e), icon: "none" });
   } finally {
     loading.value = false;
@@ -283,7 +289,11 @@ onShow(() => {
   void user.refreshIdentity().catch(() => {
     /* 网络失败时保留本地态 */
   });
-  void load();
+  // 仅首次 / 详情·编辑改过数据时重拉；纯浏览详情返回不刷新
+  const shouldLoad =
+    consumeOrganizerListDirty() || items.value.length === 0;
+  if (!shouldLoad) return;
+  void load({ silent: items.value.length > 0 });
 });
 </script>
 

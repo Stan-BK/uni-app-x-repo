@@ -169,6 +169,7 @@ import {
 } from "@/api/registrations";
 import { useUserStore } from "@/stores/user";
 import { effectiveLifecycle } from "@/utils/activity-lifecycle";
+import { markOrganizerListDirty } from "@/utils/organizer-list-dirty";
 import { displayRegistrationName } from "@/utils/registration-display";
 import { ApiError } from "@/utils/request";
 
@@ -276,6 +277,7 @@ async function onPublish() {
   acting.value = true;
   try {
     activity.value = await publishActivity(activityId.value);
+    markOrganizerListDirty();
     uni.showToast({ title: "已发布", icon: "success" });
     await loadPeople(activityId.value);
   } catch (e) {
@@ -295,6 +297,7 @@ async function onUnpublish() {
   acting.value = true;
   try {
     activity.value = await unpublishActivity(activityId.value);
+    markOrganizerListDirty();
     uni.showToast({ title: "已退回草稿", icon: "success" });
     await loadPeople(activityId.value);
   } catch (e) {
@@ -315,6 +318,7 @@ async function onTakeDown() {
   acting.value = true;
   try {
     activity.value = await cancelActivity(activityId.value);
+    markOrganizerListDirty();
     uni.showToast({ title: "已下架", icon: "success" });
     await loadPeople(activityId.value);
   } catch (e) {
