@@ -89,32 +89,17 @@
     <view v-if="loading && !items.length" class="state">加载中…</view>
     <view v-else-if="!items.length" class="state">暂无活动</view>
     <view v-else class="list">
-      <view
+      <ActivityListCard
         v-for="item in items"
         :key="item.id"
-        class="card"
+        :cover-url="item.coverUrl"
+        :title="item.title"
+        :time-text="formatActivityTime(item.startAt)"
+        :place="item.place"
         @click="goDetail(item.id)"
       >
-        <image
-          v-if="item.coverUrl"
-          class="cover-img"
-          :src="item.coverUrl"
-          mode="aspectFill"
-        />
-        <view v-else class="cover cover-placeholder">
-          <text class="cover-label">活动</text>
-        </view>
-        <view class="body">
-          <text class="title">{{ item.title }}</text>
-          <view class="meta-row">
-            <EdIcon name="clock" size="24rpx" color="currentColor" />
-            <text class="meta-text">{{ formatTime(item.startAt) }}</text>
-          </view>
-          <view class="meta-row">
-            <EdIcon name="pin" size="24rpx" color="currentColor" />
-            <text class="meta-text place">{{ item.place || "—" }}</text>
-          </view>
-          <view class="row-foot">
+        <template #foot>
+          <view class="foot-inner">
             <text
               class="fee ed-tag"
               :class="isFree(item) ? 'ed-tag-open' : 'ed-tag-paid'"
@@ -149,8 +134,8 @@
               >{{ displayLabel(item.displayStatus) }}</text>
             </view>
           </view>
-        </view>
-      </view>
+        </template>
+      </ActivityListCard>
 
       <view v-if="hasMore" class="more" @click="loadMore">
         <text>{{ loading ? "加载中…" : "加载更多" }}</text>
@@ -183,7 +168,7 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { onPageScroll, onReachBottom, onShow } from "@dcloudio/uni-app";
 import EdTabBar from "@/components/ed-tab-bar/ed-tab-bar.vue";
-import EdIcon from "@/components/ed-icon/ed-icon.vue";
+import ActivityListCard from "@/components/activity-list-card/activity-list-card.vue";
 import EdHotDeck from "@/components/ed-hot-deck/ed-hot-deck.vue";
 import EdPageBg from "@/components/ed-page-bg/ed-page-bg.vue";
 import { getCommunityUnreadCount } from "@/api/community";
@@ -193,6 +178,7 @@ import {
   type PublicActivity,
 } from "@/api/public-activities";
 import { useUserStore } from "@/stores/user";
+import { formatActivityTime } from "@/utils/format-activity-time";
 import { ApiError } from "@/utils/request";
 
 const DISPLAY_LABEL: Record<string, string> = {
@@ -287,23 +273,6 @@ function feeLabel(item: PublicActivity) {
 
 function cardFaces(item: PublicActivity) {
   return (item.attendees ?? []).slice(0, 3);
-}
-
-const WEEKDAY_LABEL = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"] as const;
-
-function pad2(n: number) {
-  return n < 10 ? `0${n}` : String(n);
-}
-
-function formatTime(iso?: string | null) {
-  if (!iso) return "时间待定";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "时间待定";
-  const month = d.getMonth() + 1;
-  const day = d.getDate();
-  const week = WEEKDAY_LABEL[d.getDay()];
-  const clock = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-  return `${month}月${day}日 (${week}) ${clock}`;
 }
 
 function errMessage(e: unknown): string {
@@ -778,99 +747,13 @@ $ed-color-text-muted: #929b92 !default;
   flex-direction: column;
 }
 
-.card {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 20rpx;
-  padding: 20rpx;
-  margin-bottom: 16rpx;
-  background: $ed-color-surface;
-  border-radius: $ed-radius-card;
-  border: 1rpx solid $ed-color-border;
-  box-shadow: 0 2rpx 8rpx rgba(36, 49, 45, 0.06);
-  box-sizing: border-box;
-}
-
-.cover-img,
-.cover {
-  width: 168rpx;
-  height: 168rpx;
-  flex-shrink: 0;
-  border-radius: 16rpx;
-  overflow: hidden;
-}
-
-.cover-img {
-  display: block;
-  background: $ed-color-border;
-}
-
-.cover {
-  display: flex;
-  align-items: flex-end;
-  padding: 12rpx;
-  box-sizing: border-box;
-}
-
-.cover-placeholder {
-  background: $ed-color-brand;
-}
-
-.cover-label {
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 22rpx;
-  letter-spacing: 2rpx;
-}
-
-.body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-  padding: 0;
-}
-
-.title {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: $ed-color-text;
-  line-height: 1.35;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.meta-row {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  color: $ed-color-text-secondary;
-  min-width: 0;
-}
-
-.meta-text {
-  flex: 1;
-  min-width: 0;
-  font-size: 24rpx;
-  color: $ed-color-text-secondary;
-  line-height: 1.3;
-}
-
-.meta-text.place {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.row-foot {
+.foot-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16rpx;
-  margin-top: auto;
-  padding-top: 4rpx;
+  width: 100%;
+  min-width: 0;
 }
 
 .fee,
